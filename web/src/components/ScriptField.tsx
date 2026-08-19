@@ -105,8 +105,15 @@ export function ScriptField({
         spellCheck={false}
         placeholder={placeholder}
         style={{
-          height: MIN_HEIGHT,
           /**
+           * `height` is deliberately ABSENT here and owned by the effect alone.
+           *
+           * As a React inline style it was re-applied on every render, so every
+           * keystroke reset the box to its floor and the effect grew it back —
+           * replaying the whole animation per character. The floor is now a
+           * class (`min-h-[132px]`), which React never fights over, and the
+           * measured height is written imperatively.
+           *
            * The design detector flags animating `height` as a layout animation,
            * and it is right — this is a deliberate exception, not an oversight.
            * Its usual advice (transform, or grid-template-rows) has no
@@ -122,7 +129,7 @@ export function ScriptField({
            */
           transition: "height 150ms var(--ease-ui)",
         }}
-        className="script-area w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink placeholder:text-ink-muted"
+        className="script-area min-h-[132px] w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink placeholder:text-ink-muted"
       />
 
       {/* The fades belong to the card's own surface, so the text dissolves into

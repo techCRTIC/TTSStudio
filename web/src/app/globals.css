@@ -158,15 +158,28 @@ body {
    hairline warms — enough to locate the caret, quiet enough to keep writing in. */
 .field {
   border-radius: var(--radius-md);
-  border: 1px solid transparent;
+  /* A faint resting rim so the field reads as a field before you touch it —
+     and so focus has something to brighten FROM rather than appearing out of
+     nothing. */
+  border: 1px solid color-mix(in srgb, var(--ink-0) 5%, transparent);
+  background: color-mix(in srgb, var(--ink-0) 1.5%, transparent);
   transition:
     border-color var(--dur-lift) var(--ease-ui),
     background-color var(--dur-lift) var(--ease-ui);
 }
 
+.field:hover {
+  border-color: color-mix(in srgb, var(--ink-0) 9%, transparent);
+}
+
+/* Focus has to be SEEN. The first version moved the border to the hairline
+   token, which against this surface is a 1.1:1 difference — technically a
+   change, visually nothing. The rim now lifts to a tone that reads at a glance,
+   and the surface warms with it, so clicking in produces an answer without
+   bringing back the orange rectangle this replaced. */
 .field:focus-within {
-  border-color: var(--hairline);
-  background: color-mix(in srgb, var(--ink-0) 2%, transparent);
+  border-color: color-mix(in srgb, var(--ink-0) 20%, transparent);
+  background: color-mix(in srgb, var(--ink-0) 4.5%, transparent);
 }
 
 .field :where(textarea, input):focus-visible {

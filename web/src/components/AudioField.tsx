@@ -72,9 +72,19 @@ export function AudioField({ energy = 0 }: { energy?: number }) {
     let clock = 0;
     let last = 0;
 
-    // Gradients depend only on height and the layer, so they are built once per
-    // resize instead of four times per frame.
+    /**
+     * Everything below is allocated once per resize and reused every frame.
+     *
+     * Rebuilding it per frame is what produces a rhythmic stutter that looks
+     * like nothing in particular: four fresh point arrays and a fresh gradient,
+     * sixty times a second, is a steady stream of garbage, and the collector
+     * pays for it in pauses you can see.
+     */
     let fills: CanvasGradient[] = [];
+    let spotlight: CanvasGradient | null = null;
+    let spotRadius = 0;
+    let points: Float64Array[] = [];
+    let sampleCount = 0;
 
     const buildFills = () => {
       fills = LAYERS.map((l) => {
@@ -84,6 +94,16 @@ export function AudioField({ energy = 0 }: { energy?: number }) {
         g.addColorStop(1, `rgba(${l.color}, 0)`);
         return g;
       });
+
+      // Built at the origin and moved into place with translate(), so the same
+      // gradient object serves every frame no matter where the pointer is.
+      spotRadius = Math.max(w, h) * 0.34;
+      spotlight = ctx.createRadialGradient(0, 0, 0, 0, 0, spotRadius);
+      spotlight.addColorStop(0, `rgba(${ACCENT}, 0.05)`);
+      spotlight.addColorStop(1, `rgba(${ACCENT}, 0)`);
+
+      sampleCount = Math.ceil((w + MARGIN * 2) / STEP) + 1;
+      points = LAYERS.map(() => new Float64Array(sampleCount * 2));
     };
 
     const resize = () => {
@@ -123,10 +143,14 @@ export function AudioField({ energy = 0 }: { energy?: number }) {
       ctx.save();
       ctx.translate((pointer.ex - 0.5) * l.depth + ox, (pointer.ey - 0.5) * l.depth * 0.5 + oy);
 
-      // Sample the curve ONCE and reuse the points for the fill and the stroke.
-      // Walking it twice was doing the same trigonometry twice per frame.
-      const pts: number[] = [];
-      for (let x = -MARGIN; x <= w + MARGIN; x += STEP) pts.push(x, yAt(l, x, t));
+      // Sampled ONCE into a buffer that outlives the frame, then reused for the
+      // fill and the stroke. Walking it twice repeated the same trigonometry.
+      const pts = points[i];
+      for (let k = 0; k < sampleCount; k++) {
+        const x = -MARGIN + k * STEP;
+        pts[k * 2] = x;
+        pts[k * 2 + 1] = yAt(l, x, t);
+      }
 
       ctx.beginPath();
       ctx.moveTo(-MARGIN, h + MARGIN);
@@ -143,37 +167,53 @@ export function AudioField({ energy = 0 }: { energy?: number }) {
       ctx.lineWidth = 1.25;
       ctx.stroke();
 
-      // Data dots flowing along the curve; the lead one carries a halo.
+      /**
+       * Data dots flowing along the curve.
+       *
+       * The lead dot is drawn SEPARATELY, and that is the whole point. It used
+       * to be chosen by its index in this loop — but the loop starts at a
+       * wrapped offset, so each time the offset came back around, the set
+       * shifted and index 2 became a different physical dot. The highlight
+       * teleported backwards once per cycle: the stutter that was visible.
+       *
+       * Now the plain dots are interchangeable (their wrap cannot be seen
+       * because they are identical and evenly spaced), and the lead has its own
+       * continuous position across the full span, so its wrap happens beyond the
+       * left margin — off-canvas, and further out than the parallax can reach.
+       */
       const spacing = 132;
       const offset = (t * l.flow) % spacing;
-      for (let k = 0, x = -offset; x <= w + MARGIN; x += spacing, k++) {
-        const y = yAt(l, x, t);
-        const lead = k === 2;
-        if (lead) {
-          ctx.beginPath();
-          ctx.arc(x, y, 9, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${l.color}, 0.13)`;
-          ctx.fill();
-        }
+      for (let x = -offset - spacing; x <= w + MARGIN; x += spacing) {
         ctx.beginPath();
-        ctx.arc(x, y, lead ? 2.6 : 1.6, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${l.color}, ${lead ? 0.9 : 0.42})`;
+        ctx.arc(x, yAt(l, x, t), 1.6, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${l.color}, 0.42)`;
         ctx.fill();
       }
+
+      const span = w + MARGIN * 2;
+      const headX = -MARGIN + ((t * l.flow) % span);
+      const headY = yAt(l, headX, t);
+      ctx.beginPath();
+      ctx.arc(headX, headY, 9, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${l.color}, 0.13)`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(headX, headY, 2.6, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${l.color}, 0.9)`;
+      ctx.fill();
+
       ctx.restore();
     };
 
     const drawSpotlight = () => {
-      // The gradient reaches zero at `r`, so filling the whole canvas was
-      // compositing a full screen of transparent pixels every frame for nothing.
-      const r = Math.max(w, h) * 0.34;
-      const cx = pointer.ex * w;
-      const cy = pointer.ey * h;
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, `rgba(${ACCENT}, 0.05)`);
-      g.addColorStop(1, `rgba(${ACCENT}, 0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      if (!spotlight) return;
+      // The gradient reaches zero at its radius, so filling the whole canvas was
+      // compositing a screenful of transparent pixels every frame for nothing.
+      ctx.save();
+      ctx.translate(pointer.ex * w, pointer.ey * h);
+      ctx.fillStyle = spotlight;
+      ctx.fillRect(-spotRadius, -spotRadius, spotRadius * 2, spotRadius * 2);
+      ctx.restore();
     };
 
     const frame = (t: number) => {
