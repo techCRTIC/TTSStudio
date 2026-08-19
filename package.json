@@ -1,0 +1,14 @@
+{
+  "name": "tts-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Genera voz clonada desde texto, en tu propia máquina.",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "dev": "npm run dev --prefix web",
+    "build": "npm run build --prefix web",
+    "test": "npm test --prefix web",
+    "lint": "npm run lint --prefix web"
+  }
+}
