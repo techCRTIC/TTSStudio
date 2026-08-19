@@ -27,6 +27,7 @@
 - Se escribió el README con cómo correrla, para que las instrucciones no vivan solo en la conversación.
 - Se englobó todo en **un solo `npm start`** desde la raíz: comprueba y levanta ComfyUI, libera el puerto, compila, arranca y abre el navegador cuando la app ya responde.
 - El usuario señaló tres molestias visuales y se corrigieron: el rectángulo naranja de foco sobre el cuadro de texto, el desplegable nativo de la voz, y un fondo animado que a veces se pegaba.
+- El cuadro de texto pasó a crecer con lo que se escribe, con desvanecidos en los bordes cuando hay más contenido del que cabe.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -43,7 +44,7 @@
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · dieciocho commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
+**Estado al cerrar:** rama `main` · árbol limpio · veinte commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
 **Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
 <!-- /cierre -->
 
@@ -126,6 +127,28 @@ sobrepaso y el sistema de la casa prohíbe el rebote.
   cuando su degradado llega a cero mucho antes del borde; cada curva se muestreaba
   dos veces (relleno y trazo); y los degradados de capa se reconstruían cuatro
   veces por fotograma en vez de una por redimensionado. DPR acotado a 1,5.
+
+### El área de escritura
+De la referencia se tomaron sus **dos comportamientos útiles** y se descartó el
+tercero: la expansión desde píldora cerrada no aplica, porque la referencia es
+un chat que empieza plegado y este escenario está siempre abierto.
+
+- **Crece con el contenido.** Estaba fija en cinco filas: una línea reservaba
+  cinco, y un guión largo se leía por una ranura. Ahora mide y anima entre un
+  piso de cuatro líneas y un techo, pasado el cual hace scroll.
+- **Desvanecidos en los bordes**, en el color de la propia tarjeta, que aparecen
+  solo cuando hay algo más allá del borde. Un corte duro se lee como que el
+  texto termina ahí.
+- Altura y opacidades van **directo al DOM**. Como estado costarían un re-render
+  por pulsación para fijar un estilo que un efecto fija solo, y volverían a
+  chocar con la regla de `setState` dentro de efectos que la auditoría ya limpió.
+- **Excepción documentada:** el detector marca `transition: height` como
+  animación de maquetación y tiene razón. No hay sustituto válido aquí —
+  `transform` deforma el texto y `grid-template-rows` anima maquetación igual,
+  además de quitarle al textarea la altura explícita que necesita para
+  desplazarse en el techo. El costo está acotado: se dispara al cambiar el
+  número de líneas, no por pulsación, y el lienzo de fondo es `fixed`, así que
+  no se re-maqueta con él.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.
