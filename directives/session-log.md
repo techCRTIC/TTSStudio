@@ -29,6 +29,7 @@
 - El usuario señaló tres molestias visuales y se corrigieron: el rectángulo naranja de foco sobre el cuadro de texto, el desplegable nativo de la voz, y un fondo animado que a veces se pegaba.
 - El cuadro de texto pasó a crecer con lo que se escribe, con desvanecidos en los bordes cuando hay más contenido del que cabe.
 - El estado del motor bajó de la barra superior a la fila del propio campo, y su texto transforma el ancho al cambiar en vez de dar saltos.
+- El usuario reportó que la animación del campo no se veía y que las pelotitas del fondo seguían trabándose. Ambos eran bugs reales y propios, y se corrigieron.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -45,7 +46,7 @@
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · veintidós commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
+**Estado al cerrar:** rama `main` · árbol limpio · veinticuatro commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
 **Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
 <!-- /cierre -->
 
@@ -175,6 +176,34 @@ estás haciendo, no a la app.
   su ausencia es lo que hace que el aviso se note cuando aparece.
 - **Segunda excepción documentada de animación de maquetación** (`transition:
   width`), razonada en el archivo igual que la primera.
+
+### Dos bugs que el usuario vio y yo no
+Los dos venían de código propio, y ninguno se detectaba con tipos, lint, build
+ni el detector de diseño: solo mirándolo funcionar.
+
+- **El área de escritura apenas se movía.** `height` estaba en el estilo inline
+  de React, así que React reaplicaba el piso en **cada render** — cada pulsación
+  reseteaba la caja a 132px y el efecto la volvía a subir, repitiendo la
+  animación entera por carácter. El piso pasó a ser una clase, que React no
+  disputa, y la altura medida la escribe solo el efecto.
+- **El foco era invisible**, que era la otra mitad de "no pasa nada al pinchar":
+  la primera versión movía el borde al token de filete, una diferencia de 1,1:1
+  contra esa superficie. Técnicamente un cambio, visualmente nada. Ahora el
+  campo tiene filo en reposo, aclara al pasar el cursor y sube claro al enfocar.
+- **Las pelotitas se trababan** porque la que lleva el halo se elegía por su
+  índice en un bucle que arranca en un desplazamiento con módulo: al dar la
+  vuelta, el conjunto se corría y ese índice pasaba a ser otra pelotita física.
+  La destacada se teletransportaba una vez por ciclo. Ahora las normales son
+  intercambiables y la destacada tiene posición propia continua, cuya vuelta
+  ocurre fuera del lienzo.
+- **Tirón rítmico de fondo:** cuatro arrays de puntos y un degradado radial
+  nuevos sesenta veces por segundo son basura constante, y el recolector la paga
+  en pausas visibles. Los buffers son `Float64Array` construidos una vez por
+  redimensionado, y el degradado del foco se crea en el origen y se mueve con
+  `translate()`.
+
+**Lección para la próxima sesión:** todo esto pasó las cuatro comprobaciones
+automáticas. Lo único que lo encontró fue el usuario usándolo.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.

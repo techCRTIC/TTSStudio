@@ -9,7 +9,7 @@ borrador, ya completo, vive en `directives/session-log.md`.
 ---
 
 **Status:** sesión 1 — MVP funcionando, auditado, y con un solo comando para correrlo.
-**Last update:** 2026-08-19 (línea de estado)
+**Last update:** 2026-08-19 (bugs de animación)
 
 ## Current task
 Ninguna en curso. El MVP está cerrado: el usuario abrió la app, generó voz sin
@@ -49,8 +49,8 @@ abierto estrecho. Si la app se va a usar solo en el escritorio de esta máquina,
 da lo mismo; si no, es lo primero que hay que probar.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, veintidós commits. El último: `3cb47f3 feat(web): the
-engine's status moved beside the field, and it morphs`.
+Rama `main`, árbol limpio, veinticuatro commits. El último: `75185e2 fix(web): the
+field really animates, and the field's dots really flow`.
 
 Salud verificada: 7 tests en verde (2 contra el motor real), build de producción
 correcto, `tsc` y `eslint` limpios, y el detector de diseño de `impeccable` sin
@@ -98,6 +98,15 @@ hallazgos en dos pasadas.
   `transition: height` en `ScriptField` y `transition: width` en `StatusLine`.
   El detector las marca y tiene razón; ambas están razonadas en su propio
   archivo. No "arreglarlas" sin leer eso primero.
+- **Nunca poner `height`, `width` u otra medida calculada en el estilo inline de
+  React si un efecto también la escribe.** React la reaplica en cada render y
+  pisa al efecto; en `ScriptField` eso repetía la animación por pulsación. El
+  valor de reposo va por clase, el calculado por el efecto.
+- **Un estado visual tiene que verse.** El foco del campo cambiaba a un color con
+  1,1:1 de diferencia: correcto en el código, invisible en pantalla.
+- **En el lienzo, nada de asignaciones por fotograma.** Arrays y degradados se
+  construyen una vez por redimensionado; crearlos por fotograma produce pausas
+  rítmicas del recolector.
 - **No se inventan medidores.** Mientras ComfyUI genera no hay progreso medible
   (informa en cola y ejecutando, nada más), así que la interfaz dice eso y no
   finge una barra. Si algún día se hace de puente al websocket del motor, ahí sí
