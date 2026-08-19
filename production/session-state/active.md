@@ -8,33 +8,32 @@ borrador vive ya en `directives/session-log.md`.
 
 ---
 
-**Status:** sesión 1 — identidad definida, esperando decisión sobre B-001.
+**Status:** sesión 1 — Fase 0 terminada y verificada.
 **Last update:** 2026-08-19
 
 ## Current task
-**Definir qué es TTS Studio** — hecha. `project-overview.md`, `roadmap.md`
-(borrador) y `backlog.md` escritos con contenido real.
+Ninguna en curso. La Fase 0 cerró; la Fase 1 (el MVP) no ha empezado.
 
-## Decisiones tomadas en esta sesión
-- App con interfaz (no pipeline, no laboratorio, no servicio con API).
-- Motor Qwen3-TTS 1.7B local sobre ComfyUI. Sin APIs cloud.
-- Un solo usuario: sin autenticación, sin multiusuario, sin despliegue.
-- Poda de `comfy-mcp/` aprobada en concepto pero **denegada en ejecución** — no
-  se tocó ningún archivo.
+## Lo construido hoy
+- `web/` — Next.js 16.3.1 + React 19.2.8 + Tailwind 4 + Geist.
+- `web/src/app/globals.css` — tokens del spinoff oscuro, contrastes medidos.
+- `web/src/lib/comfy.ts` — saneador de cabeceras como función pura.
+- `web/src/app/api/comfy/[...path]/route.ts` — el proxy del ADR-001.
+- `web/tests/comfy.test.ts` — 7 tests, 2 contra el motor real. `npm test`.
 
-## Bloqueos / esperando al usuario
-1. **B-001** — autorizar el rescate del audio de Andrés (61 MB, no regenerable)
-   y del benchmark (9,4 MB) desde `comfy-mcp/.tmp/`.
-2. Aprobar las cinco fases del roadmap para mover el sentinel a `done`.
-
-## Contexto heredado (no producido en esta sesión)
-`comfy-mcp/` es una investigación cerrada el 2026-08-18 en otro hub. Dejó
-instalado: ComfyUI + comfy-cli + servidor MCP `comfy` (scope usuario,
-conectado), Qwen-Image 2512 para imagen y **Qwen3-TTS 1.7B con clonación
-zero-shot validada**, más un benchmark de 16 segmentos real-vs-clonado.
+## Decisiones tomadas
+- Identidad, motor, audiencia y alcance (ver `PRODUCT.md`).
+- ADR-001: puente a ComfyUI vía proxy propio del lado servidor.
+- ADR-002: Next.js + TypeScript + Tailwind + shadcn/ui.
+- Dirección visual: spinoff oscuro de CRTIC clean, escenario + bandeja
+  (asignada por `concept-seed`, semilla `5006a149`, confirmada por el usuario
+  tras ver tres bocetos generados con Qwen-Image).
+- El código vive en `web/`; la raíz es del andamiaje del estudio.
 
 ## Próximos pasos
-- Resolver B-001 con autorización explícita.
-- ADR del puente app ↔ ComfyUI (B-002) con `technical-director`.
-- Decidir el stack de la aplicación.
-- Primer commit del scaffold.
+- **Fase 1 (MVP):** escenario + bandeja · progreso real por websocket de
+  ComfyUI · reproducción con onda · descarga · historial persistente.
+- Al construir: superficies mates, grilla del campo al 8%, bandeja subordinada
+  al escenario, fila activa con filo lateral y no recuadro.
+- `DESIGN.md` se escribe al terminar la Fase 1, desde el mundo construido.
+- `.gitattributes` para fijar finales de línea.

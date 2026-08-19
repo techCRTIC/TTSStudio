@@ -19,8 +19,17 @@ validó la clonación de voz zero-shot con material real y dejó el stack montad
 
 ## Estado actual (sesión 1, 2026-08-19)
 
-**Definido:** identidad, motor, audiencia y alcance (esta sesión).
-**Construido:** nada todavía — el proyecto tiene scaffold, no código.
+**Definido:** identidad, motor, audiencia, alcance, stack, dirección visual.
+**Construido: la Fase 0 del roadmap, terminada y verificada.**
+- Proyecto Next.js 16.3.1 en `web/` (React 19.2.8, Tailwind 4, Geist ya cableado).
+- Capa de tokens del spinoff oscuro de CRTIC clean, con los contrastes medidos.
+- El proxy hacia ComfyUI (`/api/comfy/[...path]`) que exige el ADR-001, con el
+  saneador de cabeceras aislado como función pura en `src/lib/comfy.ts`.
+- 7 tests en verde, 2 de ellos contra el motor real, y build de producción
+  correcto. Verificado de extremo a extremo: una petición con `Origin` de
+  navegador atraviesa el proxy y devuelve 200 con datos reales de ComfyUI.
+
+**Fase 1 (el MVP) sin empezar.**
 
 **Heredado y funcionando en esta máquina** (de la investigación `comfy-mcp/`):
 - ComfyUI + comfy-cli + el servidor MCP `comfy` registrado a nivel de usuario
@@ -33,9 +42,8 @@ validó la clonación de voz zero-shot con material real y dejó el stack montad
 - Whisper (en el venv de ComfyUI) para transcribir referencias.
 - Hardware: RTX 5090 Laptop, 24 GB de VRAM.
 
-**Decisiones todavía abiertas:** el stack de la aplicación misma (qué forma
-tiene la interfaz y con qué se construye) no está decidido — requiere
-`technical-director` y el lead que corresponda, más un ADR.
+**Decisiones cerradas esta sesión:** ADR-001 (puente a ComfyUI) y ADR-002
+(stack). La verdad de producto vive en `PRODUCT.md`.
 
 ## Visión
 Que clonar una voz y producir audio con ella deje de ser un experimento de
@@ -44,14 +52,20 @@ lo pone el modelo, y ahí el siguiente escalón conocido es el **fine-tune real*
 de Qwen3-TTS con material largo, en vez de la clonación zero-shot actual.
 
 ## Arquitectura y stack
-- **Motor de voz (decidido):** Qwen3-TTS 1.7B Base local, ejecutado a través de
-  ComfyUI. Sin APIs cloud: cero costo por uso y la voz nunca sale de la
-  máquina.
-- **Puente hacia el motor (por decidir):** el servidor MCP `comfy` sirve para
-  que un agente maneje ComfyUI, pero **una app no debería depender de un
-  servidor MCP en runtime** — lo natural es que hable con la API HTTP de
-  ComfyUI directamente. A confirmar con `technical-director`.
-- **Interfaz (por decidir):** forma y stack sin definir.
+- **Motor de voz:** Qwen3-TTS 1.7B Base local, vía ComfyUI. Sin APIs cloud:
+  cero costo por uso y la voz nunca sale de la máquina.
+- **Puente hacia el motor (ADR-001):** la app habla con la API HTTP de ComfyUI
+  **siempre desde el servidor**. Se midió que ComfyUI responde 403 a cualquier
+  petición con `Origin` ajeno, así que un frontend estático puro no es
+  implementable. El servidor MCP `comfy` queda fuera del runtime.
+- **Aplicación (ADR-002):** Next.js App Router + TypeScript + Tailwind 4 +
+  shadcn/ui, en `web/`. Sus route handlers son el proxy que el ADR-001 exige.
+- **Dirección visual:** spinoff oscuro de **CRTIC clean**. Se hereda todo
+  (Geist, un solo acento naranja, profundidad ganada, easings expo/quart/wave);
+  cambia que las superficies suben hacia la luz en vez de bajar hacia el blanco,
+  y que **la profundidad se hace con luz y no con sombra**, porque una sombra
+  proyectada sobre fondo oscuro no se ve. Estructura de pantalla elegida:
+  escenario central + bandeja lateral.
 - **Grafos de referencia:** los workflows validados viven **fuera de este
   repo**, en `C:\Users\tech\comfy-workflows\`, a propósito — son universales al
   usuario, no de este proyecto.
@@ -67,7 +81,7 @@ de Qwen3-TTS con material largo, en vez de la clonación zero-shot actual.
 ```
 TTSStudio/
 ├── .claude/            harness portable (22 agentes, skills, docs, hooks)
-├── directives/         living docs: session-log, project-overview, backlog, roadmap
+├── directives/         living docs + architecture/ADR-*.md
 ├── production/         estado de sesión y entregables
 ├── execution/          scripts Python deterministas (Layer 3)
 ├── memory/             memoria del proyecto (un hecho por archivo)

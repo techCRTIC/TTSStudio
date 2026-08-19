@@ -23,28 +23,6 @@ Al cerrar un ítem: cambia su `**Status:**` a `✅ hecho` (o `❌ sin objeto`), 
 
 ## Abiertas
 
-## B-001 — Ordenar la herencia `comfy-mcp/`
-**Status:** idea
-Pendiente desde la sesión 1: la operación de poda quedó **denegada** por el
-usuario, así que la carpeta sigue intacta con sus ~105 MB. Lo que hay que
-resolver, en orden de importancia:
-1. **Los 61 MB de audio de Andrés** (`comfy-mcp/.tmp/audio/`) son material NO
-   regenerable y son la materia prima de la Fase 3 (fine-tune). Vivir en un
-   `.tmp/` — una carpeta cuya convención es "esto se borra" — es un riesgo real
-   de pérdida. Deberían moverse a un lugar estable del proyecto.
-2. El benchmark zero-shot de 16 segmentos (`comfy-mcp/.tmp/tts/`, 9,4 MB) es la
-   línea base contra la que se mide la Fase 3. Mismo problema.
-3. El clon shallow del repo (3,4 MB) es regenerable con un `git clone`.
-4. Los 31 MB de `imagenes/` pertenecen a la línea de imagen, ajena a este
-   proyecto.
-
-## B-002 — Decidir el puente entre la app y ComfyUI
-**Status:** idea
-El servidor MCP `comfy` es excelente para que un agente maneje ComfyUI, pero
-una aplicación no debería depender de un servidor MCP en runtime. Lo natural es
-hablar con la API HTTP de ComfyUI directamente. Requiere ADR y sign-off de
-`technical-director`. Bloquea la Fase 0 del roadmap.
-
 ## B-003 — Arranque y salud de ComfyUI desde la app
 **Status:** idea
 La app necesita que ComfyUI esté corriendo. Decidir si lo arranca ella
@@ -61,4 +39,20 @@ evaluar si eso se convierte en una ayuda visible al usuario.
 
 ## Cerradas
 
-_(sin entradas todavía)_
+## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`
+**Status:** ❌ sin objeto
+Se proponía rescatar de `comfy-mcp/.tmp/` los 61 MB de audio de Andrés (material
+no regenerable, materia prima de la Fase 3) y los 9,4 MB del benchmark zero-shot,
+antes de que una purga de `.tmp/` los borrara. **El usuario lo descartó
+explícitamente el 2026-08-19** ("lo primero no importa"). Queda registrado el
+riesgo asumido: ese material vive en un directorio cuya convención en este
+estudio es que se purga sin preguntar, incluido el paso final de `/close`.
+
+## ✅ B-002 — [CERRADO] Decidir el puente entre la app y ComfyUI
+**Status:** ✅ hecho
+Resuelto por [[ADR-001-comfyui-bridge]] el 2026-08-19. La app habla con la API
+HTTP de ComfyUI, y siempre desde un componente propio del lado servidor: se
+midió que ComfyUI responde **403 a cualquier petición con `Origin` ajeno**, así
+que un frontend estático puro no es implementable. El servidor MCP `comfy` queda
+fuera del runtime de la app.
+

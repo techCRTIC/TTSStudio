@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   TTS Studio — dark spinoff of the "CRTIC clean" design system.
+
+   Inherited unchanged from the parent: Geist Sans + Mono, ONE accent
+   (CRTIC orange), depth EARNED rather than sprinkled, the expo/quart/wave
+   easing family, no second accent, no gradient text, no glassmorphism by
+   default, never #000 and never #fff.
+
+   Changed, because dark is not an inversion:
+   1. Surfaces step UP toward the light instead of down toward white.
+   2. Depth is made of LIGHT, not shadow. A drop shadow on a dark ground is
+      invisible; elevation reads as a lighter surface plus a 1px rim.
+   3. The primary button carries DARK ink on orange. White on #FA4515 measures
+      3.54:1 and fails AA; graphite measures 5.15:1.
+   4. An accent tint (#FF5A2B) exists for accent TEXT on raised surfaces,
+      where #FA4515 falls to 4.42:1, just under the 4.5 threshold.
+   ========================================================================= */
+
+:root {
+  /* --- Layer 1: primitives ------------------------------------------- */
+  --graphite-950: #0c0c0e;  /* inherited CRTIC scrim — the floor */
+  --graphite-900: #151517;  /* ground */
+  --graphite-800: #1c1c1f;  /* surface */
+  --graphite-700: #232327;  /* raised surface */
+  --graphite-600: #2c2c31;  /* hairline */
+
+  --ink-0: #ededef;         /* primary text   — 15.60:1 on ground */
+  --ink-2: #9a9aa0;         /* secondary text —  6.52:1 on ground, passes AA */
+
+  --orange-400: #ff5a2b;    /* accent text on raised surfaces */
+  --orange-500: #fa4515;    /* the CRTIC accent — fills, marks, focus */
+  --orange-600: #e23c0f;    /* inherited hover */
+
+  /* --- Layer 2: semantics --------------------------------------------- */
+  --ground: var(--graphite-900);
+  --surface: var(--graphite-800);
+  --surface-raised: var(--graphite-700);
+  --scrim: var(--graphite-950);
+  --hairline: var(--graphite-600);
+
+  --text: var(--ink-0);
+  --text-muted: var(--ink-2);
+
+  --accent: var(--orange-500);
+  --accent-text: var(--orange-400);
+  --accent-hover: var(--orange-600);
+  --accent-ink: var(--graphite-900);  /* what sits ON the accent */
+
+  /* --- Elevation: light, not shadow ----------------------------------- */
+  --rim: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --rim-strong: inset 0 1px 0 rgb(255 255 255 / 0.10);
+  --glow-accent: 0 0 72px -10px color-mix(in srgb, var(--accent) 26%, transparent);
+
+  /* --- Motion: inherited verbatim from CRTIC clean --------------------- */
+  --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);   /* expo  — reveals */
+  --ease-ui: cubic-bezier(0.25, 1, 0.5, 1);       /* quart — quick UI, press */
+  --ease-wave: cubic-bezier(0.37, 0, 0.63, 1);    /* sine  — lift, glide */
+  --dur-press: 140ms;
+  --dur-lift: 280ms;
+  --dur-glide: 360ms;
+
+  /* --- Shape: inherited ------------------------------------------------ */
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 28px;
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-scrim: var(--scrim);
+  --color-hairline: var(--hairline);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Display type, inherited tightness: weight 600, tracking -0.03em, lh 0.98 */
+.display {
+  font-size: clamp(2.5rem, 6.5vw, 5.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+/* The mono kicker above a heading */
+.eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* An earned surface: it rises toward the light and takes a rim, never a shadow. */
+.elevated {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--rim);
+}
+
+.elevated--focal {
+  background: var(--surface-raised);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--rim-strong), var(--glow-accent);
+}
+
+.elevated--interactive {
+  transition:
+    transform var(--dur-lift) var(--ease-wave),
+    background-color var(--dur-lift) var(--ease-wave),
+    box-shadow var(--dur-lift) var(--ease-wave);
+}
+
+.elevated--interactive:hover {
+  transform: translateY(-3px) scale(1.006);
+  background: var(--surface-raised);
+  box-shadow: var(--rim-strong);
+}
+
+/* The focus ring is the accent, always. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion is a requirement here, not a courtesy: the surface leans on
+   an animated canvas field, and this product is used for long sessions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

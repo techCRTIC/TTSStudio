@@ -2,54 +2,63 @@
 
 > Registro cronológico de cada sesión de trabajo. La entrada más nueva va
 > ARRIBA. Cada entrada abre con su bloque de cierre — el resumen que la próxima
-> sesión lee primero — y sigue con el detalle: fecha/hora, qué
-> pidió el usuario, acciones, decisiones (con alternativas descartadas),
-> resultados y próximos pasos.
+> sesión lee primero — y sigue con el detalle: fecha/hora, qué pidió el usuario,
+> acciones, decisiones (con alternativas descartadas), resultados y próximos
+> pasos.
 
-## 2026-08-19 — Scaffold e identidad del proyecto
+## 2026-08-19 — De carpeta vacía a Fase 0 terminada
 
 <!-- cierre -->
 ## 🧾 Cierre — Sesión 1 · 2026-08-19
 
-**En una frase:** TTS Studio pasó de ser una carpeta vacía con una investigación ajena adentro a un proyecto con identidad, alcance y roadmap escritos.
+**En una frase:** TTS Studio nació entero en una sesión — identidad, arquitectura, dirección visual y la Fase 0 construida y verificada contra el ComfyUI real.
 
 **Qué se hizo**
-- `/start` levantó el andamiaje completo, que no existía: las instrucciones para agentes, el repositorio git, las cuatro living docs, el estado de sesión y la memoria del proyecto.
-- Se revisó la carpeta heredada `comfy-mcp/` y se extrajo lo que importa: el stack de voz ya está instalado y funcionando en esta máquina, con clonación zero-shot validada sobre audio real y un benchmark de 16 segmentos que sirve de línea base.
-- Se escribieron `project-overview.md` (identidad real, ya no `_TBD_`), `roadmap.md` (cinco fases, en borrador) y `backlog.md` (cuatro ítems sembrados).
+- Se levantó el andamiaje del proyecto, que no existía, y se inició el repositorio.
+- Se definió qué es TTS Studio: una app con interfaz para generar voz clonada, de un solo usuario, con el motor Qwen3-TTS corriendo local sobre ComfyUI.
+- Se midió un límite de ComfyUI que decidió la arquitectura: rechaza con 403 cualquier petición que venga de otro origen. Eso obliga a que la app tenga un componente de servidor propio.
+- Se eligió el stack (Next.js con Tailwind y shadcn) y se cerró la dirección visual: un spinoff oscuro del sistema CRTIC clean, con una pantalla de escenario central y una bandeja lateral para el guión y el historial.
+- Se generaron tres bocetos con Qwen-Image en el ComfyUI de la casa para ver la dirección antes de construirla.
+- Se construyó la Fase 0: proyecto Next en pie, capa de tokens oscuros, y el proxy hacia ComfyUI con siete tests en verde, dos de ellos contra el motor real.
 
 **Qué se decidió y por qué**
-- **TTS Studio es una app con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla. Se descartaron esas dos opciones y también la de un servicio local con API.
-- **El motor es Qwen3-TTS local sobre ComfyUI**, porque ya está instalado y validado con material real, no cuesta por uso y la voz nunca sale de la máquina. Se descartaron las APIs de pago, el híbrido local+cloud y la fase previa de evaluar otras opciones open source.
-- **Un solo usuario, sin autenticación ni despliegue**: es una herramienta personal, y eso saca del alcance una cantidad enorme de trabajo.
-- **La poda de la carpeta heredada quedó sin hacer**: el usuario denegó la operación de mover y borrar archivos. Los 61 MB de audio de Andrés siguen dentro de un `.tmp/`, que es exactamente donde no deberían estar.
+- **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
+- **Motor local Qwen3-TTS**, porque ya estaba instalado y validado con audio real, no cuesta por uso y la voz nunca sale de la máquina. Se descartaron las APIs de pago y el híbrido.
+- **Next.js sobre Tauri**, aunque Tauri daría una app de escritorio de verdad: el toolchain de Rust y las compilaciones lentas gravan cada iteración, y un MVP gasta iteraciones. Tauri sigue disponible como envoltorio más adelante.
+- **El servidor MCP `comfy` queda fuera del runtime de la app.** Es un protocolo para agentes; meterlo dentro de la app arrastraría comfy-cli, un venv de Python y prompts de consentimiento en medio de la interfaz.
+- **El botón primario invierte su tinta respecto del sistema padre.** Se midió que blanco sobre el naranja da 3,54 y no pasa el estándar de contraste; grafito sobre naranja da 5,15.
+- **Se descartó `AetherFlow` como fondo animado** en favor de `PlotFieldBg`: el primero es morado sobre negro puro, que viola dos prohibiciones del sistema, y no respeta movimiento reducido.
 
-**Estado al cerrar:** rama `master` · sin commits todavía · sin tests · las fases del roadmap son un borrador sin aprobar.
-**Siguiente paso concreto:** resolver B-001 — sacar el audio de Andrés y el benchmark de `comfy-mcp/.tmp/` a un lugar estable del proyecto, con la autorización explícita del usuario.
+**Estado al cerrar:** rama `main` · árbol limpio · 7 tests en verde · build de producción correcto · Fase 0 terminada, Fase 1 sin empezar.
+**Siguiente paso concreto:** construir la pantalla de generación (Fase 1): escenario central con el texto y su onda, bandeja lateral, y progreso real leído del websocket de ComfyUI.
 <!-- /cierre -->
 
-**Time:** (inicio de sesión)
-**User request:** `/start`, y luego la definición de identidad del proyecto.
+**Time:** sesión larga, un solo tramo.
+**User request:** `/start` → definir el proyecto → primer commit → decidir stack, roadmap y dirección visual → construir.
 
 ### Actions taken
-- **Paso 0 del scaffold** (nada de esto existía): trío `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` desde la plantilla del harness · `git init` + `.gitignore` · `directives/` con las cuatro living docs · `production/session-state/active.md` con su bloque de cierre · `memory/MEMORY.md` · `execution/` · `.tmp/`.
-- **Verificación de dependencias de skills** contra `global-skills-map.md`, leyendo `~/.claude/skills/` directamente (no solo el listado de la sesión, que oculta las `disable-model-invocation`): 83 carpetas, las 7 REQUIRED y las 22 RECOMMENDED presentes, sin drift respecto de la reconciliación del 2026-08-12.
-- **Lectura acotada de la herencia**: `comfy-mcp/directives/` (overview + títulos del backlog) y la cabecera del repo-scan. No se leyó la bitácora completa de esa investigación (372 líneas).
-- **Poda de `comfy-mcp/.tmp/`**: intentada, **denegada por el usuario**. No se movió ni se borró ningún archivo.
-- Escritura de `project-overview.md`, `roadmap.md` y `backlog.md` con contenido real.
+- **Andamiaje (paso 0 de `/start`):** trío `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`, `git init` + `.gitignore`, las cuatro living docs, `production/session-state/`, `memory/`, `execution/`, `.tmp/`.
+- **Verificación de skills** contra `global-skills-map.md` leyendo `~/.claude/skills/` directamente: 83 carpetas, las 7 obligatorias y las 22 recomendadas presentes, sin drift.
+- **Evidencia sobre ComfyUI**, no supuestos: `server_info` (corriendo, 0.33.0, pack qwen3-tts 1.7.0, RTX 5090 con 23,9 GB) y una batería de `curl` que aisló la cabecera `Origin` como única variable del 403.
+- **Búsqueda del sistema de diseño** que el usuario mencionó: encontrado como **CRTIC clean** (contrato en `DESIGN.md` + kit ejecutable, replicado en doce proyectos; la copia canónica es la del 2026-07-06). Encontrada también su biblioteca de componentes animados repartida en cuatro carpetas `Componentes/`.
+- **Flujo de `impeccable`:** `context.mjs` → `init` (entrevista de tres preguntas + `PRODUCT.md`) → `new-work`, que clasificó el trabajo como superficie nueva dentro de un mundo establecido, no como mundo nuevo. Siete estructuras derivadas y `concept-seed.mjs --scope surface --mode operate` asignó la número 5 (semilla `5006a149`).
+- **Tres bocetos generados** con `t2i_qwen_lightning` en el ComfyUI local, revisados y presentados al usuario, que confirmó la dirección asignada.
+- **Fase 0 construida:** `create-next-app` en `web/` (Next 16.3.1, React 19.2.8, Tailwind 4, Geist ya cableado), capa de tokens oscuros en `globals.css`, `src/lib/comfy.ts` con el saneador de cabeceras como función pura, y el proxy en `src/app/api/comfy/[...path]/route.ts`.
+- **Contrastes calculados**, no estimados, para los cinco colores del sistema oscuro sobre los tres niveles de superficie.
 
 ### Decisions
-- Identidad, motor, audiencia y alcance: ver el bloque de cierre. Las alternativas descartadas quedaron registradas en la tabla de decisiones de `project-overview.md`.
-- **Se omitió el fan-out a `producer` y `doc-keeper`** que el paso 3 de `/start` prescribe: sobre un proyecto recién scaffoldeado habrían sintetizado tres archivos creados un minuto antes. Regla 5 del mindset del orquestador — delegar preguntas, no pulsaciones.
-- El roadmap se escribió como **borrador explícito**: el patrón 8 (Roadmap Checkpoint) pide proponerlo al usuario, y el sentinel sigue en `pending` a la espera de su visto bueno.
+Ver el bloque de cierre y los dos ADRs. Además:
+- **El código vive en `web/`**, no en la raíz: la raíz ya está ocupada por el andamiaje del estudio y `create-next-app` habría chocado con `CLAUDE.md` y `directives/`.
+- **Se omitió el fan-out a `producer` y `doc-keeper`** del paso 3 de `/start`: sobre un proyecto recién scaffoldeado habrían sintetizado archivos creados un minuto antes.
+- **B-001 (rescatar el audio de `comfy-mcp/.tmp/`) se cerró como descartado por el usuario**, dejando registrado el riesgo asumido.
 
 ### Outcomes
-- Proyecto operable bajo las reglas del Personal AI Dev Studio, con identidad escrita y cuatro ítems de backlog sembrados.
-- Sin código todavía, y a propósito: la Fase 0 del roadmap está bloqueada por B-002 (cómo habla la app con ComfyUI), que necesita un ADR.
+- `PRODUCT.md`, `ADR-001` (puente a ComfyUI), `ADR-002` (stack), roadmap con seis fases y el MVP delimitado, backlog con dos abiertas y dos cerradas.
+- Fase 0 terminada y verificada: 7 tests en verde (2 contra el motor real), build de producción correcto, y una petición con `Origin` de navegador atravesando el proxy y devolviendo 200 con datos reales de ComfyUI.
 
 ### Next steps / open questions
-- **B-001, y es el urgente:** los 61 MB de audio de Andrés y los 9,4 MB del benchmark viven en `comfy-mcp/.tmp/`, una carpeta cuya convención es "esto se borra". Es material no regenerable y es la materia prima de la Fase 3.
-- Aprobar o corregir las cinco fases del roadmap, y luego mover el sentinel a `done`.
-- **B-002:** decidir el puente app ↔ ComfyUI (API HTTP directa, previsiblemente) con `technical-director` y dejar el ADR.
-- Decidir el stack de la aplicación. No hay ninguna señal todavía sobre qué forma debe tener la interfaz.
-- Primer commit del scaffold, y renombrar `master` → `main` si ese es el estándar.
+- **Fase 1**, el MVP: escenario + bandeja, progreso real por websocket, reproducción con onda, descarga, historial persistente.
+- Al construir la interfaz, corregir lo que el modelo de imagen hizo mal en los bocetos: superficies mates y no vidriosas, grilla del campo al 8%, bandeja subordinada al escenario, y fila activa marcada con filo lateral y no con recuadro naranja completo.
+- `DESIGN.md` se escribe al terminar la Fase 1, desde el mundo construido, como manda el flujo de `impeccable`.
+- Pendiente menor: no hay `.gitattributes` y git avisa que convertirá LF a CRLF.
+- Los bocetos quedaron en `.tmp/sketches/`, que está gitignorado y es territorio de purga.
