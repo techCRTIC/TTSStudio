@@ -32,6 +32,7 @@ export function ScriptField({
   onSubmit,
   placeholder,
   disabled,
+  inputRef,
 }: {
   id: string;
   value: string;
@@ -39,7 +40,12 @@ export function ScriptField({
   onSubmit?: () => void;
   placeholder?: string;
   disabled?: boolean;
+  /** Lets the stage put the caret here the moment it unfolds. */
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
 }) {
+  // One stable internal ref. A conditional `inputRef ?? ownRef` would not be a
+  // stable identity, which costs the memoisation of everything reading it; the
+  // caller's ref is mirrored on the element instead.
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const topFadeRef = useRef<HTMLDivElement>(null);
   const bottomFadeRef = useRef<HTMLDivElement>(null);
@@ -93,7 +99,10 @@ export function ScriptField({
   return (
     <div className="field relative -mx-3 px-3 py-2">
       <textarea
-        ref={areaRef}
+        ref={(node) => {
+          areaRef.current = node;
+          if (inputRef) inputRef.current = node;
+        }}
         id={id}
         value={value}
         disabled={disabled}

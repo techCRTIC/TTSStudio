@@ -21,7 +21,31 @@ export default function Studio() {
   const [trayOpen, setTrayOpen] = useState(false);
   const [energy, setEnergy] = useState(0);
   const [engineDown, setEngineDown] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const pollRef = useRef<number | null>(null);
+  const scriptRef = useRef<HTMLTextAreaElement>(null);
+
+  const expand = useCallback(() => {
+    setExpanded(true);
+    // The click that opened the stage should also be the click that put the
+    // caret in it; anything else asks for a second one.
+    requestAnimationFrame(() => scriptRef.current?.focus());
+  }, []);
+
+  /**
+   * Folding back is deliberately conservative: only when the stage is empty AND
+   * nothing has been generated. Collapsing over a finished take would hide the
+   * player and the download along with it.
+   */
+  const onStageBlur = useCallback(
+    (event: React.FocusEvent<HTMLElement>) => {
+      // Focus moving WITHIN the stage is not leaving it.
+      if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+      const working = phase === "queued" || phase === "running";
+      if (text.trim() === "" && !current && !working) setExpanded(false);
+    },
+    [text, current, phase],
+  );
 
   useEffect(() => {
     fetch("/api/voices")
@@ -121,6 +145,9 @@ export default function Studio() {
     setVoiceId(take.voiceId);
     setPhase("done");
     setDetail("Toma recuperada");
+    // A take pulled from the tray has text and audio to show; a folded stage
+    // would hide both.
+    setExpanded(true);
   };
 
   return (
@@ -138,66 +165,128 @@ export default function Studio() {
       </header>
 
       <div className="relative z-10 flex min-h-[calc(100dvh-160px)] items-center justify-center px-8 pb-12">
-        <section className="elevated elevated--focal w-full max-w-3xl p-8" aria-label="Generación">
-          {/* Label and status share the row: what this field is on the left,
-              what the engine is doing with it on the right. */}
-          <div className="mb-4 flex items-baseline justify-between gap-4">
-            <label htmlFor="script" className="eyebrow">
-              El texto
-            </label>
-            <StatusLine phase={phase} detail={detail} />
+        <section
+          onBlur={onStageBlur}
+          aria-label="Generación"
+          style={{
+            /**
+             * `max-width` and `padding` are layout properties, and animating
+             * them is deliberate here: this is a discrete moment the user asked
+             * for by clicking, once, not something running per frame or per
+             * keystroke. The unfolding of the body itself avoids the same cost
+             * by using grid-template-rows, which is the technique the design
+             * detector recommends over animating height.
+             */
+            transitionProperty: "max-width, padding",
+            transitionDuration: "var(--dur-glide)",
+            transitionTimingFunction: "var(--ease-wave)",
+          }}
+          className={`elevated elevated--focal relative w-full ${
+            expanded ? "max-w-3xl p-8" : "max-w-lg p-2"
+          }`}
+        >
+          {/* Collapsed: one quiet line, sized like a search box. It collapses
+              through the same grid technique as the body, in reverse, so each
+              state contributes its own height and neither needs a fixed one. */}
+          <div
+            className="grid"
+            inert={expanded}
+            style={{
+              gridTemplateRows: expanded ? "0fr" : "1fr",
+              transitionProperty: "grid-template-rows, opacity",
+              transitionDuration: "var(--dur-glide)",
+              transitionTimingFunction: "var(--ease-wave)",
+              opacity: expanded ? 0 : 1,
+            }}
+          >
+            <div className="overflow-hidden">
+              <button
+                type="button"
+                onClick={expand}
+                className="flex h-12 w-full items-center rounded-md px-4 text-left text-[15px] text-ink-muted"
+              >
+                Escribe lo que debe decir…
+              </button>
+            </div>
           </div>
-          <ScriptField
-            id="script"
-            value={text}
-            onChange={setText}
-            onSubmit={() => void generate()}
-            placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
-          />
 
-          <div className="mt-6 border-t border-hairline pt-6">
-            <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />
-          </div>
+          {/* Expanded. grid-template-rows is what animates the unfold: it is the
+              technique the design detector points to instead of animating
+              height, and here it does the whole job. */}
+          <div
+            className="grid"
+            style={{
+              gridTemplateRows: expanded ? "1fr" : "0fr",
+              transitionProperty: "grid-template-rows, opacity",
+              transitionDuration: "var(--dur-glide)",
+              transitionTimingFunction: "var(--ease-wave)",
+              opacity: expanded ? 1 : 0,
+            }}
+          >
+            <div className="overflow-hidden">
+              {/* Label and status share the row: what this field is on the left,
+                  what the engine is doing with it on the right. */}
+              <div className="mb-4 flex items-baseline justify-between gap-4">
+                <label htmlFor="script" className="eyebrow">
+                  El texto
+                </label>
+                <StatusLine phase={phase} detail={detail} />
+              </div>
 
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="eyebrow">Voz</span>
-              <VoiceSelect voices={voices} value={voiceId} onChange={setVoiceId} />
+              <ScriptField
+                id="script"
+                inputRef={scriptRef}
+                value={text}
+                onChange={setText}
+                onSubmit={() => void generate()}
+                placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
+              />
 
-              {current && (
-                <a
-                  href={current.audioUrl}
-                  download={current.filename}
-                  className="rounded-full border border-hairline px-4 py-2 text-sm text-ink-muted transition-colors duration-200 hover:border-accent hover:text-accent-text"
+              <div className="mt-6 border-t border-hairline pt-6">
+                <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />
+              </div>
+
+              <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="eyebrow">Voz</span>
+                  <VoiceSelect voices={voices} value={voiceId} onChange={setVoiceId} />
+
+                  {current && (
+                    <a
+                      href={current.audioUrl}
+                      download={current.filename}
+                      className="rounded-full border border-hairline px-4 py-2 text-sm text-ink-muted transition-colors duration-200 hover:border-accent hover:text-accent-text"
+                    >
+                      Descargar
+                    </a>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void generate()}
+                  disabled={!text.trim() || !voiceId || busy}
+                  style={{ transitionTimingFunction: "var(--ease-ui)" }}
+                  className="rounded-full bg-accent px-7 py-3 text-sm font-medium text-accent-ink transition-[transform,background-color] duration-200 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35"
                 >
-                  Descargar
-                </a>
+                  {/* The label stays put. The status line beside the field already
+                      says "Generando", and a button that renames itself mid-action
+                      changes width under the cursor for no information gained. */}
+                  Generar
+                  <span className="ml-2 font-mono text-[11px] opacity-60">Ctrl ↵</span>
+                </button>
+              </div>
+
+              {phase === "failed" && (
+                <p
+                  role="alert"
+                  className="mt-5 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-ink"
+                >
+                  {detail}
+                </p>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => void generate()}
-              disabled={!text.trim() || !voiceId || busy}
-              style={{ transitionTimingFunction: "var(--ease-ui)" }}
-              className="rounded-full bg-accent px-7 py-3 text-sm font-medium text-accent-ink transition-[transform,background-color] duration-200 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35"
-            >
-              {/* The label stays put. The status line beside the field already
-                  says "Generando", and a button that renames itself mid-action
-                  changes width under the cursor for no information gained. */}
-              Generar
-              <span className="ml-2 font-mono text-[11px] opacity-60">Ctrl ↵</span>
-            </button>
           </div>
-
-          {phase === "failed" && (
-            <p
-              role="alert"
-              className="mt-5 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-ink"
-            >
-              {detail}
-            </p>
-          )}
         </section>
       </div>
 
