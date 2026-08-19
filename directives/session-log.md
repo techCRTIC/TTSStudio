@@ -20,6 +20,7 @@
 - Se eligió el stack (Next.js con Tailwind y shadcn) y se cerró la dirección visual: un spinoff oscuro del sistema CRTIC clean, con una pantalla de escenario central y una bandeja lateral para el guión y el historial.
 - Se generaron tres bocetos con Qwen-Image en el ComfyUI de la casa para ver la dirección antes de construirla.
 - Se construyó la Fase 0: proyecto Next en pie, capa de tokens oscuros, y el proxy hacia ComfyUI con siete tests en verde, dos de ellos contra el motor real.
+- El usuario dejó el kit real del sistema CRTIC dentro del proyecto a mitad de sesión. Se verificó que su versión vigente es idéntica a la que ya se había usado para derivar los tokens, así que no hubo nada que rehacer.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -29,7 +30,9 @@
 - **El botón primario invierte su tinta respecto del sistema padre.** Se midió que blanco sobre el naranja da 3,54 y no pasa el estándar de contraste; grafito sobre naranja da 5,15.
 - **Se descartó `AetherFlow` como fondo animado** en favor de `PlotFieldBg`: el primero es morado sobre negro puro, que viola dos prohibiciones del sistema, y no respeta movimiento reducido.
 
-**Estado al cerrar:** rama `main` · árbol limpio · 7 tests en verde · build de producción correcto · Fase 0 terminada, Fase 1 sin empezar.
+**Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
+
+**Estado al cerrar:** rama `main` · árbol limpio · seis commits · 7 tests en verde · build de producción correcto · Fase 0 terminada, Fase 1 sin empezar.
 **Siguiente paso concreto:** construir la pantalla de generación (Fase 1): escenario central con el texto y su onda, bandeja lateral, y progreso real leído del websocket de ComfyUI.
 <!-- /cierre -->
 
@@ -60,5 +63,5 @@ Ver el bloque de cierre y los dos ADRs. Además:
 - **Fase 1**, el MVP: escenario + bandeja, progreso real por websocket, reproducción con onda, descarga, historial persistente.
 - Al construir la interfaz, corregir lo que el modelo de imagen hizo mal en los bocetos: superficies mates y no vidriosas, grilla del campo al 8%, bandeja subordinada al escenario, y fila activa marcada con filo lateral y no con recuadro naranja completo.
 - `DESIGN.md` se escribe al terminar la Fase 1, desde el mundo construido, como manda el flujo de `impeccable`.
-- Pendiente menor: no hay `.gitattributes` y git avisa que convertirá LF a CRLF.
+- ✅ Resuelto en la sesión: `.gitattributes` añadido, se acabaron los avisos de LF/CRLF.
 - Los bocetos quedaron en `.tmp/sketches/`, que está gitignorado y es territorio de purga.
