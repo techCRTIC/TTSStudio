@@ -24,6 +24,7 @@
 - Se construyó la pantalla de generación: la tarjeta central sobre un campo de audio animado, la bandeja lateral con el historial, la onda dibujada desde el audio real, y el selector de voz que lee la biblioteca directamente del motor.
 - **El usuario la abrió, generó sin problemas y aprobó el diseño.** La cadena completa está probada por él, no por mí.
 - Se le pasó una auditoría técnica: siete hallazgos verificados, todos corregidos. El puntaje de salud subió de 13/20 a 18/20.
+- Se escribió el README con cómo correrla, para que las instrucciones no vivan solo en la conversación.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -39,7 +40,7 @@
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
 **Estado al cerrar:** rama `main` · árbol limpio · diez commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
-**Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco.
+**Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Cómo levantar todo está en el `README.md`.
 <!-- /cierre -->
 
 **Time:** sesión larga, un solo tramo.

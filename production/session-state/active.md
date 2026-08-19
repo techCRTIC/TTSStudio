@@ -9,7 +9,7 @@ borrador, ya completo, vive en `directives/session-log.md`.
 ---
 
 **Status:** sesión 1 — MVP funcionando, auditado y corregido.
-**Last update:** 2026-08-19
+**Last update:** 2026-08-19 (README añadido)
 
 ## Current task
 Ninguna en curso. El MVP está cerrado: el usuario abrió la app, generó voz sin
@@ -17,15 +17,18 @@ problemas y aprobó el diseño. La auditoría técnica se pasó y sus siete hall
 están corregidos.
 
 ## Cómo levantarlo
+Instrucciones completas, requisitos y modos de fallo → **`README.md`** (raíz).
+En corto:
 ```
-cd web && npm run start     # http://localhost:3000
+comfy launch --background   # el motor, en 127.0.0.1:8188
+cd web && npm run start     # la app, en http://localhost:3000
 cd web && npm test          # 7 tests, 2 contra el motor real
 ```
-ComfyUI tiene que estar corriendo en `127.0.0.1:8188`. Si no lo está, la app lo
-dice en la barra superior en vez de fallar en silencio.
 
 ⚠️ `npm run start` deja un proceso Node que **sobrevive a `TaskStop`**. Si el
 puerto 3000 da `EADDRINUSE`, hay que matarlo por PID (`netstat -ano | grep 3000`).
+Esto ya causó un diagnóstico falso una vez: se estaba mirando el build viejo
+servido por el proceso zombi y parecía una ruta rota.
 
 ## Lo único no verificado
 **El comportamiento en ventanas angostas.** No hubo navegador en la sesión, así
@@ -35,8 +38,8 @@ abierto estrecho. Si la app se va a usar solo en el escritorio de esta máquina,
 da lo mismo; si no, es lo primero que hay que probar.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, diez commits. El último: `eb81201 fix(web): audit
-pass — accessibility, theming and idle cost`.
+Rama `main`, árbol limpio, doce commits. El último: `8673d57 docs: README with
+how to run it`.
 
 Salud verificada: 7 tests en verde (2 contra el motor real), build de producción
 correcto, `tsc` y `eslint` limpios, y el detector de diseño de `impeccable` sin
