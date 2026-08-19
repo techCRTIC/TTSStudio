@@ -1,0 +1,99 @@
+/* =========================================================================
+   CRTIC Design System — PRIMITIVES (raw values)
+   The lowest layer. Never reference these directly in components; use semantic.css.
+   "CRTIC clean": Apple-sober, snow white + soft black, orange as the only accent.
+   ========================================================================= */
+:root {
+  /* --- Color (raw) --- */
+  --crtic-snow: #f5f5f7; /* main surface */
+  --crtic-white: #ffffff;
+  --crtic-card: #fcfcfd; /* a hair off pure white — never use #fff for surfaces */
+  --crtic-ink: #1d1d1f; /* soft black — never use #000 for text */
+  --crtic-ink-2: #6e6e73; /* secondary text */
+  --crtic-hairline: #d2d2d7; /* borders / rules */
+  --crtic-orange: #fa4515; /* THE accent — CTA / hover / one highlight per view */
+  --crtic-orange-hover: #e23c0f;
+  --crtic-scrim: #0c0c0e; /* dark stage behind full-bleed media */
+
+  /* --- Type --- */
+  --crtic-font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --crtic-font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* fluid display sizes */
+  --crtic-text-display: clamp(2.5rem, 6.5vw, 5.25rem);
+  --crtic-text-h2: clamp(2rem, 4.5vw, 3.5rem);
+  --crtic-text-h3: clamp(1.35rem, 2.4vw, 1.75rem);
+  --crtic-text-body-lg: 1.125rem;
+  --crtic-text-body: 1rem;
+  --crtic-text-sm: 0.875rem;
+  --crtic-text-eyebrow: 0.75rem;
+
+  --crtic-weight-regular: 400;
+  --crtic-weight-medium: 500;
+  --crtic-weight-semibold: 600;
+
+  --crtic-tracking-display: -0.03em;
+  --crtic-tracking-tight: -0.01em;
+  --crtic-tracking-eyebrow: 0.14em;
+
+  --crtic-leading-display: 0.98;
+  --crtic-leading-body: 1.6;
+
+  /* --- Space (4px base) --- */
+  --crtic-space-1: 0.25rem;
+  --crtic-space-2: 0.5rem;
+  --crtic-space-3: 0.75rem;
+  --crtic-space-4: 1rem;
+  --crtic-space-6: 1.5rem;
+  --crtic-space-8: 2rem;
+  --crtic-space-10: 2.5rem;
+  --crtic-space-16: 4rem;
+  --crtic-space-24: 6rem;
+  --crtic-space-32: 8rem;
+
+  /* --- Radii --- */
+  --crtic-radius-sm: 4px;
+  --crtic-radius-md: 12px;
+  --crtic-radius-lg: 16px;
+  --crtic-radius-xl: 28px; /* large focal cards — sign-in, hero panels */
+  --crtic-radius-full: 9999px;
+
+  /* --- Elevation --- */
+  /* Flat by default; these two stay the everyday surfaces. */
+  --crtic-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 40px -12px rgba(0, 0, 0, 0.18);
+  --crtic-shadow-hero: 0 1px 2px rgba(0, 0, 0, 0.04), 0 24px 60px -20px rgba(0, 0, 0, 0.22);
+  /* Focal — a single dramatic drop for large hero cards (the sign-in card). */
+  --crtic-shadow-focal: 0 1px 2px rgba(0, 0, 0, 0.04), 0 40px 90px -30px rgba(0, 0, 0, 0.28);
+  /* Machined — warm-tinted layered ambient depth + an inset top highlight. Reads
+     as precision hardware, not glass and not a harsh border. */
+  --crtic-shadow-machined:
+    0 1px 1px rgba(20, 14, 8, 0.04),
+    0 4px 10px -4px rgba(30, 20, 12, 0.1),
+    0 14px 30px -12px rgba(35, 22, 12, 0.16),
+    0 30px 60px -28px rgba(40, 24, 12, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  /* --- Surface (translucent) --- */
+  /* Card at 55% — a purposeful veil that lets a live backdrop (the data field)
+     read through. Not default glass; used only over animated media. */
+  --crtic-veil: rgba(252, 252, 253, 0.55);
+
+  /* --- Motion --- */
+  --crtic-dur-press: 150ms; /* button press feedback */
+  --crtic-dur-ui: 200ms; /* default UI transition */
+  --crtic-dur-pop: 250ms; /* dropdowns / popovers */
+  --crtic-dur-lift: 280ms; /* hover lift on interactive surfaces / nav / buttons */
+  --crtic-dur-glide: 360ms; /* large-surface glide (focal cards) */
+  --crtic-dur-reveal: 700ms; /* scroll-in reveals */
+  --crtic-dur-rise: 750ms; /* above-the-fold entrance */
+
+  --crtic-ease-expo: cubic-bezier(0.16, 1, 0.3, 1); /* snappy out — default for reveals */
+  --crtic-ease-quart: cubic-bezier(0.25, 1, 0.5, 1); /* default UI */
+  --crtic-ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0); /* exits */
+  --crtic-ease-wave: cubic-bezier(0.37, 0, 0.63, 1); /* ease-in-out-sine — soft wave glide, no robotic snap; for lifts/focal glides */
+
+  --crtic-stagger: 50ms; /* per-item; keep within 30–80ms */
+
+  /* --- Layering --- */
+  --crtic-z-nav: 50;
+}

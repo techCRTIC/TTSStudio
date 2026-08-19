@@ -1,0 +1,54 @@
+/* =========================================================================
+   CRTIC Design System — SEMANTIC (purpose aliases)
+   Components reference THESE, not raw primitives. Re-skinning = remap here.
+   ========================================================================= */
+:root {
+  /* Surfaces */
+  --surface: var(--crtic-snow);
+  --surface-card: var(--crtic-card);
+  --surface-inverse: var(--crtic-scrim);
+
+  /* Text */
+  --text: var(--crtic-ink);
+  --text-muted: var(--crtic-ink-2);
+  --text-on-accent: var(--crtic-white);
+  --text-on-inverse: var(--crtic-snow);
+
+  /* Accent (the single orange) */
+  --accent: var(--crtic-orange);
+  --accent-hover: var(--crtic-orange-hover);
+
+  /* Surfaces (translucent) — a veil over a live backdrop, never default glass. */
+  --surface-veil: var(--crtic-veil);
+
+  /* Lines & focus */
+  --border: var(--crtic-hairline);
+  --focus: var(--accent);
+
+  /* Elevation roles */
+  --elevation-card: var(--crtic-shadow-card);
+  --elevation-hero: var(--crtic-shadow-hero);
+  --elevation-focal: var(--crtic-shadow-focal);
+  --elevation-machined: var(--crtic-shadow-machined);
+  /* Accent glow — an --accent-colored outer halo for lifted/active surfaces.
+     Built on --accent so it recolors automatically when the accent is remapped
+     (e.g. per portfolio category on the hero table). */
+  --glow-accent: 0 0 72px -10px color-mix(in srgb, var(--accent) 26%, transparent);
+
+  /* Radius roles */
+  --radius-focal: var(--crtic-radius-xl);
+
+  /* Type roles */
+  --font-sans: var(--crtic-font-sans);
+  --font-mono: var(--crtic-font-mono);
+
+  /* Motion roles */
+  --ease-reveal: var(--crtic-ease-expo);
+  --ease-ui: var(--crtic-ease-quart);
+  --ease-exit: var(--crtic-ease-in-expo);
+  --ease-glide: var(--crtic-ease-wave);
+  --dur-ui: var(--crtic-dur-ui);
+  --dur-lift: var(--crtic-dur-lift);
+  --dur-glide: var(--crtic-dur-glide);
+  --dur-reveal: var(--crtic-dur-reveal);
+}

@@ -1,0 +1,28 @@
+/* =========================================================================
+   CRTIC Design System — Tailwind v4 @theme drop-in
+   Maps the palette/type/easing into Tailwind utilities so you can write
+   `bg-snow text-ink border-hairline font-sans` etc. (parity with web/).
+   Requires primitives.css to be loaded first (these reference --crtic-*).
+   ========================================================================= */
+@theme {
+  --color-snow: var(--crtic-snow);
+  --color-white: var(--crtic-white);
+  --color-card: var(--crtic-card);
+  --color-ink: var(--crtic-ink);
+  --color-ink-2: var(--crtic-ink-2);
+  --color-hairline: var(--crtic-hairline);
+  --color-orange: var(--crtic-orange);
+  --color-scrim: var(--crtic-scrim);
+
+  --font-sans: var(--crtic-font-sans);
+  --font-mono: var(--crtic-font-mono);
+
+  --ease-expo: var(--crtic-ease-expo);
+  --ease-quart: var(--crtic-ease-quart);
+  --ease-wave: var(--crtic-ease-wave);
+
+  --radius-sm: var(--crtic-radius-sm);
+  --radius-md: var(--crtic-radius-md);
+  --radius-lg: var(--crtic-radius-lg);
+  --radius-focal: var(--crtic-radius-xl);
+}

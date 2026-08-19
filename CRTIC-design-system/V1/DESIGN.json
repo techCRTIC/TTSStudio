@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 2,
+  "name": "CRTIC clean",
+  "description": "Apple-sober design system — snow white, soft black, one orange accent.",
+  "northStar": "Premium and unmistakably CRTIC, never generic. Calm canvas, one earned accent, motion that means something.",
+  "colors": {
+    "snow-white": "#F5F5F7",
+    "card": "#FCFCFD",
+    "soft-black": "#1D1D1F",
+    "ink-2": "#6E6E73",
+    "hairline": "#D2D2D7",
+    "crtic-orange": "#FA4515",
+    "crtic-orange-hover": "#E23C0F",
+    "scrim": "#0C0C0E"
+  },
+  "elevation": {
+    "card": "0 1px 2px rgba(0,0,0,0.04), 0 12px 40px -12px rgba(0,0,0,0.18)",
+    "hero": "0 1px 2px rgba(0,0,0,0.04), 0 24px 60px -20px rgba(0,0,0,0.22)"
+  },
+  "motion": {
+    "durations": {
+      "press": "150ms",
+      "ui": "200ms",
+      "pop": "250ms",
+      "reveal": "700ms",
+      "rise": "750ms"
+    },
+    "easings": {
+      "expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "quart": "cubic-bezier(0.25, 1, 0.5, 1)",
+      "in-expo": "cubic-bezier(0.7, 0, 0.84, 0)"
+    },
+    "stagger": "30-80ms",
+    "rules": [
+      "Animate transform and opacity only.",
+      "No window scroll listener (use IntersectionObserver / GSAP ScrollTrigger / Lenis).",
+      "No bounce or elastic on UI.",
+      "prefers-reduced-motion: keep opacity/color, drop movement and stagger delays."
+    ]
+  },
+  "snippets": {
+    "rise": ".rise { animation: crtic-rise 750ms cubic-bezier(0.16,1,0.3,1) both; } @keyframes crtic-rise { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:none } }",
+    "display": ".display { font-weight:600; letter-spacing:-0.03em; line-height:0.98; text-wrap:balance; }",
+    "eyebrow": ".eyebrow { font-family:var(--font-mono); font-size:0.75rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); }"
+  },
+  "dos": [
+    "One accent (orange), earned per view.",
+    "Vast negative space; calm hierarchy.",
+    "Custom easings (expo/quart); stagger 30-80ms.",
+    "Reduced-motion + keyboard fallbacks for any scroll-hijack.",
+    "Show real work over decoration."
+  ],
+  "donts": [
+    "Em dashes in copy.",
+    "Gradient text, glassmorphism-by-default, neon, AI-purple.",
+    "Three-equal-card grids, hero-metric templates, fake dashboards.",
+    "Scroll cues, section-number eyebrows, decorative status dots.",
+    "#000 or #fff; a second accent color."
+  ]
+}

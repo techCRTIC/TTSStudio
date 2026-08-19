@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+
+/* The CRTIC design system — tokens then base. Nothing else. */
+@import '../../../tokens/index.css';
+@import '../../../css/base.css';

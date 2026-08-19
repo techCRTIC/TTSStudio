@@ -1,0 +1,7 @@
+/* CRTIC Design System — token entrypoint.
+   Order matters: primitives → semantic → Tailwind @theme.
+   Import this once in your app, before your Tailwind import is fine since
+   @theme is hoisted by Tailwind. */
+@import './primitives.css';
+@import './semantic.css';
+@import './theme.css';

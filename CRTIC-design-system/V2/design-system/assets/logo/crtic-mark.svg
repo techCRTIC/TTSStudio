@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 272 164" role="img" aria-label="CRTIC" fill="currentColor" style="color:#FA4515">
+  <!-- top row -->
+  <circle cx="40" cy="40" r="33"/>
+  <circle cx="120" cy="40" r="33"/>
+  <circle cx="200" cy="40" r="33"/>
+  <!-- bottom row -->
+  <circle cx="120" cy="120" r="33"/>
+  <circle cx="200" cy="120" r="33"/>
+  <!-- barcode motif (bottom-left cell) -->
+  <rect x="7"  y="84" width="5" height="72"/>
+  <rect x="18" y="84" width="3" height="72"/>
+  <rect x="27" y="84" width="7" height="72"/>
+  <rect x="40" y="84" width="4" height="72"/>
+  <rect x="49" y="84" width="3" height="72"/>
+  <rect x="57" y="84" width="9" height="72"/>
+  <rect x="70" y="84" width="4" height="72"/>
+  <!-- closing bar (bottom-right) -->
+  <rect x="248" y="84" width="5" height="72"/>
+  <!-- registered mark -->
+  <circle cx="250" cy="22" r="13" fill="none" stroke="currentColor" stroke-width="3"/>
+  <text x="250" y="27.5" text-anchor="middle" font-family="Geist Variable, Geist, system-ui, sans-serif" font-size="15" font-weight="600">R</text>
+</svg>

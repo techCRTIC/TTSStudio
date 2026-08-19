@@ -1,0 +1,35 @@
+/* =========================================================================
+   CRTIC Design System — SEMANTIC (purpose aliases)
+   Components reference THESE, not raw primitives. Re-skinning = remap here.
+   ========================================================================= */
+:root {
+  /* Surfaces */
+  --surface: var(--crtic-snow);
+  --surface-card: var(--crtic-card);
+  --surface-inverse: var(--crtic-scrim);
+
+  /* Text */
+  --text: var(--crtic-ink);
+  --text-muted: var(--crtic-ink-2);
+  --text-on-accent: var(--crtic-white);
+  --text-on-inverse: var(--crtic-snow);
+
+  /* Accent (the single orange) */
+  --accent: var(--crtic-orange);
+  --accent-hover: var(--crtic-orange-hover);
+
+  /* Lines & focus */
+  --border: var(--crtic-hairline);
+  --focus: var(--accent);
+
+  /* Type roles */
+  --font-sans: var(--crtic-font-sans);
+  --font-mono: var(--crtic-font-mono);
+
+  /* Motion roles */
+  --ease-reveal: var(--crtic-ease-expo);
+  --ease-ui: var(--crtic-ease-quart);
+  --ease-exit: var(--crtic-ease-in-expo);
+  --dur-ui: var(--crtic-dur-ui);
+  --dur-reveal: var(--crtic-dur-reveal);
+}

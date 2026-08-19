@@ -1,0 +1,193 @@
+/* =========================================================================
+   CRTIC Design System — BASE + utilities
+   Import AFTER tokens/index.css and your `@import "tailwindcss";`.
+   Framework-agnostic: works with or without Tailwind (it only needs the tokens).
+   ========================================================================= */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--surface);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
+    overflow-x: clip;
+  }
+
+  /* Lenis smooth-scroll baseline (only active when Lenis is mounted) */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-stopped {
+    overflow: clip;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 22%, transparent);
+    color: var(--text);
+  }
+
+  /* Accessible focus ring — orange, >=3:1 */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: var(--crtic-radius-sm);
+  }
+
+  /* Reduced motion: keep opacity/color, drop movement and stagger delays. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
+    }
+  }
+}
+
+/* Entrance keyframe for above-the-fold content (no JS gate — good for LCP). */
+@keyframes crtic-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer components {
+  /* CSS-only entrance. Reduced motion collapses it and leaves the element visible (both fill). */
+  .rise {
+    animation: crtic-rise var(--crtic-dur-rise) var(--crtic-ease-expo) both;
+  }
+
+  /* Display type treatment for big headlines. */
+  .display {
+    font-weight: var(--crtic-weight-semibold);
+    letter-spacing: var(--crtic-tracking-display);
+    line-height: var(--crtic-leading-display);
+    text-wrap: balance;
+  }
+
+  /* Mono label / kicker. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--crtic-text-eyebrow);
+    letter-spacing: var(--crtic-tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Button — pressable, token-driven, works without Tailwind. */
+  .crtic-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--crtic-space-2);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--crtic-radius-full);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: var(--crtic-weight-medium);
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition:
+      transform var(--crtic-dur-press) var(--crtic-ease-quart),
+      background-color var(--crtic-dur-ui) var(--crtic-ease-quart),
+      color var(--crtic-dur-ui) var(--crtic-ease-quart),
+      border-color var(--crtic-dur-ui) var(--crtic-ease-quart);
+  }
+  .crtic-btn:active {
+    transform: scale(0.97);
+  }
+  .crtic-btn--primary {
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .crtic-btn--primary:hover {
+      background-color: var(--accent-hover);
+    }
+    .crtic-btn--ghost:hover {
+      border-color: var(--text);
+      background-color: var(--surface-card);
+    }
+  }
+  .crtic-btn--ghost {
+    background-color: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  /* Stroke — snow surface with an orange outline; on hover it fills with a faint
+     warm tint and lifts. The sign-in / "connect an account" button language. */
+  .crtic-btn--stroke {
+    background-color: var(--surface-card);
+    color: var(--text);
+    border-color: var(--accent);
+    border-width: 1.5px;
+    transition:
+      transform var(--dur-lift) var(--ease-glide),
+      box-shadow var(--dur-lift) var(--ease-glide),
+      background-color var(--dur-lift) var(--ease-glide),
+      border-color var(--dur-lift) var(--ease-glide);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .crtic-btn--stroke:hover {
+      transform: translateY(-1px);
+      background-color: color-mix(in srgb, var(--accent) 7%, var(--surface-card));
+      box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--accent) 38%, transparent);
+    }
+  }
+  .crtic-btn--stroke:active {
+    transform: translateY(0) scale(0.985);
+  }
+
+  /* Elevated surface — machined ambient depth by default; --focal swaps to the
+     single dramatic drop for large hero cards. Add --interactive for the login's
+     hover lift + accent glow, glided on the wave easing (no robotic snap).
+     The glow is --accent-colored, so an interactive card recolors with the
+     active accent (e.g. per portfolio category). */
+  .crtic-elevated {
+    background-color: var(--surface-card);
+    box-shadow: var(--elevation-machined);
+  }
+  .crtic-elevated--focal {
+    box-shadow: var(--elevation-focal);
+  }
+  .crtic-elevated--interactive {
+    transition:
+      transform var(--dur-glide) var(--ease-glide),
+      box-shadow var(--dur-glide) var(--ease-glide);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .crtic-elevated--interactive:hover {
+      transform: translateY(-3px) scale(1.006);
+      box-shadow: var(--elevation-focal), var(--glow-accent);
+    }
+  }
+  .crtic-elevated--interactive:active {
+    transform: translateY(0) scale(0.998);
+  }
+}

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  CRTIC REPORT TEMPLATE  ·  self-contained HTML report (CRTIC clean)
+  ============================================================================
+  Reusable shell for any self-contained HTML report/document for CRTIC.
+  Background: the CRTIC "living data field" shader (Canvas 2D waves).
+  Content: a centered glass sheet floating over the shader.
+
+  HOW TO USE
+  1. Copy this file to your report's location and rename it.
+  2. Fill the {{DOUBLE_BRACE}} fields in the hero and footer.
+  3. Replace the CONTENT SLOT (marked below) with your sections. A component
+     kit is provided as commented snippets inside the slot: copy the blocks you
+     need (prose, focal card, phases, scope, backlog, crosses, meta-row).
+  4. Do NOT touch the shader or the glass shell. Just fill the center.
+
+  RULES (CRTIC clean · DESIGN.md / PRODUCT.md)
+  - One orange only (#FA4515), used sparingly. Everything else monochrome.
+  - NO em dashes anywhere in copy (and not "--"). Use commas, colons, periods,
+    parentheses.
+  - Self-contained: no external fonts/scripts/images. Everything inline.
+  - The glass-over-live-field is earned translucency, not glassmorphism default.
+  - Honor prefers-reduced-motion (already wired: shader draws a static frame,
+    reveals show immediately).
+
+  AVAILABLE CONTENT CLASSES (use inside the slot)
+  .eyebrow · .display · h2 · h3 · .prose · .muted · .accent
+  section + .sec-head (.eyebrow + h2 + .kicker)
+  .focal (+ .verdicts / .verdict with .dot)
+  .phases / .phase (.code .q .d .state ; add .active)
+  .scope (.in / .out with .col-label + ul>li>.m)
+  .backlog / .item (.id .t .chip)
+  .crosses / .cross (+ .soft)
+  .meta-row (b for emphasis)
+  Add class "reveal" to any block for the scroll-in animation.
+  ============================================================================
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}} · CRTIC</title>
+<style>
+  :root {
+    /* CRTIC clean tokens (DESIGN.json) */
+    --snow: #F5F5F7;
+    --card: #FCFCFD;
+    --ink: #1D1D1F;
+    --ink-2: #6E6E73;
+    --hairline: #D2D2D7;
+    --accent: #FA4515;
+    --accent-hover: #E23C0F;
+
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 28px;
+    --r-full: 9999px;
+
+    --el-focal: 0 1px 2px rgba(0,0,0,.04), 0 40px 90px -30px rgba(0,0,0,.28);
+    --glow: 0 0 72px -10px color-mix(in srgb, var(--accent) 22%, transparent);
+
+    --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-wave: cubic-bezier(0.37, 0, 0.63, 1);
+
+    --sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--snow);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* living data field (the CRTIC shader) */
+  #field {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    display: block;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-2);
+    display: block;
+  }
+
+  .display {
+    font-size: clamp(2.75rem, 8vw, 5.5rem);
+    font-weight: 600;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  h3 { font-size: 1.12rem; font-weight: 600; letter-spacing: -0.01em; }
+  p { color: var(--ink); }
+  .muted { color: var(--ink-2); }
+  .accent { color: var(--accent); }
+  strong { font-weight: 600; }
+
+  /* top bar */
+  header.bar {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--snow) 68%, transparent);
+    backdrop-filter: saturate(1.2) blur(14px);
+    -webkit-backdrop-filter: saturate(1.2) blur(14px);
+    border-bottom: 1px solid color-mix(in srgb, var(--hairline) 70%, transparent);
+  }
+  .bar-inner { display: flex; align-items: center; justify-content: space-between; height: 58px; max-width: 1120px; margin: 0 auto; padding: 0 clamp(1.25rem, 5vw, 2rem); }
+  .mark { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo-mark { height: 22px; width: auto; display: block; fill: var(--accent); }
+  .bar .v { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-2); letter-spacing: 0.08em; }
+
+  /* the centered glass sheet */
+  main.sheet {
+    position: relative;
+    z-index: 1;
+    max-width: 940px;
+    margin: clamp(1.75rem, 5vw, 4rem) auto clamp(3rem, 7vw, 5rem);
+    padding: 0 clamp(1.5rem, 5vw, 3.5rem);
+    background: rgba(252, 252, 253, 0.72);
+    backdrop-filter: saturate(1.25) blur(22px);
+    -webkit-backdrop-filter: saturate(1.25) blur(22px);
+    border: 1px solid rgba(210, 210, 215, 0.65);
+    border-radius: var(--r-xl);
+    box-shadow: var(--el-focal), var(--glow);
+  }
+
+  .prose { max-width: 64ch; }
+
+  /* hero */
+  .hero { padding: clamp(3rem, 9vw, 6rem) 0 clamp(2.25rem, 5vw, 3.5rem); }
+  .hero .lead { font-size: clamp(1.15rem, 2.4vw, 1.5rem); line-height: 1.4; margin-top: 1.5rem; max-width: 30ch; }
+  .hero .meta { font-family: var(--mono); font-size: 0.75rem; color: var(--ink-2); margin-top: 2rem; letter-spacing: 0.04em; }
+  .hero .tag { display: inline-block; margin-top: 1.25rem; font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; }
+  .hero .tag::after { content: ""; display: block; width: 44px; height: 2px; background: var(--accent); margin-top: 0.75rem; border-radius: var(--r-full); }
+
+  /* index (optional) */
+  .index { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding: 1.25rem 0 0; border-top: 1px solid var(--hairline); }
+  .index a { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); text-decoration: none; transition: color .2s var(--ease-wave); }
+  .index a:hover { color: var(--accent); }
+
+  /* sections */
+  section { padding: clamp(2.75rem, 7vw, 4.5rem) 0; border-top: 1px solid var(--hairline); }
+  .sec-head { margin-bottom: 2.25rem; }
+  .sec-head h2 { margin-top: 0.75rem; }
+  .sec-head .kicker { margin-top: 1rem; color: var(--ink-2); max-width: 58ch; }
+
+  /* focal card */
+  .focal {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-xl);
+    padding: clamp(1.75rem, 4vw, 2.75rem);
+    box-shadow: var(--el-focal), var(--glow);
+  }
+  .focal .verdicts { display: grid; grid-template-columns: 1fr; gap: 1.25rem; margin-top: 2rem; }
+  @media (min-width: 700px) { .focal .verdicts { grid-template-columns: 1fr 1fr; gap: 1.75rem 2.5rem; } }
+  .verdict h3 { display: flex; align-items: baseline; gap: 0.6rem; }
+  .verdict h3 .dot { width: 7px; height: 7px; border-radius: var(--r-full); background: var(--accent); flex: none; transform: translateY(-2px); }
+  .verdict p { color: var(--ink-2); margin-top: 0.4rem; font-size: 0.95rem; }
+
+  /* phases / timeline */
+  .phases { display: grid; gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
+  .phase { background: var(--card); padding: clamp(1.2rem, 3vw, 1.75rem); display: grid; grid-template-columns: auto 1fr; gap: 1.25rem; align-items: start; }
+  .phase .code { font-family: var(--mono); font-size: 0.95rem; font-weight: 500; color: var(--ink-2); letter-spacing: 0.02em; padding-top: 0.15rem; }
+  .phase.active .code { color: var(--accent); }
+  .phase .q { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; }
+  .phase .d { color: var(--ink-2); font-size: 0.94rem; margin-top: 0.3rem; }
+  .phase .state { font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-2); margin-top: 0.6rem; }
+  .phase.active .state { color: var(--accent); }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1.5rem; font-family: var(--mono); font-size: 0.75rem; color: var(--ink-2); letter-spacing: 0.03em; }
+  .meta-row b { color: var(--ink); font-weight: 500; }
+
+  /* scope (two columns) */
+  .scope { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+  @media (min-width: 700px) { .scope { grid-template-columns: 1fr 1fr; gap: 3rem; } }
+  .scope ul { list-style: none; margin-top: 1rem; display: grid; gap: 0.85rem; }
+  .scope li { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; align-items: start; font-size: 0.96rem; }
+  .scope .in .m { color: var(--accent); font-weight: 600; }
+  .scope .out .m { color: var(--ink-2); }
+  .scope .out li { color: var(--ink-2); }
+  .col-label { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-2); }
+
+  /* list / backlog */
+  .backlog { display: grid; gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
+  .item { background: var(--card); padding: 1.05rem clamp(1.2rem, 3vw, 1.6rem); display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: baseline; }
+  .item .id { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-2); letter-spacing: 0.02em; }
+  .item .t { font-size: 0.95rem; }
+  .item .t span { color: var(--ink-2); }
+  .chip { font-family: var(--mono); font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-2); border: 1px solid var(--hairline); border-radius: var(--r-full); padding: 0.2rem 0.6rem; white-space: nowrap; }
+
+  /* crosses / callouts */
+  .crosses { display: grid; gap: 1.5rem; }
+  @media (min-width: 700px) { .crosses { grid-template-columns: 1fr 1fr; gap: 1.5rem 2.5rem; } }
+  .cross { padding-top: 1.25rem; border-top: 2px solid var(--accent); }
+  .cross.soft { border-top-color: var(--hairline); }
+  .cross h3 { margin-bottom: 0.35rem; }
+  .cross p { color: var(--ink-2); font-size: 0.94rem; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--hairline); padding: clamp(2.75rem, 6vw, 4rem) 0 clamp(2rem, 4vw, 3rem); }
+  footer .grid { display: grid; gap: 2rem; }
+  @media (min-width: 700px) { footer .grid { grid-template-columns: 1.4fr 1fr; gap: 3rem; } }
+  footer .note { font-family: var(--mono); font-size: 0.73rem; color: var(--ink-2); letter-spacing: 0.03em; line-height: 1.9; }
+  footer .big { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 600; letter-spacing: -0.025em; }
+
+  /* reveal motion */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.7s var(--ease-reveal), transform 0.7s var(--ease-reveal); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="field" aria-hidden="true"></canvas>
+
+<header class="bar">
+  <div class="bar-inner">
+    <div class="mark"><svg class="logo-mark" viewBox="0 0 258 156" aria-hidden="true"><circle cx="40" cy="40" r="33"/><circle cx="120" cy="40" r="33"/><circle cx="200" cy="40" r="33"/><circle cx="120" cy="120" r="33"/><circle cx="200" cy="120" r="33"/><rect x="7" y="84" width="5" height="72"/><rect x="18" y="84" width="3" height="72"/><rect x="27" y="84" width="7" height="72"/><rect x="40" y="84" width="4" height="72"/><rect x="49" y="84" width="3" height="72"/><rect x="57" y="84" width="9" height="72"/><rect x="70" y="84" width="4" height="72"/><rect x="248" y="84" width="5" height="72"/></svg> CRTIC</div>
+    <div class="v">{{BAR_LABEL}}</div>
+  </div>
+</header>
+
+<main class="sheet">
+
+  <!-- ===== HERO (fill the fields) ===== -->
+  <div class="hero">
+    <span class="eyebrow reveal">{{EYEBROW}}</span>
+    <h1 class="display reveal" style="margin-top:1.5rem;">{{TITLE}}</h1>
+    <p class="lead reveal">{{LEAD}}</p>
+    <p class="meta reveal">{{META}}</p>
+    <span class="tag reveal">{{TAGLINE}}</span>
+    <!-- optional index: <nav class="index reveal"><a href="#s1">Sección</a></nav> -->
+  </div>
+
+  <!-- ========================================================================
+       CONTENT SLOT  ·  replace everything between these markers with your
+       sections. Copy blocks from the component kit below (they are commented
+       out; uncomment/adapt the ones you need). Add class "reveal" for scroll-in.
+       ======================================================================== -->
+
+  <section id="s1">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{SECTION_EYEBROW}}</span>
+      <h2>{{SECTION_TITLE}}</h2>
+      <p class="kicker">{{SECTION_KICKER}}</p>
+    </div>
+    <div class="prose reveal">
+      <p>{{CONTENT}}</p>
+    </div>
+  </section>
+
+  <!-- ===================== COMPONENT KIT (copy what you need) =====================
+
+  PROSE
+  <div class="prose reveal">
+    <p>Texto de lectura. <strong>Énfasis</strong> con peso, o una <span class="accent">palabra acento</span>.</p>
+  </div>
+
+  FOCAL CARD (one per view; the highlighted block)
+  <div class="focal reveal">
+    <span class="eyebrow">Kicker del card</span>
+    <div class="verdicts">
+      <div class="verdict"><h3><span class="dot"></span> Título</h3><p>Detalle.</p></div>
+      <div class="verdict"><h3><span class="dot"></span> Título</h3><p>Detalle.</p></div>
+    </div>
+  </div>
+
+  PHASES / TIMELINE
+  <div class="phases reveal">
+    <div class="phase active"><div class="code">01</div><div><div class="q">Fase</div><div class="d">Descripción.</div><div class="state">En curso</div></div></div>
+    <div class="phase"><div class="code">02</div><div><div class="q">Fase</div><div class="d">Descripción.</div><div class="state">Próxima</div></div></div>
+  </div>
+  <div class="meta-row reveal"><span>Clave: <b>valor</b></span><span>Clave: <b>valor</b></span></div>
+
+  SCOPE (two columns)
+  <div class="scope reveal">
+    <div class="in"><span class="col-label">A favor</span><ul><li><span class="m">+</span> Punto.</li></ul></div>
+    <div class="out"><span class="col-label">En contra</span><ul><li><span class="m">×</span> Punto.</li></ul></div>
+  </div>
+
+  LIST (backlog / items)
+  <div class="backlog reveal">
+    <div class="item"><span class="id">ID</span><span class="t">Título. <span>Nota.</span></span><span class="chip">estado</span></div>
+  </div>
+
+  CALLOUTS
+  <div class="crosses reveal">
+    <div class="cross"><h3>Título</h3><p>Detalle importante (borde naranja).</p></div>
+    <div class="cross soft"><h3>Título</h3><p>Detalle secundario (borde hairline).</p></div>
+  </div>
+
+  ============================================================================ -->
+
+  <!-- ===== FOOTER (fill the fields) ===== -->
+  <footer>
+    <div class="grid">
+      <div class="reveal">
+        <div class="big">{{FOOTER_BIG}}</div>
+        <p class="note" style="margin-top:1.5rem;">{{FOOTER_NOTE}}</p>
+      </div>
+      <div class="reveal">
+        <p class="note">{{FOOTER_SOURCES}}</p>
+      </div>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+  /* ---- reveal on scroll ---- */
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+    els.forEach(function (el, i) {
+      el.style.transitionDelay = (Math.min(i, 6) * 40) + 'ms';
+      io.observe(el);
+    });
+  })();
+
+  /* ---- living data field (CRTIC shader) — do not edit ---- */
+  (function () {
+    var canvas = document.getElementById('field');
+    var ctx = canvas.getContext('2d');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var SNOW = '#F5F5F7';
+    var RAMP = ['#FF9C7A', '#FB6E45', '#FA4515', '#DA3A12', '#B4300E'];
+
+    var W = 0, H = 0, DPR = 1;
+    var mouse = { x: 0.5, y: 0.5 };
+    var eased = { x: 0.5, y: 0.5 };
+
+    var waves = [
+      { base: 0.34, amp: 26, freq: 5.0, speed: 0.10, phase: 0.0, ci: 4, fill: 0.05, line: 0.16, depth: 0.20, dots: 3, dspeed: 0.030 },
+      { base: 0.46, amp: 34, freq: 4.2, speed: 0.13, phase: 1.7, ci: 3, fill: 0.06, line: 0.20, depth: 0.34, dots: 4, dspeed: 0.042 },
+      { base: 0.58, amp: 30, freq: 6.1, speed: 0.16, phase: 3.1, ci: 1, fill: 0.07, line: 0.24, depth: 0.50, dots: 4, dspeed: 0.036 },
+      { base: 0.70, amp: 40, freq: 3.6, speed: 0.11, phase: 4.6, ci: 2, fill: 0.08, line: 0.28, depth: 0.68, dots: 5, dspeed: 0.050 },
+      { base: 0.82, amp: 32, freq: 5.4, speed: 0.18, phase: 2.2, ci: 0, fill: 0.09, line: 0.32, depth: 0.90, dots: 5, dspeed: 0.044 }
+    ];
+
+    function hexToRgba(hex, a) {
+      var n = parseInt(hex.slice(1), 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    }
+
+    function resize() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth; H = window.innerHeight;
+      canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
+    function waveY(w, xn, t) {
+      return w.base * H
+        + w.amp * Math.sin(xn * w.freq + t * w.speed + w.phase)
+        + w.amp * 0.34 * Math.sin(xn * w.freq * 2.3 + t * w.speed * 1.7 + w.phase * 1.4);
+    }
+
+    function drawGrid(px, py) {
+      var step = 46;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = hexToRgba('#6E6E73', 0.06);
+      ctx.beginPath();
+      for (var x = (px % step) - step; x < W + step; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (var y = (py % step) - step; y < H + step; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+    }
+
+    function drawWave(w, t) {
+      var col = RAMP[w.ci];
+      var dx = (eased.x - 0.5) * w.depth * 46;
+      var dy = (eased.y - 0.5) * w.depth * 26;
+      ctx.save(); ctx.translate(dx, dy);
+      var N = 64, i, xn, x, y;
+      ctx.beginPath(); ctx.moveTo(0, H + 60);
+      for (i = 0; i <= N; i++) { xn = i / N; x = xn * W; y = waveY(w, xn, t); ctx.lineTo(x, y); }
+      ctx.lineTo(W, H + 60); ctx.closePath();
+      var g = ctx.createLinearGradient(0, w.base * H - w.amp, 0, H);
+      g.addColorStop(0, hexToRgba(col, w.fill)); g.addColorStop(1, hexToRgba(col, 0));
+      ctx.fillStyle = g; ctx.fill();
+      ctx.beginPath();
+      for (i = 0; i <= N; i++) { xn = i / N; x = xn * W; y = waveY(w, xn, t); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.lineWidth = 1.4; ctx.strokeStyle = hexToRgba(col, w.line); ctx.stroke();
+      for (i = 0; i < w.dots; i++) {
+        var p = ((t * w.dspeed) + i / w.dots + w.phase * 0.05) % 1; if (p < 0) p += 1;
+        x = p * W; y = waveY(w, p, t);
+        var lead = (i === 0);
+        if (lead) {
+          var halo = ctx.createRadialGradient(x, y, 0, x, y, 22);
+          halo.addColorStop(0, hexToRgba(col, 0.45)); halo.addColorStop(1, hexToRgba(col, 0));
+          ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = hexToRgba(col, lead ? 0.95 : 0.6);
+        ctx.beginPath(); ctx.arc(x, y, lead ? 3 : 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawSpotlight() {
+      var x = eased.x * W, y = eased.y * H, r = Math.max(W, H) * 0.28;
+      var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, hexToRgba('#FA4515', 0.05)); g.addColorStop(1, hexToRgba('#FA4515', 0));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+
+    function frame(t) {
+      eased.x += (mouse.x - eased.x) * 0.05; eased.y += (mouse.y - eased.y) * 0.05;
+      ctx.fillStyle = SNOW; ctx.fillRect(0, 0, W, H);
+      drawGrid((eased.x - 0.5) * 40, (eased.y - 0.5) * 30);
+      for (var i = 0; i < waves.length; i++) drawWave(waves[i], t);
+      drawSpotlight();
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+    if (reduce) { frame(0); return; }
+    window.addEventListener('pointermove', function (e) {
+      mouse.x = e.clientX / window.innerWidth; mouse.y = e.clientY / window.innerHeight;
+    }, { passive: true });
+    var start = null;
+    function loop(now) { if (start === null) start = now; frame((now - start) / 1000); requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+  })();
+</script>
+
+</body>
+</html>
