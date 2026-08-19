@@ -1,0 +1,14 @@
+# Normalise line endings: LF in the repository, native in the working tree.
+# Without this, git rewrites every harness and source file on checkout and
+# produces phantom diffs in files nobody touched.
+* text=auto eol=lf
+
+# Binary assets must never be touched.
+*.png binary
+*.jpg binary
+*.webp binary
+*.woff2 binary
+*.m4a binary
+*.wav binary
+*.flac binary
+*.mp4 binary
