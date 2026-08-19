@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git rev-parse*)",
+      "Bash(git show*)",
+      "Bash(git stash list*)",
+      "Bash(git remote -v)",
+      "Bash(git worktree list*)",
+      "Bash(ls *)"
+    ],
+    "ask": [
+      "Edit(.claude/hooks/**)",
+      "Edit(.claude/settings.json)",
+      "Edit(.claude/settings.local.json)",
+
+      "Write(.claude/hooks/**)",
+      "Write(.claude/settings.json)",
+      "Write(.claude/settings.local.json)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(sudo *)",
+      "Bash(chmod 777*)",
+      "Bash(chmod -R 777*)",
+
+      "Bash(cat *.env*)",   "Bash(head *.env*)", "Bash(tail *.env*)",
+      "Bash(less *.env*)",  "Bash(more *.env*)", "Bash(grep *.env*)",
+      "Bash(od *.env*)",    "Bash(xxd *.env*)",  "Bash(strings *.env*)",
+      "Bash(*>*.env*)",     "Bash(*tee *.env*)", "Bash(cp * *.env*)",
+
+      "Bash(cat *credentials.json*)", "Bash(cat *token.json*)",
+      "Bash(cat *.pem*)",   "Bash(cat *.key*)",  "Bash(cat *id_rsa*)",
+
+      "Bash(curl *--data*)", "Bash(curl *-d *)", "Bash(curl *-T *)",
+      "Bash(curl *--upload-file*)", "Bash(wget *--post*)",
+      "Bash(scp *)", "Bash(nc *)", "Bash(ncat *)",
+      "Bash(git remote add*)", "Bash(git remote set-url*)",
+
+      "Read(**/.env*)",
+      "Read(**/credentials.json)", "Read(**/token.json)",
+      "Read(**/*.pem)", "Read(**/*.key)", "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)", "Read(**/id_ecdsa*)",
+      "Read(**/*.p12)", "Read(**/*.pfx)",
+      "Read(**/settings.local.json)",
+
+      "Read(**/.aws/credentials)", "Read(**/.git-credentials)",
+      "Read(**/.npmrc)", "Read(**/.netrc)", "Read(**/_netrc)",
+      "Read(**/.pgpass)", "Read(**/.htpasswd)",
+      "Read(**/.docker/config.json)",
+      "Read(**/*.jks)", "Read(**/*.keystore)", "Read(**/*.p8)",
+      "Read(**/*.kdbx)", "Read(**/*.ovpn)",
+      "Read(**/service-account*.json)",
+      "Read(**/secret.yaml)", "Read(**/secrets.yaml)",
+      "Read(**/secret.yml)", "Read(**/secrets.yml)",
+      "Read(**/secrets.json)", "Read(**/secrets.toml)",
+
+      "Edit(**/.env)", "Edit(**/.env.local)", "Edit(**/.env.production)",
+      "Edit(**/credentials.json)", "Edit(**/token.json)",
+      "Edit(**/*.pem)", "Edit(**/*.key)", "Edit(**/id_rsa*)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/route-intent.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/enforce-language.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/pre-compact.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/post-compact.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/log-agent.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/log-agent-stop.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/validate-commit.sh",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/enforce-venv.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/stop-state-reminder.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
