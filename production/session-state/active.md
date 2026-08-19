@@ -29,6 +29,12 @@ Otros: `npm run dev` (recarga en caliente) · `npm test` · `npm run build`
 
 Detalle completo y modos de fallo → **`README.md`**.
 
+⚠️ **El servidor lo levanta el USUARIO, en su terminal.** Un `npm start` lanzado
+como tarea de fondo de una sesión de agente muere al terminar el turno — pasó
+siete veces en la sesión 1 antes de que se viera el patrón, y llevó a decirle al
+usuario "está corriendo" cuando ya no lo estaba. Arrancarlo para probar algo
+está bien; prometer que sigue vivo, no.
+
 ## Dónde quedan los audios
 En la salida de ComfyUI (`C:\Users\tech\comfy\output\ttsstudio_NNNNN.flac`), no
 dentro del proyecto: la app los referencia por URL en vez de copiarlos. El botón
