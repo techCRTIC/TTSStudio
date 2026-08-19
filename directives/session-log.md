@@ -26,6 +26,7 @@
 - Se le pasó una auditoría técnica: siete hallazgos verificados, todos corregidos. El puntaje de salud subió de 13/20 a 18/20.
 - Se escribió el README con cómo correrla, para que las instrucciones no vivan solo en la conversación.
 - Se englobó todo en **un solo `npm start`** desde la raíz: comprueba y levanta ComfyUI, libera el puerto, compila, arranca y abre el navegador cuando la app ya responde.
+- El usuario señaló tres molestias visuales y se corrigieron: el rectángulo naranja de foco sobre el cuadro de texto, el desplegable nativo de la voz, y un fondo animado que a veces se pegaba.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -42,7 +43,7 @@
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · diez commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
+**Estado al cerrar:** rama `main` · árbol limpio · dieciocho commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
 **Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
 <!-- /cierre -->
 
@@ -99,6 +100,32 @@ Encima me había tragado el error, así que el fallo salió mudo. La solución r
 fue saltarse npm y llamar al binario de Next por Node: sin `.cmd`, sin shell, y
 sin el aviso. Lección aplicada al código: el lanzador ahora reporta
 `res.error` y el código de salida en vez de un mensaje genérico.
+
+### Correcciones visuales (final de la sesión)
+Referencia usada para la forma del selector: `Componentes/AI-Chat-Box.md`, que el
+usuario aportó. Se tomó su **gramática** (botón + panel flotante + resaltado que
+sigue al cursor) pero **no sus tokens ni su curva**: la referencia rebota con
+sobrepaso y el sistema de la casa prohíbe el rebote.
+
+- **El anillo de foco naranja** caía sobre el textarea, donde no informa nada
+  (el cursor ya te dice que estás escribiendo) y a ese tamaño se vuelve el
+  objeto más ruidoso de la pantalla. Ahora los anillos son para lo que se
+  acciona; los campos de texto expresan el foco a través de la superficie que
+  los contiene.
+- **El `<select>` nativo** dibujaba el menú del sistema operativo sobre una
+  superficie que no tiene nada de eso. Se reemplazó por un listbox propio, y
+  **rehecho entero**: un selector a medida sin accesibilidad sería peor trato
+  que el control feo que sustituye, porque el nativo traía el teclado gratis.
+  Flechas, Home/End, Enter, Espacio, Escape, Tab, clic fuera, y los roles.
+- **El fondo que se pegaba lo causó el propio arreglo de la auditoría.** Pausar
+  el bucle con la pestaña oculta mientras el tiempo se leía de `performance.now()`
+  hace que el reloj avance aunque el campo no: al volver, el primer fotograma
+  salta a donde "debería" estar. Se ve como congelarse y brincar. Ahora el tiempo
+  se acumula por deltas acotados, así que pausar no cuesta nada.
+- De paso, tres costos por fotograma: el foco de luz componía todo el lienzo
+  cuando su degradado llega a cero mucho antes del borde; cada curva se muestreaba
+  dos veces (relleno y trazo); y los degradados de capa se reconstruían cuatro
+  veces por fotograma en vez de una por redimensionado. DPR acotado a 1,5.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.

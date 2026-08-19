@@ -9,7 +9,7 @@ borrador, ya completo, vive en `directives/session-log.md`.
 ---
 
 **Status:** sesión 1 — MVP funcionando, auditado, y con un solo comando para correrlo.
-**Last update:** 2026-08-19 (lanzador `npm start`)
+**Last update:** 2026-08-19 (correcciones visuales)
 
 ## Current task
 Ninguna en curso. El MVP está cerrado: el usuario abrió la app, generó voz sin
@@ -49,8 +49,8 @@ abierto estrecho. Si la app se va a usar solo en el escritorio de esta máquina,
 da lo mismo; si no, es lo primero que hay que probar.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, quince commits. El último: `fd1f39b docs: README
-covers npm start and where the audio lands`.
+Rama `main`, árbol limpio, dieciocho commits. El último: `8a267a4 fix(web):
+quieter focus, an own voice picker, and a field that no longer sticks`.
 
 Salud verificada: 7 tests en verde (2 contra el motor real), build de producción
 correcto, `tsc` y `eslint` limpios, y el detector de diseño de `impeccable` sin
@@ -62,6 +62,7 @@ hallazgos en dos pasadas.
 | `web/src/app/page.tsx` | La pantalla: escenario central + bandeja lateral |
 | `web/src/components/AudioField.tsx` | Campo de audio animado (capas = suma de senoides) |
 | `web/src/components/Waveform.tsx` | Onda decodificada del audio real + transporte |
+| `web/src/components/VoiceSelect.tsx` | Selector de voz propio (listbox accesible) |
 | `web/src/lib/history.ts` | Historial en localStorage vía store externo |
 | `web/src/lib/tts.ts` | Grafo Qwen3, envío y lectura de estado |
 | `web/src/lib/comfy.ts` | El saneador de cabeceras del ADR-001 |
@@ -83,6 +84,14 @@ hallazgos en dos pasadas.
   para que no pueda desincronizarse del disco.
 - Movimiento reducido **no** es un exterminio global: color, opacidad y sombra
   sobreviven porque son información; lo que se elimina es el movimiento.
+- **Los anillos de foco son para lo que se acciona.** Un campo de texto expresa
+  el foco a través de la superficie que lo contiene (`.field`), no con un
+  rectángulo naranja que a ese tamaño se vuelve el objeto más ruidoso.
+- **El tiempo del campo animado se acumula, nunca se lee del reloj.** Leer
+  `performance.now()` con el bucle pausado hace que al volver salte. Si alguien
+  "simplifica" esto, el fondo vuelve a congelarse y brincar.
+- El selector de voz es propio, y **accesible entero**: sustituir un `<select>`
+  nativo por algo bonito sin teclado es un peor trato que el control feo.
 
 ## Próximos pasos
 1. **Fase 2 — biblioteca de voces.** Dar de alta una voz nueva desde audio de
