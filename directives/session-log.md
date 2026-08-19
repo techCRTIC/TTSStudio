@@ -28,6 +28,7 @@
 - Se englobó todo en **un solo `npm start`** desde la raíz: comprueba y levanta ComfyUI, libera el puerto, compila, arranca y abre el navegador cuando la app ya responde.
 - El usuario señaló tres molestias visuales y se corrigieron: el rectángulo naranja de foco sobre el cuadro de texto, el desplegable nativo de la voz, y un fondo animado que a veces se pegaba.
 - El cuadro de texto pasó a crecer con lo que se escribe, con desvanecidos en los bordes cuando hay más contenido del que cabe.
+- El estado del motor bajó de la barra superior a la fila del propio campo, y su texto transforma el ancho al cambiar en vez de dar saltos.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -44,7 +45,7 @@
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · veinte commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
+**Estado al cerrar:** rama `main` · árbol limpio · veintidós commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
 **Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
 <!-- /cierre -->
 
@@ -149,6 +150,31 @@ un chat que empieza plegado y este escenario está siempre abierto.
   desplazarse en el techo. El costo está acotado: se dispara al cambiar el
   número de líneas, no por pulsación, y el lienzo de fondo es `fixed`, así que
   no se re-maqueta con él.
+
+### La línea de estado
+Bajó a compartir fila con la etiqueta del campo: qué es esto a la izquierda, qué
+está haciendo el motor con ello a la derecha. El estado pertenece a la toma que
+estás haciendo, no a la app.
+
+- Usa el `MorphingText` de la referencia: el ancho se anima entre un texto y
+  otro y la palabra nueva entra con una subida de 3px. Sin sobrepaso — un
+  bamboleo al lado de un campo donde se escribe distrae de escribir.
+- **No se trajeron las cinco barras reactivas de la referencia.** Allí
+  visualizan un nivel de micrófono real; aquí no existe nada medible mientras
+  ComfyUI trabaja (informa en cola y ejecutando, no progreso), así que serían un
+  indicador de carga disfrazado de medidor, en contra de la regla del propio
+  producto de mostrar la espera con honestidad. La posición en cola es la
+  información real.
+- Mover el estado destapó **dos duplicaciones**, ambas corregidas: el mensaje de
+  fallo salía en la línea y en la alerta de abajo, y "Generando" estaba también
+  en el botón. Ahora la línea nombra el estado, la alerta lleva el mensaje, y el
+  botón no se renombra a mitad de acción (cambiaba de ancho bajo el cursor sin
+  aportar nada).
+- La barra superior conserva la salud del motor —que sí es de la app— y **no
+  muestra nada mientras ComfyUI responde**: una luz verde permanente es ruido, y
+  su ausencia es lo que hace que el aviso se note cuando aparece.
+- **Segunda excepción documentada de animación de maquetación** (`transition:
+  width`), razonada en el archivo igual que la primera.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.

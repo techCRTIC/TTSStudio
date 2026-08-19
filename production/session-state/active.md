@@ -9,7 +9,7 @@ borrador, ya completo, vive en `directives/session-log.md`.
 ---
 
 **Status:** sesión 1 — MVP funcionando, auditado, y con un solo comando para correrlo.
-**Last update:** 2026-08-19 (área de escritura)
+**Last update:** 2026-08-19 (línea de estado)
 
 ## Current task
 Ninguna en curso. El MVP está cerrado: el usuario abrió la app, generó voz sin
@@ -49,8 +49,8 @@ abierto estrecho. Si la app se va a usar solo en el escritorio de esta máquina,
 da lo mismo; si no, es lo primero que hay que probar.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, veinte commits. El último: `f76fba7 feat(web): the
-writing area grows with what you write`.
+Rama `main`, árbol limpio, veintidós commits. El último: `3cb47f3 feat(web): the
+engine's status moved beside the field, and it morphs`.
 
 Salud verificada: 7 tests en verde (2 contra el motor real), build de producción
 correcto, `tsc` y `eslint` limpios, y el detector de diseño de `impeccable` sin
@@ -64,6 +64,7 @@ hallazgos en dos pasadas.
 | `web/src/components/Waveform.tsx` | Onda decodificada del audio real + transporte |
 | `web/src/components/VoiceSelect.tsx` | Selector de voz propio (listbox accesible) |
 | `web/src/components/ScriptField.tsx` | Área de escritura que crece + desvanecidos |
+| `web/src/components/StatusLine.tsx` | Estado del motor con ancho que transforma |
 | `web/src/lib/history.ts` | Historial en localStorage vía store externo |
 | `web/src/lib/tts.ts` | Grafo Qwen3, envío y lectura de estado |
 | `web/src/lib/comfy.ts` | El saneador de cabeceras del ADR-001 |
@@ -93,10 +94,14 @@ hallazgos en dos pasadas.
   "simplifica" esto, el fondo vuelve a congelarse y brincar.
 - El selector de voz es propio, y **accesible entero**: sustituir un `<select>`
   nativo por algo bonito sin teclado es un peor trato que el control feo.
-- **`transition: height` en `ScriptField` es una excepción decidida**, no un
-  descuido: el detector la marca y tiene razón, pero `transform` deforma el
-  texto y `grid-template-rows` anima maquetación igual. Está razonada en el
-  propio archivo; no "arreglarla" sin leer eso primero.
+- **Dos excepciones decididas de animación de maquetación**, no descuidos:
+  `transition: height` en `ScriptField` y `transition: width` en `StatusLine`.
+  El detector las marca y tiene razón; ambas están razonadas en su propio
+  archivo. No "arreglarlas" sin leer eso primero.
+- **No se inventan medidores.** Mientras ComfyUI genera no hay progreso medible
+  (informa en cola y ejecutando, nada más), así que la interfaz dice eso y no
+  finge una barra. Si algún día se hace de puente al websocket del motor, ahí sí
+  habrá progreso real que mostrar.
 
 ## Próximos pasos
 1. **Fase 2 — biblioteca de voces.** Dar de alta una voz nueva desde audio de
