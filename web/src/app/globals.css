@@ -176,6 +176,24 @@ body {
 /* The writing area scrolls past its ceiling, and a native scrollbar inside a
    dark card is the same browser chrome the voice picker was replaced to avoid.
    It stays invisible until the pointer is in the field, then reads as a hairline. */
+/* A status word arriving. Deliberately small: it rises 3px and fades in, with
+   no scale and no overshoot — this label sits beside a field being typed in,
+   and anything more would pull the eye off the writing. */
+@keyframes status-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-in {
+  animation: status-in 220ms var(--ease-ui) both;
+}
+
 .script-area {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;

@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AudioField } from "@/components/AudioField";
 import { ScriptField } from "@/components/ScriptField";
+import { StatusLine, type Phase } from "@/components/StatusLine";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
 import { addTake, useHistory, type Take } from "@/lib/history";
 
 type Voice = { id: string; label: string };
-type Phase = "idle" | "queued" | "running" | "done" | "failed";
 
 export default function Studio() {
   const [text, setText] = useState("");
@@ -134,14 +134,19 @@ export default function Studio() {
           </h1>
           <span className="eyebrow">Qwen3 · local</span>
         </div>
-        <StatusPill phase={phase} detail={detail} engineDown={engineDown} />
+        <EngineHealth down={engineDown} />
       </header>
 
       <div className="relative z-10 flex min-h-[calc(100dvh-160px)] items-center justify-center px-8 pb-12">
         <section className="elevated elevated--focal w-full max-w-3xl p-8" aria-label="Generación">
-          <label htmlFor="script" className="eyebrow mb-4 block">
-            El texto
-          </label>
+          {/* Label and status share the row: what this field is on the left,
+              what the engine is doing with it on the right. */}
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <label htmlFor="script" className="eyebrow">
+              El texto
+            </label>
+            <StatusLine phase={phase} detail={detail} />
+          </div>
           <ScriptField
             id="script"
             value={text}
@@ -177,7 +182,10 @@ export default function Studio() {
               style={{ transitionTimingFunction: "var(--ease-ui)" }}
               className="rounded-full bg-accent px-7 py-3 text-sm font-medium text-accent-ink transition-[transform,background-color] duration-200 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35"
             >
-              {busy ? "Generando…" : "Generar"}
+              {/* The label stays put. The status line beside the field already
+                  says "Generando", and a button that renames itself mid-action
+                  changes width under the cursor for no information gained. */}
+              Generar
               <span className="ml-2 font-mono text-[11px] opacity-60">Ctrl ↵</span>
             </button>
           </div>
@@ -277,42 +285,21 @@ export default function Studio() {
   );
 }
 
-function StatusPill({
-  phase,
-  detail,
-  engineDown,
-}: {
-  phase: Phase;
-  detail: string;
-  engineDown: boolean;
-}) {
-  if (engineDown) {
-    return (
-      <span
-        role="status"
-        className="flex items-center gap-2 rounded-full border border-accent/40 px-3 py-1.5 text-xs text-ink"
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
-        ComfyUI no responde
-      </span>
-    );
-  }
-  if (phase === "idle") return <span className="eyebrow">Listo</span>;
-
-  const live = phase === "queued" || phase === "running";
+/**
+ * Engine health, which is about the app rather than about this take — so it
+ * stays in the top bar while the generation status moved down beside the field.
+ * It shows nothing while ComfyUI is answering: a permanent green light is noise,
+ * and its absence is what makes the warning register when it appears.
+ */
+function EngineHealth({ down }: { down: boolean }) {
+  if (!down) return null;
   return (
     <span
       role="status"
-      aria-live="polite"
-      className="flex items-center gap-2 rounded-full border border-hairline px-3 py-1.5 text-xs text-ink-muted"
+      className="status-in flex items-center gap-2 rounded-full border border-accent/40 px-3 py-1.5 text-xs text-ink"
     >
-      <span
-        aria-hidden="true"
-        className={
-          "h-1.5 w-1.5 rounded-full " + (live ? "animate-pulse bg-accent" : "bg-ink-muted")
-        }
-      />
-      {detail}
+      <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
+      ComfyUI no responde
     </span>
   );
 }
