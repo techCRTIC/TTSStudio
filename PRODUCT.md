@@ -92,7 +92,10 @@ match that.
 ## Brand Commitments
 
 - **"CRTIC clean" is the house design system** and this product is a spinoff of
-  it, not a departure: Geist Sans + Mono, one earned accent (CRTIC orange
+  it, not a departure. The kit now lives in-repo at `CRTIC-design-system/`
+  (V2 = current contract, byte-identical to the copies in the other CRTIC
+  projects; V1 = the June revision; `CRTIC_identidad.md` = brand identity of
+  CRTIC, the user's organisation). Inherited: Geist Sans + Mono, one earned accent (CRTIC orange
   `#FA4515`), depth earned rather than sprinkled, restrained and motivated
   motion, no second accent, no gradient text, no glassmorphism by default, never
   `#000` or `#fff`.
