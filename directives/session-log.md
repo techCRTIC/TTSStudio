@@ -6,12 +6,12 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
-## 2026-08-19 — De carpeta vacía a Fase 0 terminada
+## 2026-08-19 — De carpeta vacía a una app que se abre
 
 <!-- cierre -->
 ## 🧾 Cierre — Sesión 1 · 2026-08-19
 
-**En una frase:** TTS Studio nació entero en una sesión — identidad, arquitectura, dirección visual y la Fase 0 construida y verificada contra el ComfyUI real.
+**En una frase:** TTS Studio nació entero en una sesión — identidad, arquitectura, dirección visual, y una app que se abre en el navegador y habla con el ComfyUI real.
 
 **Qué se hizo**
 - Se levantó el andamiaje del proyecto, que no existía, y se inició el repositorio.
@@ -21,6 +21,7 @@
 - Se generaron tres bocetos con Qwen-Image en el ComfyUI de la casa para ver la dirección antes de construirla.
 - Se construyó la Fase 0: proyecto Next en pie, capa de tokens oscuros, y el proxy hacia ComfyUI con siete tests en verde, dos de ellos contra el motor real.
 - El usuario dejó el kit real del sistema CRTIC dentro del proyecto a mitad de sesión. Se verificó que su versión vigente es idéntica a la que ya se había usado para derivar los tokens, así que no hubo nada que rehacer.
+- Se construyó la pantalla de generación: la tarjeta central sobre un campo de audio animado, la bandeja lateral con el historial, la onda dibujada desde el audio real, y el selector de voz que lee la biblioteca directamente del motor.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -30,10 +31,13 @@
 - **El botón primario invierte su tinta respecto del sistema padre.** Se midió que blanco sobre el naranja da 3,54 y no pasa el estándar de contraste; grafito sobre naranja da 5,15.
 - **Se descartó `AetherFlow` como fondo animado** en favor de `PlotFieldBg`: el primero es morado sobre negro puro, que viola dos prohibiciones del sistema, y no respeta movimiento reducido.
 
+- **El fondo animado no es decoración prestada:** cada capa del campo es una suma de dos senoides, que es lo que es una onda de audio. El fondo es el tema del producto, no un adorno encima.
+- **El historial vive en el navegador**, no en una base de datos: es una app de un solo usuario donde nada se comparte ni se consulta, así que una base de datos sería ceremonia.
+
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · seis commits · 7 tests en verde · build de producción correcto · Fase 0 terminada, Fase 1 sin empezar.
-**Siguiente paso concreto:** construir la pantalla de generación (Fase 1): escenario central con el texto y su onda, bandeja lateral, y progreso real leído del websocket de ComfyUI.
+**Estado al cerrar:** rama `main` · árbol limpio · ocho commits · 7 tests en verde · build correcto · la app se abre en `localhost:3000` y lista las voces del motor. **Dos cosas quedaron sin verificar y hay que saberlo: nadie ha visto la pantalla renderizada** (no había navegador en la sesión), **y no se disparó ninguna generación real** (el permiso fue denegado dos veces, así que el primer "Generar" lo hace el usuario).
+**Siguiente paso concreto:** abrir `localhost:3000`, generar una vez de verdad, y juzgar lo que se ve — de ahí sale la lista de arreglos.
 <!-- /cierre -->
 
 **Time:** sesión larga, un solo tramo.
@@ -59,8 +63,18 @@ Ver el bloque de cierre y los dos ADRs. Además:
 - `PRODUCT.md`, `ADR-001` (puente a ComfyUI), `ADR-002` (stack), roadmap con seis fases y el MVP delimitado, backlog con dos abiertas y dos cerradas.
 - Fase 0 terminada y verificada: 7 tests en verde (2 contra el motor real), build de producción correcto, y una petición con `Origin` de navegador atravesando el proxy y devolviendo 200 con datos reales de ComfyUI.
 
+### Fase 1 — lo construido
+- `AudioField` — el campo de audio vivo, descendiente oscuro del `PlotFieldBg` de CRTIC. Respeta movimiento reducido pintando **un** fotograma y sin registrar oyentes.
+- `Waveform` — picos decodificados del audio real con Web Audio, y hace de transporte (clic para saltar).
+- `useHistory` — store externo sobre localStorage, para que leerlo tras montar no sea un `setState` dentro de un efecto.
+- Rutas `/api/voices`, `/api/generate`, `/api/status/[promptId]`, todas sobre el proxy del ADR-001.
+- **El contrato de dirección se estaba borrando entero:** React descarta los comentarios JSX y nunca llegan al HTML. Se reescribió como comentario HTML real y se verificó greppeando la página servida.
+- Se mató un proceso Node huérfano que ocupaba el puerto 3000 desde una prueba anterior: `TaskStop` mata el envoltorio, no el hijo.
+
 ### Next steps / open questions
-- **Fase 1**, el MVP: escenario + bandeja, progreso real por websocket, reproducción con onda, descarga, historial persistente.
+- **Abrir la app y juzgarla.** Nadie la ha visto renderizada.
+- **Disparar una generación real**, que es lo único que prueba que la cadena completa funciona.
+- Progreso paso a paso por websocket: hoy el estado es real pero grueso (en cola con posición, generando, listo).
 - Al construir la interfaz, corregir lo que el modelo de imagen hizo mal en los bocetos: superficies mates y no vidriosas, grilla del campo al 8%, bandeja subordinada al escenario, y fila activa marcada con filo lateral y no con recuadro naranja completo.
 - `DESIGN.md` se escribe al terminar la Fase 1, desde el mundo construido, como manda el flujo de `impeccable`.
 - ✅ Resuelto en la sesión: `.gitattributes` añadido, se acabaron los avisos de LF/CRLF.

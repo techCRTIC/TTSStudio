@@ -8,58 +8,73 @@ borrador, ya completo, vive en `directives/session-log.md`.
 
 ---
 
-**Status:** sesión 1 — Fase 0 terminada y verificada. Árbol limpio.
+**Status:** sesión 1 — Fase 0 cerrada, Fase 1 construida pero **sin juzgar**.
 **Last update:** 2026-08-19
 
 ## Current task
-Ninguna en curso. La Fase 0 cerró. La Fase 1 (el MVP) está esperando el visto
-bueno del usuario para arrancar — se le preguntó y no ha respondido todavía.
+La pantalla de generación está escrita, compilada y servida. Falta lo único que
+no puedo hacer yo: **abrirla, mirarla y generar una vez de verdad.**
+
+## ⚠️ Lo que NO está verificado
+Dos huecos reales, y conviene no confundirlos con trabajo terminado:
+
+1. **Nadie ha visto la pantalla renderizada.** No había navegador en la sesión.
+   Verifiqué por HTTP que los elementos están en el markup, pero el juicio
+   visual — si el campo animado está muy presente, si la tarjeta respira, si el
+   naranja pesa lo justo — está pendiente. El flujo de `impeccable` exige una
+   revisión de acabado con capturas antes de dar esto por terminado.
+2. **No se ha disparado ninguna generación real.** El permiso para el POST fue
+   denegado dos veces y no insistí: gasta GPU y escribe archivos. El envío, la
+   lectura de estado y la recuperación del audio están escritos y tipados, pero
+   la cadena completa no tiene una sola ejecución que la respalde.
+
+## Cómo levantarlo
+```
+cd web && npm run start     # http://localhost:3000
+cd web && npm test          # 7 tests, 2 contra el motor real
+```
+ComfyUI tiene que estar corriendo en `127.0.0.1:8188`. Si no lo está, la app lo
+dice en la barra superior en vez de fallar en silencio.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, seis commits:
-
-| | |
-|---|---|
-| `2254494` | docs: PRODUCT.md apunta al kit de diseño en el repo |
-| `4f28d5d` | chore: `.gitattributes`, finales de línea normalizados |
-| `9f1b068` | feat(web): app en pie + puente a ComfyUI (Fase 0) |
-| `d377600` | chore: kit del sistema CRTIC (V1 + V2) |
-| `bf23970` | docs: identidad, alcance y roadmap |
-| `12d5481` | chore: andamiaje del proyecto |
+Rama `main`, árbol limpio, ocho commits. El último: `68f90d7 feat(web): the
+generation screen — stage and tray (Phase 1)`.
 
 ## Lo construido
-- `web/` — Next.js 16.3.1 + React 19.2.8 + Tailwind 4 + Geist.
-- `web/src/app/globals.css` — tokens del spinoff oscuro, contrastes medidos.
-- `web/src/lib/comfy.ts` — saneador de cabeceras como función pura.
-- `web/src/app/api/comfy/[...path]/route.ts` — el proxy que exige el ADR-001.
-- `web/tests/comfy.test.ts` — 7 tests, 2 contra el motor real. `npm test`.
-- `CRTIC-design-system/` — el kit de la casa, puesto por el usuario a mitad de
-  sesión. V2 es el contrato vigente y es idéntico al que se usó para derivar
-  los tokens; V1 es la revisión de junio.
+| Archivo | Qué es |
+|---|---|
+| `web/src/app/page.tsx` | La pantalla: escenario central + bandeja lateral |
+| `web/src/components/AudioField.tsx` | El campo de audio animado (capas = suma de senoides) |
+| `web/src/components/Waveform.tsx` | Onda decodificada del audio real + transporte |
+| `web/src/lib/history.ts` | Historial en localStorage vía store externo |
+| `web/src/lib/tts.ts` | Construcción del grafo Qwen3, envío y lectura de estado |
+| `web/src/lib/comfy.ts` | El saneador de cabeceras del ADR-001 |
+| `web/src/app/api/…` | `voices`, `generate`, `status/[promptId]`, `comfy/[...path]` |
 
 ## Decisiones tomadas
 - Identidad, motor, audiencia y alcance → `PRODUCT.md`.
-- **ADR-001:** puente a ComfyUI vía proxy propio del lado servidor. ComfyUI
-  responde 403 a cualquier `Origin` ajeno; se midió aislando la variable.
+- **ADR-001:** puente a ComfyUI vía proxy propio del lado servidor (403 al
+  `Origin` ajeno, medido aislando la variable).
 - **ADR-002:** Next.js + TypeScript + Tailwind + shadcn/ui.
-- Dirección visual: spinoff oscuro de CRTIC clean, estructura **escenario +
-  bandeja** (asignada por `concept-seed`, semilla `5006a149`, confirmada por el
-  usuario tras ver tres bocetos generados con Qwen-Image).
-- El código vive en `web/`; la raíz es del andamiaje del estudio.
-- En oscuro el botón primario lleva tinta grafito, no blanca: blanco sobre el
-  naranja mide 3,54 y no pasa AA.
+- Dirección visual: spinoff oscuro de CRTIC clean, **escenario + bandeja**
+  (`concept-seed`, semilla `5006a149`, confirmada tras ver tres bocetos).
+- En oscuro el botón primario lleva tinta grafito: blanco sobre el naranja mide
+  3,54 y no pasa AA.
+- El historial vive en localStorage: app de un solo usuario, una base de datos
+  sería ceremonia.
+- La biblioteca de voces se lee del combo de ComfyUI, no de una tabla propia,
+  para que no pueda desincronizarse del disco.
 
 ## Próximos pasos
-1. **Fase 1, el MVP** — escenario + bandeja · progreso real por websocket de
-   ComfyUI · reproducción con onda · descarga · historial persistente.
-2. Al construir, corregir lo que el modelo de imagen hizo mal en los bocetos:
-   superficies mates y no vidriosas · grilla del campo al 8% · bandeja
-   subordinada al escenario · fila activa con filo lateral, no recuadro.
-3. `DESIGN.md` se escribe **al terminar** la Fase 1, desde el mundo construido,
-   como manda el flujo de `impeccable`.
+1. Abrir `localhost:3000`, generar una vez, y juzgar lo que se ve.
+2. Revisión de acabado con capturas (la exige `impeccable` antes de cerrar).
+3. Progreso paso a paso por websocket — hoy el estado es real pero grueso.
+4. `DESIGN.md` del spinoff, escrito desde el mundo ya construido.
 
 ## Riesgos vivos
-- Los bocetos quedaron en `.tmp/sketches/`, gitignorado y territorio de purga.
+- Los bocetos siguen en `.tmp/sketches/`, gitignorado y territorio de purga.
 - El audio de Andrés sigue en `comfy-mcp/.tmp/audio/` (61 MB, no regenerable,
-  materia prima de la Fase 4). El usuario descartó rescatarlo — backlog B-001,
-  cerrado con el riesgo asumido y por escrito.
+  materia prima de la Fase 4). Descartado por el usuario — B-001, cerrado con
+  el riesgo asumido y por escrito.
+- Un `npm run start` deja un proceso Node que sobrevive a `TaskStop`. Si el
+  puerto 3000 da `EADDRINUSE`, hay que matarlo por PID.
