@@ -40,6 +40,17 @@ export default function Studio() {
     if (pollRef.current) window.clearInterval(pollRef.current);
   }, []);
 
+  // A drawer that opens must close with Escape; anything else is a trap for
+  // whoever is not driving with a mouse.
+  useEffect(() => {
+    if (!trayOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === "Escape") setTrayOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [trayOpen]);
+
   const busy = phase === "queued" || phase === "running";
 
   const generate = useCallback(async () => {
@@ -116,9 +127,9 @@ export default function Studio() {
 
       <header className="relative z-10 flex items-center justify-between px-8 py-6">
         <div className="flex items-baseline gap-3">
-          <span className="text-[15px] font-semibold tracking-[-0.02em] text-ink">
+          <h1 className="text-[15px] font-semibold tracking-[-0.02em] text-ink">
             TTS Studio
-          </span>
+          </h1>
           <span className="eyebrow">Qwen3 · local</span>
         </div>
         <StatusPill phase={phase} detail={detail} engineDown={engineDown} />
@@ -139,7 +150,7 @@ export default function Studio() {
             rows={5}
             spellCheck={false}
             placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
-            className="w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink outline-none placeholder:text-ink-muted/55"
+            className="w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink outline-none placeholder:text-ink-muted"
           />
 
           <div className="mt-6 border-t border-hairline pt-6">
@@ -204,7 +215,7 @@ export default function Studio() {
         type="button"
         onClick={() => setTrayOpen((o) => !o)}
         aria-expanded={trayOpen}
-        className="fixed right-0 top-1/2 z-20 -translate-y-1/2 rounded-l-lg border border-r-0 border-hairline bg-surface px-2 py-6 text-ink-muted transition-colors duration-200 hover:text-accent-text"
+        className="fixed right-0 top-1/2 z-20 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-l-lg border border-r-0 border-hairline bg-surface px-3 py-7 text-ink-muted transition-colors duration-200 hover:text-accent-text"
       >
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
           Tomas{history.length > 0 ? " · " + history.length : ""}
@@ -213,6 +224,10 @@ export default function Studio() {
 
       <aside
         aria-label="Historial de tomas"
+        // A closed drawer stays in the DOM so it can glide. Without `inert` its
+        // buttons stay in the tab order, so keyboard focus walks into a panel
+        // nobody can see.
+        inert={!trayOpen}
         style={{
           transform: trayOpen ? "translateX(0)" : "translateX(100%)",
           transitionDuration: "var(--dur-glide)",
@@ -226,9 +241,9 @@ export default function Studio() {
             type="button"
             onClick={() => setTrayOpen(false)}
             aria-label="Cerrar historial"
-            className="text-ink-muted transition-colors duration-200 hover:text-ink"
+            className="grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink"
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
 

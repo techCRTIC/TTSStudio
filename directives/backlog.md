@@ -37,6 +37,26 @@ parámetros (solo `CustomVoice` los tiene). La interfaz no puede prometer
 controles que el motor no da. Lo que sí influye es la puntuación del texto —
 evaluar si eso se convierte en una ayuda visible al usuario.
 
+## B-005 — Convertirlo en app de escritorio
+**Status:** idea
+Pedido por el usuario el 2026-08-19: "lo que cambiaría luego es que fuera una
+app de escritorio quizás". El ADR-002 ya dejó el camino abierto y explicó por
+qué no se hizo ahora: Tauri daría un `.exe` real y haría desaparecer solo el 403
+del `Origin` (las peticiones saldrían del lado nativo), pero el toolchain de
+Rust y las compilaciones lentas gravan cada iteración, y un MVP gasta
+iteraciones. Un envoltorio Tauri sobre el build de Next sigue disponible; lo
+inverso no.
+
+## B-006 — Fase previa de instalación con portal de ingreso
+**Status:** idea
+Pedido por el usuario el 2026-08-19. Hoy la app asume que ComfyUI ya corre, que
+el pack `comfyui-qwen3-tts` está instalado y que hay al menos una voz calculada
+en disco; si algo falta, lo único que ocurre es que la barra superior avisa que
+el motor no responde. La idea es una fase previa que verifique dependencias,
+guíe la instalación de lo que falte y sirva de puerta de entrada. Se solapa con
+B-003 (arranque y salud de ComfyUI desde la app), que probablemente quede
+absorbido por esto.
+
 ## Cerradas
 
 ## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`

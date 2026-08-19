@@ -37,9 +37,13 @@ const ACCENT = "250,69,21";
 
 export function AudioField({ energy = 0 }: { energy?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  // Read by the loop without re-binding it; generation lifts the field a little.
+  // Read by the loop without re-binding it; playback lifts the field a little.
+  // Written in an effect rather than during render: a render must not mutate
+  // anything outside itself.
   const energyRef = useRef(energy);
-  energyRef.current = energy;
+  useEffect(() => {
+    energyRef.current = energy;
+  }, [energy]);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -174,14 +178,30 @@ export function AudioField({ energy = 0 }: { energy?: number }) {
       return () => window.removeEventListener("resize", onResize);
     }
 
+    /**
+     * Pausing while the tab is hidden matters more here than it usually would:
+     * the same GPU is running Qwen3-TTS inference, and a backdrop nobody is
+     * looking at should not compete with the generation the user is waiting on.
+     */
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        loop();
+      }
+    };
+
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", onPointer);
+    document.addEventListener("visibilitychange", onVisibility);
     loop();
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onPointer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
