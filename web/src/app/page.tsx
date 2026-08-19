@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AudioField } from "@/components/AudioField";
+import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
 import { addTake, useHistory, type Take } from "@/lib/history";
 
@@ -140,18 +141,20 @@ export default function Studio() {
           <label htmlFor="script" className="eyebrow mb-4 block">
             El texto
           </label>
-          <textarea
-            id="script"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void generate();
-            }}
-            rows={5}
-            spellCheck={false}
-            placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
-            className="w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink outline-none placeholder:text-ink-muted"
-          />
+          <div className="field -mx-3 px-3 py-2">
+            <textarea
+              id="script"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void generate();
+              }}
+              rows={5}
+              spellCheck={false}
+              placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
+              className="w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink placeholder:text-ink-muted"
+            />
+          </div>
 
           <div className="mt-6 border-t border-hairline pt-6">
             <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />
@@ -159,23 +162,8 @@ export default function Studio() {
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <label htmlFor="voice" className="eyebrow">
-                Voz
-              </label>
-              <select
-                id="voice"
-                value={voiceId}
-                onChange={(e) => setVoiceId(e.target.value)}
-                disabled={!voices.length}
-                className="rounded-full border border-hairline bg-surface px-4 py-2 text-sm text-ink outline-none transition-colors duration-200 hover:border-accent disabled:opacity-40"
-              >
-                {voices.length === 0 && <option>Sin voces</option>}
-                {voices.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.label}
-                  </option>
-                ))}
-              </select>
+              <span className="eyebrow">Voz</span>
+              <VoiceSelect voices={voices} value={voiceId} onChange={setVoiceId} />
 
               {current && (
                 <a
@@ -243,7 +231,15 @@ export default function Studio() {
             aria-label="Cerrar historial"
             className="grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink"
           >
-            <span aria-hidden="true">✕</span>
+            {/* Drawn, not a Unicode glyph standing in for an icon. */}
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path
+                d="M2.5 2.5 9.5 9.5M9.5 2.5 2.5 9.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
 

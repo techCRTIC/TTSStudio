@@ -144,10 +144,33 @@ body {
   box-shadow: var(--rim-strong);
 }
 
-/* The focus ring is the accent, always. */
-:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+/* The focus ring is the accent — on things you ACT on.
+   A text field is deliberately excluded: drawing a 2px accent rectangle around
+   a large multiline field tells you what the caret already told you, and at
+   that size the ring stops being a hint and becomes the loudest object on the
+   screen. Text fields express focus through the surface holding them. */
+:where(a, button, [role="button"], select, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* A field group: the surface reacts, not the input. The rim brightens and the
+   hairline warms — enough to locate the caret, quiet enough to keep writing in. */
+.field {
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition:
+    border-color var(--dur-lift) var(--ease-ui),
+    background-color var(--dur-lift) var(--ease-ui);
+}
+
+.field:focus-within {
+  border-color: var(--hairline);
+  background: color-mix(in srgb, var(--ink-0) 2%, transparent);
+}
+
+.field :where(textarea, input):focus-visible {
+  outline: none;
 }
 
 /* Reduced motion is a requirement here, not a courtesy: the surface leans on
