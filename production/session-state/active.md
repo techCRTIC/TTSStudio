@@ -8,8 +8,8 @@ borrador, ya completo, vive en `directives/session-log.md`.
 
 ---
 
-**Status:** sesión 1 — MVP funcionando, auditado y corregido.
-**Last update:** 2026-08-19 (README añadido)
+**Status:** sesión 1 — MVP funcionando, auditado, y con un solo comando para correrlo.
+**Last update:** 2026-08-19 (lanzador `npm start`)
 
 ## Current task
 Ninguna en curso. El MVP está cerrado: el usuario abrió la app, generó voz sin
@@ -17,18 +17,23 @@ problemas y aprobó el diseño. La auditoría técnica se pasó y sus siete hall
 están corregidos.
 
 ## Cómo levantarlo
-Instrucciones completas, requisitos y modos de fallo → **`README.md`** (raíz).
-En corto:
 ```
-comfy launch --background   # el motor, en 127.0.0.1:8188
-cd web && npm run start     # la app, en http://localhost:3000
-cd web && npm test          # 7 tests, 2 contra el motor real
+npm start        # desde la RAÍZ. Un solo comando.
 ```
+Comprueba y levanta ComfyUI si hace falta, libera el puerto, compila, arranca y
+abre el navegador cuando la app ya responde. `Ctrl+C` cierra el servidor de
+verdad — ya no deja el proceso huérfano que antes se quedaba con el puerto.
 
-⚠️ `npm run start` deja un proceso Node que **sobrevive a `TaskStop`**. Si el
-puerto 3000 da `EADDRINUSE`, hay que matarlo por PID (`netstat -ano | grep 3000`).
-Esto ya causó un diagnóstico falso una vez: se estaba mirando el build viejo
-servido por el proceso zombi y parecía una ruta rota.
+Variantes: `PORT=3001 npm start` · `COMFY_URL=… npm start` · `COMFY_BIN=… npm start`
+Otros: `npm run dev` (recarga en caliente) · `npm test` · `npm run build`
+
+Detalle completo y modos de fallo → **`README.md`**.
+
+## Dónde quedan los audios
+En la salida de ComfyUI (`C:\Users\tech\comfy\output\ttsstudio_NNNNN.flac`), no
+dentro del proyecto: la app los referencia por URL en vez de copiarlos. El botón
+Descargar deja una copia propia; el historial de la bandeja guarda texto y
+enlace, **no** el audio, así que vaciar esa carpeta deja las tomas viejas mudas.
 
 ## Lo único no verificado
 **El comportamiento en ventanas angostas.** No hubo navegador en la sesión, así
@@ -38,8 +43,8 @@ abierto estrecho. Si la app se va a usar solo en el escritorio de esta máquina,
 da lo mismo; si no, es lo primero que hay que probar.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, doce commits. El último: `8673d57 docs: README with
-how to run it`.
+Rama `main`, árbol limpio, quince commits. El último: `fd1f39b docs: README
+covers npm start and where the audio lands`.
 
 Salud verificada: 7 tests en verde (2 contra el motor real), build de producción
 correcto, `tsc` y `eslint` limpios, y el detector de diseño de `impeccable` sin

@@ -25,6 +25,7 @@
 - **El usuario la abrió, generó sin problemas y aprobó el diseño.** La cadena completa está probada por él, no por mí.
 - Se le pasó una auditoría técnica: siete hallazgos verificados, todos corregidos. El puntaje de salud subió de 13/20 a 18/20.
 - Se escribió el README con cómo correrla, para que las instrucciones no vivan solo en la conversación.
+- Se englobó todo en **un solo `npm start`** desde la raíz: comprueba y levanta ComfyUI, libera el puerto, compila, arranca y abre el navegador cuando la app ya responde.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -36,11 +37,13 @@
 
 - **El fondo animado no es decoración prestada:** cada capa del campo es una suma de dos senoides, que es lo que es una onda de audio. El fondo es el tema del producto, no un adorno encima.
 - **El historial vive en el navegador**, no en una base de datos: es una app de un solo usuario donde nada se comparte ni se consulta, así que una base de datos sería ceremonia.
+- **El lanzador solo mata lo que confirma que es suyo.** Antes de liberar el puerto consulta quién contesta y exige el título de la app; cualquier otra cosa la reporta y se detiene, en vez de matar un proceso ajeno del usuario.
+- **Los audios no se copian al proyecto.** Quedan en la salida de ComfyUI y la app los referencia por URL; duplicarlos gastaría el doble de disco sin ganar nada. A cambio, el historial guarda texto y enlace, no audio: si se vacía esa carpeta, las tomas viejas dejan de sonar.
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
 **Estado al cerrar:** rama `main` · árbol limpio · diez commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
-**Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Cómo levantar todo está en el `README.md`.
+**Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
 <!-- /cierre -->
 
 **Time:** sesión larga, un solo tramo.
@@ -83,6 +86,19 @@ Siete hallazgos, todos medidos o greppeados, no supuestos. Todos corregidos:
 - **El bucle del canvas no paraba nunca**, ni en segundo plano. Importa más aquí que en una web normal: la misma GPU corre la inferencia que el usuario está esperando.
 - **El bloque de movimiento reducido era un exterminio global de 0,01ms**, que mata también la retroalimentación de los controles. Ahora sobreviven color, opacidad y sombra; se elimina el movimiento.
 - Objetivos táctiles bajo 44px, y una referencia escrita durante el render.
+
+### El lanzador (final de la sesión)
+`npm start` en la raíz reemplaza los tres pasos manuales y la pestaña del
+navegador. Probado en sus dos caminos: con el puerto libre, y con un servidor
+anterior todavía vivo (lo detectó, comprobó que era nuestro y lo cerró).
+
+**Un error propio en el camino:** intenté quitar un aviso de Node llamando a
+`npm.cmd` directamente en vez de con shell, y lo rompí del todo — desde la
+mitigación de CVE-2024-27980, Node se niega a lanzar archivos `.cmd` sin shell.
+Encima me había tragado el error, así que el fallo salió mudo. La solución real
+fue saltarse npm y llamar al binario de Next por Node: sin `.cmd`, sin shell, y
+sin el aviso. Lección aplicada al código: el lanzador ahora reporta
+`res.error` y el código de salida en vez de un mensaje genérico.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.
