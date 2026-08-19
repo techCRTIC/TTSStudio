@@ -1,8 +1,16 @@
 .tmp/
-.env
-credentials.json
-token.json
 node_modules/
 __pycache__/
 *.pyc
 .venv/
+
+# Credentials and local overrides — never committed.
+.env
+.env.*
+credentials.json
+token.json
+*.pem
+*.key
+id_rsa*
+settings.local.json
+production/session-logs/

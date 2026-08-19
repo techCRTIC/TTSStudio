@@ -11,44 +11,51 @@
 <!-- cierre -->
 ## 🧾 Cierre — Sesión 1 · 2026-08-19
 
-**En una frase:** TTS Studio nació entero en una sesión — identidad, arquitectura, dirección visual, y una app que genera voz clonada de verdad, auditada y corregida.
+**En una frase:** TTS Studio nació entero en una sola sesión: de carpeta vacía a
+una aplicación que genera voz clonada, con su arquitectura decidida, su diseño
+propio y su documentación al día.
 
 **Qué se hizo**
-- Se levantó el andamiaje del proyecto, que no existía, y se inició el repositorio.
-- Se definió qué es TTS Studio: una app con interfaz para generar voz clonada, de un solo usuario, con el motor Qwen3-TTS corriendo local sobre ComfyUI.
-- Se midió un límite de ComfyUI que decidió la arquitectura: rechaza con 403 cualquier petición que venga de otro origen. Eso obliga a que la app tenga un componente de servidor propio.
-- Se eligió el stack (Next.js con Tailwind y shadcn) y se cerró la dirección visual: un spinoff oscuro del sistema CRTIC clean, con una pantalla de escenario central y una bandeja lateral para el guión y el historial.
-- Se generaron tres bocetos con Qwen-Image en el ComfyUI de la casa para ver la dirección antes de construirla.
-- Se construyó la Fase 0: proyecto Next en pie, capa de tokens oscuros, y el proxy hacia ComfyUI con siete tests en verde, dos de ellos contra el motor real.
-- El usuario dejó el kit real del sistema CRTIC dentro del proyecto a mitad de sesión. Se verificó que su versión vigente es idéntica a la que ya se había usado para derivar los tokens, así que no hubo nada que rehacer.
-- Se construyó la pantalla de generación: la tarjeta central sobre un campo de audio animado, la bandeja lateral con el historial, la onda dibujada desde el audio real, y el selector de voz que lee la biblioteca directamente del motor.
-- **El usuario la abrió, generó sin problemas y aprobó el diseño.** La cadena completa está probada por él, no por mí.
-- Se le pasó una auditoría técnica: siete hallazgos verificados, todos corregidos. El puntaje de salud subió de 13/20 a 18/20.
-- Se escribió el README con cómo correrla, para que las instrucciones no vivan solo en la conversación.
-- Se englobó todo en **un solo `npm start`** desde la raíz: comprueba y levanta ComfyUI, libera el puerto, compila, arranca y abre el navegador cuando la app ya responde.
-- El usuario señaló tres molestias visuales y se corrigieron: el rectángulo naranja de foco sobre el cuadro de texto, el desplegable nativo de la voz, y un fondo animado que a veces se pegaba.
-- El cuadro de texto pasó a crecer con lo que se escribe, con desvanecidos en los bordes cuando hay más contenido del que cabe.
-- El estado del motor bajó de la barra superior a la fila del propio campo, y su texto transforma el ancho al cambiar en vez de dar saltos.
-- El usuario reportó que la animación del campo no se veía y que las pelotitas del fondo seguían trabándose. Ambos eran bugs reales y propios, y se corrigieron.
-- A petición del usuario, el escenario ahora **arranca plegado como una barra de búsqueda** y se despliega entero al pincharlo.
+- Se levantó el proyecto desde cero: no existía nada, ni siquiera el repositorio.
+- Se definió qué es: una app de escritorio-en-navegador, de un solo usuario, que
+  convierte texto en voz clonada usando el motor que ya estaba instalado en esta
+  máquina.
+- Se midió un límite de ComfyUI que decidió toda la arquitectura: rechaza
+  cualquier petición que venga de otra página, así que la app necesita un
+  componente propio de servidor que hable con él.
+- Se construyó la aplicación completa: la pantalla, el motor de fondo animado,
+  el reproductor con forma de onda, el selector de voz y el historial.
+- El usuario la usó, generó voz real y aprobó el resultado.
+- Se le pasó una auditoría técnica y se corrigieron sus siete hallazgos, más
+  tres bugs de animación que solo aparecieron usándola.
+- Se dejó todo arrancable con un solo comando y documentado en el README.
 
 **Qué se decidió y por qué**
-- **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
-- **Motor local Qwen3-TTS**, porque ya estaba instalado y validado con audio real, no cuesta por uso y la voz nunca sale de la máquina. Se descartaron las APIs de pago y el híbrido.
-- **Next.js sobre Tauri**, aunque Tauri daría una app de escritorio de verdad: el toolchain de Rust y las compilaciones lentas gravan cada iteración, y un MVP gasta iteraciones. Tauri sigue disponible como envoltorio más adelante.
-- **El servidor MCP `comfy` queda fuera del runtime de la app.** Es un protocolo para agentes; meterlo dentro de la app arrastraría comfy-cli, un venv de Python y prompts de consentimiento en medio de la interfaz.
-- **El botón primario invierte su tinta respecto del sistema padre.** Se midió que blanco sobre el naranja da 3,54 y no pasa el estándar de contraste; grafito sobre naranja da 5,15.
-- **Se descartó `AetherFlow` como fondo animado** en favor de `PlotFieldBg`: el primero es morado sobre negro puro, que viola dos prohibiciones del sistema, y no respeta movimiento reducido.
+- **App con interfaz**, no un conjunto de scripts ni un laboratorio de
+  entrenamiento: el objetivo es usarla a diario. Se descartaron ambas.
+- **Motor local**, porque ya estaba instalado y validado, no cuesta por uso y la
+  voz nunca sale de la máquina. Se descartaron las APIs de pago y el híbrido.
+- **Next.js sobre Tauri**, aunque Tauri daría una app de escritorio de verdad:
+  su cadena de compilación grava cada iteración y un MVP gasta iteraciones.
+  Tauri sigue disponible como envoltorio más adelante (anotado en la lista de
+  pendientes).
+- **El botón principal lleva tinta oscura sobre naranja**, al revés que el
+  sistema de marca: se midió que el blanco no alcanza el contraste mínimo.
+- **No se inventan medidores de progreso.** Mientras el motor trabaja no hay
+  nada medible, así que la interfaz dice en qué punto de la cola está y no
+  finge una barra.
 
-- **El fondo animado no es decoración prestada:** cada capa del campo es una suma de dos senoides, que es lo que es una onda de audio. El fondo es el tema del producto, no un adorno encima.
-- **El historial vive en el navegador**, no en una base de datos: es una app de un solo usuario donde nada se comparte ni se consulta, así que una base de datos sería ceremonia.
-- **El lanzador solo mata lo que confirma que es suyo.** Antes de liberar el puerto consulta quién contesta y exige el título de la app; cualquier otra cosa la reporta y se detiene, en vez de matar un proceso ajeno del usuario.
-- **Los audios no se copian al proyecto.** Quedan en la salida de ComfyUI y la app los referencia por URL; duplicarlos gastaría el doble de disco sin ganar nada. A cambio, el historial guarda texto y enlace, no audio: si se vacía esa carpeta, las tomas viejas dejan de sonar.
+**Estado al cerrar:** rama `main` · árbol limpio · 27 commits · 7 tests en verde
+(2 contra el motor real) · compilación correcta · detector de diseño sin
+hallazgos salvo dos excepciones documentadas a propósito. Nada a medias.
+Sin verificar: el comportamiento en ventanas angostas, porque no hubo navegador
+en la sesión para probarlo.
 
-**Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
-
-**Estado al cerrar:** rama `main` · árbol limpio · veintiséis commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
-**Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
+**Siguiente paso concreto:** empezar la Fase 2 dando de alta voces nuevas —
+añadir una ruta en `web/src/app/api/voices/` que acepte un audio de referencia,
+lo escriba en la carpeta `input` de ComfyUI y calcule el prompt de voz con el
+nodo `Qwen3PromptMaker` (ya está instalado en el motor, verificado). Hoy solo
+existe *Andres Bobe* porque estaba calculada en disco.
 <!-- /cierre -->
 
 **Time:** sesión larga, un solo tramo.
@@ -223,6 +230,20 @@ pidió, y es su producto.
 - El `max-width` y el `padding` de la tarjeta sí animan maquetación, y es
   deliberado: un momento discreto que el usuario pidió con un clic, no algo que
   corra por fotograma.
+
+### Careo del cierre
+- **Checkers de costura:** ninguno todavía (`execution/check_*.py` no existe —
+  el proyecto aún no tiene código Python).
+- **Hooks del harness:** entraron en el commit de andamiaje y **no se
+  modificaron después**, verificado con `git log 12d5481..HEAD`. Su suite de
+  tests no aplica a esta sesión.
+- **Archivo tocado sin mencionar:** `Componentes/AI-Chat-Box.md` viajó dentro
+  del commit `8a267a4`, cuyo mensaje no lo nombra. Lo aportó el usuario como
+  referencia de diseño y un `git add -A` lo barrió. Es benigno y está
+  explicado, pero queda registrado: un cambio colateral sin explicar es un
+  misterio que hereda la sesión siguiente.
+- **Planeado y no hecho:** B-001 (rescatar el audio de `comfy-mcp/.tmp/`),
+  descartado explícitamente por el usuario con el riesgo asumido por escrito.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.

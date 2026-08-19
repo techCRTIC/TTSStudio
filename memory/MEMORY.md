@@ -10,4 +10,14 @@
 > **Why:** y **How to apply:**, y enlaces `[[name]]` entre memorias
 > relacionadas. Curada por `doc-keeper`.
 
-_(sin entradas todavía)_
+- [[node-refuses-cmd-without-shell]] — en Windows, Node no lanza un `.cmd` sin
+  shell, y con shell avisa en cada ejecución. Llama al entrypoint JS de la
+  herramienta. *(gotcha)*
+- [[react-inline-style-fights-imperative-dom]] — si un efecto escribe una
+  propiedad de estilo, esa propiedad NO puede estar también en el `style` de
+  React: React la reaplica en cada render y pisa al efecto. *(gotcha)*
+- [[canvas-loops-need-accumulated-time-and-zero-allocation]] — un lienzo animado
+  debe acumular su propio tiempo y no asignar nada por fotograma, o se congela y
+  brinca, y tirona rítmicamente. *(gotcha)*
+- [[agent-background-server-dies-with-turn]] — un servidor arrancado como tarea
+  de fondo de un agente no sobrevive al turno; el usuario lo levanta. *(constraint)*

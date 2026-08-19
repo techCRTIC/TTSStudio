@@ -19,31 +19,28 @@ validó la clonación de voz zero-shot con material real y dejó el stack montad
 
 ## Estado actual (sesión 1, 2026-08-19)
 
-**Definido:** identidad, motor, audiencia, alcance, stack, dirección visual.
-**Construido: la Fase 0 del roadmap, terminada y verificada.**
-- Proyecto Next.js 16.3.1 en `web/` (React 19.2.8, Tailwind 4, Geist ya cableado).
-- Capa de tokens del spinoff oscuro de CRTIC clean, con los contrastes medidos.
-- El proxy hacia ComfyUI (`/api/comfy/[...path]`) que exige el ADR-001, con el
-  saneador de cabeceras aislado como función pura en `src/lib/comfy.ts`.
-- 7 tests en verde, 2 de ellos contra el motor real, y build de producción
-  correcto. Verificado de extremo a extremo: una petición con `Origin` de
-  navegador atraviesa el proxy y devuelve 200 con datos reales de ComfyUI.
+**La aplicación existe, funciona y el usuario ya generó voz con ella.**
 
-**Fase 1 (el MVP) sin empezar.**
+- `web/` — Next.js 16.3.1 + React 19 + Tailwind 4 + Geist. Se levanta con
+  `npm start` desde la raíz: un lanzador comprueba ComfyUI (y lo arranca si
+  hace falta), libera el puerto, compila, sirve y abre el navegador.
+- **La pantalla** es un escenario que arranca plegado como una barra de búsqueda
+  y se despliega al pincharlo: área de escritura que crece con el texto, campo
+  de audio animado de fondo, reproductor con forma de onda leída del audio real,
+  selector de voz propio y bandeja lateral con el historial.
+- **El puente al motor** vive en `web/src/lib/comfy.ts` + las rutas bajo
+  `web/src/app/api/`. 7 tests en verde, dos de ellos contra el ComfyUI real.
+- **Salud verificada al cierre:** tipos, lint, compilación y detector de diseño
+  limpios; las únicas marcas del detector son dos excepciones documentadas en su
+  propio archivo.
 
-**Heredado y funcionando en esta máquina** (de la investigación `comfy-mcp/`):
-- ComfyUI + comfy-cli + el servidor MCP `comfy` registrado a nivel de usuario
-  en Claude Code (`✔ Connected`, 39 tools disponibles).
-- **Qwen3-TTS 1.7B Base** vía el nodo comunitario `ComfyUI-Qwen3-TTS`, con
-  clonación zero-shot validada sobre 15 s de referencia real. Veredicto del
-  usuario sobre la calidad: "bastante decente".
-- Un benchmark de 16 segmentos real-vs-clonado, que es la **línea base de
-  calidad** contra la que se medirá cualquier mejora futura.
-- Whisper (en el venv de ComfyUI) para transcribir referencias.
-- Hardware: RTX 5090 Laptop, 24 GB de VRAM.
+**Fases 0 y 1 del roadmap (el MVP) terminadas.** La Fase 2 —dar de alta voces
+nuevas desde un audio de referencia— no ha empezado: hoy solo existe una voz,
+*Andres Bobe*, porque ya estaba calculada en disco.
 
-**Decisiones cerradas esta sesión:** ADR-001 (puente a ComfyUI) y ADR-002
-(stack). La verdad de producto vive en `PRODUCT.md`.
+**Sin verificar:** el comportamiento en ventanas angostas. No hubo navegador en
+la sesión para probarlo; el código no tiene anchos fijos, pero nadie lo ha
+abierto estrecho.
 
 ## Visión
 Que clonar una voz y producir audio con ella deje de ser un experimento de

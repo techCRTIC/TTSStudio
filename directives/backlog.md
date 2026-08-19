@@ -57,6 +57,21 @@ guíe la instalación de lo que falte y sirva de puerta de entrada. Se solapa co
 B-003 (arranque y salud de ComfyUI desde la app), que probablemente quede
 absorbido por esto.
 
+## B-007 — Cerrar formalmente el trabajo de diseño
+**Status:** idea
+El flujo de `impeccable` exige dos cosas al terminar un mundo visual, y ninguna
+se hizo en la sesión 1 porque no había navegador en la sesión:
+1. **La revisión de acabado** con capturas de escritorio y móvil, que es lo
+   único que juzga el render contra el contrato de dirección.
+2. **`DESIGN.md` del spinoff oscuro**, escrito *desde el mundo construido* y no
+   antes — un reglamento escrito por adelantado se defiende de la realidad en
+   vez de describirla.
+Relacionado: el comportamiento en ventanas angostas tampoco está verificado.
+Las dos excepciones de animación de maquetación (`transition: height` en
+`ScriptField`, `transition: width` en `StatusLine`) deben quedar registradas ahí
+como decisiones, no como deuda.
+
+
 ## Cerradas
 
 ## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`
