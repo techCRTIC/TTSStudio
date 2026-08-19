@@ -30,6 +30,7 @@
 - El cuadro de texto pasó a crecer con lo que se escribe, con desvanecidos en los bordes cuando hay más contenido del que cabe.
 - El estado del motor bajó de la barra superior a la fila del propio campo, y su texto transforma el ancho al cambiar en vez de dar saltos.
 - El usuario reportó que la animación del campo no se veía y que las pelotitas del fondo seguían trabándose. Ambos eran bugs reales y propios, y se corrigieron.
+- A petición del usuario, el escenario ahora **arranca plegado como una barra de búsqueda** y se despliega entero al pincharlo.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -46,7 +47,7 @@
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · veinticuatro commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
+**Estado al cerrar:** rama `main` · árbol limpio · veintiséis commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
 **Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco. Para levantar todo: `npm start` desde la raíz.
 <!-- /cierre -->
 
@@ -204,6 +205,24 @@ ni el detector de diseño: solo mirándolo funcionar.
 
 **Lección para la próxima sesión:** todo esto pasó las cuatro comprobaciones
 automáticas. Lo único que lo encontró fue el usuario usándolo.
+
+### El escenario plegable
+Es el comportamiento de la referencia que un commit anterior **descartó a
+propósito**, argumentando que este escenario está siempre abierto. El usuario lo
+pidió, y es su producto.
+
+- Las dos mitades se pliegan con `grid-template-rows` (1fr→0fr la línea plegada,
+  0fr→1fr el cuerpo). Es la técnica que el detector recomienda en vez de animar
+  `height`, así que **no añadió una tercera excepción**: siguen siendo dos.
+- **Volver a plegarse es conservador a propósito:** solo si está vacío, no hay
+  toma generada y no hay nada en vuelo. Plegar sobre una toma terminada
+  escondería el reproductor y la descarga. Una toma recuperada de la bandeja
+  abre el escenario por la misma razón.
+- El clic que abre también pone el cursor. Pedir un segundo clic para empezar a
+  escribir es de las cosas que dejan una interacción a medias.
+- El `max-width` y el `padding` de la tarjeta sí animan maquetación, y es
+  deliberado: un momento discreto que el usuario pidió con un clic, no algo que
+  corra por fotograma.
 
 ### Next steps / open questions
 - **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.

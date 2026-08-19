@@ -9,7 +9,7 @@ borrador, ya completo, vive en `directives/session-log.md`.
 ---
 
 **Status:** sesión 1 — MVP funcionando, auditado, y con un solo comando para correrlo.
-**Last update:** 2026-08-19 (bugs de animación)
+**Last update:** 2026-08-19 (escenario plegable)
 
 ## Current task
 Ninguna en curso. El MVP está cerrado: el usuario abrió la app, generó voz sin
@@ -49,8 +49,8 @@ abierto estrecho. Si la app se va a usar solo en el escritorio de esta máquina,
 da lo mismo; si no, es lo primero que hay que probar.
 
 ## Estado del repositorio
-Rama `main`, árbol limpio, veinticuatro commits. El último: `75185e2 fix(web): the
-field really animates, and the field's dots really flow`.
+Rama `main`, árbol limpio, veintiséis commits. El último: `65774e0 feat(web): the
+stage starts folded and opens when you click it`.
 
 Salud verificada: 7 tests en verde (2 contra el motor real), build de producción
 correcto, `tsc` y `eslint` limpios, y el detector de diseño de `impeccable` sin
@@ -98,6 +98,11 @@ hallazgos en dos pasadas.
   `transition: height` en `ScriptField` y `transition: width` en `StatusLine`.
   El detector las marca y tiene razón; ambas están razonadas en su propio
   archivo. No "arreglarlas" sin leer eso primero.
+- **El escenario arranca plegado** y se despliega al pincharlo. Solo vuelve a
+  plegarse si está vacío, sin toma generada y sin nada en vuelo — plegar sobre
+  una toma terminada escondería el reproductor y la descarga.
+- **Para alturas automáticas, `grid-template-rows` antes que animar `height`.**
+  Es lo que recomienda el detector y lo que evitó una tercera excepción.
 - **Nunca poner `height`, `width` u otra medida calculada en el estilo inline de
   React si un efecto también la escribe.** React la reaplica en cada render y
   pisa al efecto; en `ScriptField` eso repetía la animación por pulsación. El
