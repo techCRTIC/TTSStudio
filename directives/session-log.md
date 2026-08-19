@@ -6,12 +6,12 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
-## 2026-08-19 — De carpeta vacía a una app que se abre
+## 2026-08-19 — De carpeta vacía a una app que genera voz
 
 <!-- cierre -->
 ## 🧾 Cierre — Sesión 1 · 2026-08-19
 
-**En una frase:** TTS Studio nació entero en una sesión — identidad, arquitectura, dirección visual, y una app que se abre en el navegador y habla con el ComfyUI real.
+**En una frase:** TTS Studio nació entero en una sesión — identidad, arquitectura, dirección visual, y una app que genera voz clonada de verdad, auditada y corregida.
 
 **Qué se hizo**
 - Se levantó el andamiaje del proyecto, que no existía, y se inició el repositorio.
@@ -22,6 +22,8 @@
 - Se construyó la Fase 0: proyecto Next en pie, capa de tokens oscuros, y el proxy hacia ComfyUI con siete tests en verde, dos de ellos contra el motor real.
 - El usuario dejó el kit real del sistema CRTIC dentro del proyecto a mitad de sesión. Se verificó que su versión vigente es idéntica a la que ya se había usado para derivar los tokens, así que no hubo nada que rehacer.
 - Se construyó la pantalla de generación: la tarjeta central sobre un campo de audio animado, la bandeja lateral con el historial, la onda dibujada desde el audio real, y el selector de voz que lee la biblioteca directamente del motor.
+- **El usuario la abrió, generó sin problemas y aprobó el diseño.** La cadena completa está probada por él, no por mí.
+- Se le pasó una auditoría técnica: siete hallazgos verificados, todos corregidos. El puntaje de salud subió de 13/20 a 18/20.
 
 **Qué se decidió y por qué**
 - **App con interfaz**, no un pipeline de scripts ni un laboratorio de fine-tuning: el objetivo es usarla a diario, no automatizarla.
@@ -36,8 +38,8 @@
 
 **Un error propio, corregido en la sesión:** el primer `git add -A` metió los 74 archivos del kit de diseño dentro del commit de la Fase 0, bajo un mensaje que hablaba de otra cosa. Se separaron en dos commits antes de seguir; estaba sin push, así que fue limpio.
 
-**Estado al cerrar:** rama `main` · árbol limpio · ocho commits · 7 tests en verde · build correcto · la app se abre en `localhost:3000` y lista las voces del motor. **Dos cosas quedaron sin verificar y hay que saberlo: nadie ha visto la pantalla renderizada** (no había navegador en la sesión), **y no se disparó ninguna generación real** (el permiso fue denegado dos veces, así que el primer "Generar" lo hace el usuario).
-**Siguiente paso concreto:** abrir `localhost:3000`, generar una vez de verdad, y juzgar lo que se ve — de ahí sale la lista de arreglos.
+**Estado al cerrar:** rama `main` · árbol limpio · diez commits · 7 tests en verde · build correcto · detector de diseño sin hallazgos. La app genera voz y el usuario lo confirmó. Lo único no verificado es **el comportamiento en ventanas angostas**: no hubo navegador en la sesión, así que el responsive se juzgó leyendo el código, no viéndolo.
+**Siguiente paso concreto:** la Fase 2, dar de alta voces nuevas desde un audio de referencia — hoy solo existe *Andres Bobe* porque ya estaba en disco.
 <!-- /cierre -->
 
 **Time:** sesión larga, un solo tramo.
@@ -71,10 +73,21 @@ Ver el bloque de cierre y los dos ADRs. Además:
 - **El contrato de dirección se estaba borrando entero:** React descarta los comentarios JSX y nunca llegan al HTML. Se reescribió como comentario HTML real y se verificó greppeando la página servida.
 - Se mató un proceso Node huérfano que ocupaba el puerto 3000 desde una prueba anterior: `TaskStop` mata el envoltorio, no el hijo.
 
+### Auditoría (al final de la sesión)
+Siete hallazgos, todos medidos o greppeados, no supuestos. Todos corregidos:
+- **Faltaba `color-scheme: dark`**, así que el desplegable nativo del selector, las barras de scroll y el autocompletado salían en cromo claro sobre página oscura.
+- **El placeholder del textarea medía 2,66:1**: llevaba opacidad 55% sobre un token que ya era tenue, y las dos atenuaciones se multiplicaron.
+- **La página no tenía ni un encabezado.** El nombre del producto pasó a ser el `h1`.
+- **La bandeja cerrada seguía siendo tabulable** — con teclado se entraba en un panel invisible. Ahora lleva `inert` y se cierra con Escape.
+- **El bucle del canvas no paraba nunca**, ni en segundo plano. Importa más aquí que en una web normal: la misma GPU corre la inferencia que el usuario está esperando.
+- **El bloque de movimiento reducido era un exterminio global de 0,01ms**, que mata también la retroalimentación de los controles. Ahora sobreviven color, opacidad y sombra; se elimina el movimiento.
+- Objetivos táctiles bajo 44px, y una referencia escrita durante el render.
+
 ### Next steps / open questions
-- **Abrir la app y juzgarla.** Nadie la ha visto renderizada.
-- **Disparar una generación real**, que es lo único que prueba que la cadena completa funciona.
-- Progreso paso a paso por websocket: hoy el estado es real pero grueso (en cola con posición, generando, listo).
+- **Fase 2, la biblioteca de voces:** dar de alta una voz nueva desde audio de referencia. Es lo que convierte esto en herramienta y no en demo, y el servidor ya puede escribir en el `input` de ComfyUI, que era la parte difícil.
+- Progreso paso a paso por websocket: hoy el estado es real pero grueso (en cola con posición, generando, listo). El navegador no puede conectarse al websocket de ComfyUI por lo mismo del `Origin`, así que habría que hacer de puente desde el servidor.
+- **Responsive sin verificar en navegador.** No hay anchos fijos y la bandeja topa en `86vw`, pero nadie lo ha abierto en una ventana angosta.
+- El usuario marcó dos direcciones de futuro, ya en el backlog: app de escritorio (B-005) y fase previa de instalación con portal de ingreso (B-006).
 - Al construir la interfaz, corregir lo que el modelo de imagen hizo mal en los bocetos: superficies mates y no vidriosas, grilla del campo al 8%, bandeja subordinada al escenario, y fila activa marcada con filo lateral y no con recuadro naranja completo.
 - `DESIGN.md` se escribe al terminar la Fase 1, desde el mundo construido, como manda el flujo de `impeccable`.
 - ✅ Resuelto en la sesión: `.gitattributes` añadido, se acabaron los avisos de LF/CRLF.
