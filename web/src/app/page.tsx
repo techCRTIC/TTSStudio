@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AudioField } from "@/components/AudioField";
+import { ScriptField } from "@/components/ScriptField";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
 import { addTake, useHistory, type Take } from "@/lib/history";
@@ -141,20 +142,13 @@ export default function Studio() {
           <label htmlFor="script" className="eyebrow mb-4 block">
             El texto
           </label>
-          <div className="field -mx-3 px-3 py-2">
-            <textarea
-              id="script"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void generate();
-              }}
-              rows={5}
-              spellCheck={false}
-              placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
-              className="w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink placeholder:text-ink-muted"
-            />
-          </div>
+          <ScriptField
+            id="script"
+            value={text}
+            onChange={setText}
+            onSubmit={() => void generate()}
+            placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
+          />
 
           <div className="mt-6 border-t border-hairline pt-6">
             <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />

@@ -173,6 +173,39 @@ body {
   outline: none;
 }
 
+/* The writing area scrolls past its ceiling, and a native scrollbar inside a
+   dark card is the same browser chrome the voice picker was replaced to avoid.
+   It stays invisible until the pointer is in the field, then reads as a hairline. */
+.script-area {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color var(--dur-lift) var(--ease-ui);
+}
+
+.field:hover .script-area,
+.field:focus-within .script-area {
+  scrollbar-color: var(--hairline) transparent;
+}
+
+.script-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.script-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.script-area::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+  transition: background-color var(--dur-lift) var(--ease-ui);
+}
+
+.field:hover .script-area::-webkit-scrollbar-thumb,
+.field:focus-within .script-area::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+}
+
 /* Reduced motion is a requirement here, not a courtesy: the surface leans on
    an animated canvas field, and this product is used for long sessions.
    It is NOT a blanket kill, though. Killing every transition also kills the
