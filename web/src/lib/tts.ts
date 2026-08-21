@@ -7,7 +7,7 @@
  * call, which is waste once the voice exists.
  */
 
-import { comfyFetch, comfyUrl } from "./comfy";
+import { comfyFetch, comfyUrl } from "./comfy.ts";
 
 export type Voice = { id: string; label: string };
 
@@ -15,6 +15,17 @@ export type GenerationStatus =
   | { state: "queued"; position: number | null }
   | { state: "running" }
   | { state: "done"; audioUrl: string; filename: string }
+  /**
+   * Finished successfully, but produced no audio — which is the NORMAL outcome
+   * for a graph whose job is to write a file. Voice registration ends in
+   * Qwen3SavePrompt, an OUTPUT_NODE that saves a .safetensors and reports
+   * `outputs: {}`.
+   *
+   * Without this state, such a job reads as "queued" forever: the history
+   * entry exists and is successful, but the audio lookup finds nothing and the
+   * queue no longer lists it. Measured against the real engine on 2026-08-21.
+   */
+  | { state: "finished" }
   | { state: "failed"; message: string };
 
 /** Turn "andres_bobe.safetensors" into "Andres Bobe". */
@@ -41,7 +52,89 @@ export async function listVoices(): Promise<Voice[]> {
   return combo.map((id: string) => ({ id, label: labelFor(id) }));
 }
 
-export function buildWorkflow(text: string, voiceId: string, seed: number) {
+/**
+ * Everything Qwen3VoiceClone actually exposes, and nothing more.
+ *
+ * Read off the node's own INPUT_TYPES (nodes.py:702-719), not from memory:
+ * `seed`, `language` and `max_new_tokens` are the only knobs on the cached
+ * path. There is no temperature, no speed, no emotion and no pitch — the
+ * product rule is that the interface never offers a control the engine lacks.
+ */
+export const SEED_MIN = 1;
+/**
+ * The node accepts up to 2^64-1, which JavaScript cannot represent exactly as
+ * a number. Random seeds are drawn below 2^31 so every value we generate,
+ * store and round-trip through JSON is exact.
+ */
+export const SEED_MAX_SAFE = 2 ** 31 - 1;
+
+export const TOKENS_MIN = 64;
+export const TOKENS_MAX = 8192;
+export const TOKENS_STEP = 64;
+export const TOKENS_DEFAULT = 4096;
+
+/** The node's own list, in its own order, with Auto first. */
+export const LANGUAGES = [
+  "Auto",
+  "Spanish",
+  "English",
+  "Portuguese",
+  "Italian",
+  "French",
+  "German",
+  "Russian",
+  "Chinese",
+  "Japanese",
+  "Korean",
+] as const;
+
+export type Language = (typeof LANGUAGES)[number];
+
+/**
+ * Absent, or not a number at all.
+ *
+ * `Number(null)`, `Number("")` and `Number([])` are all 0, not NaN — so a
+ * plain `Number()` turns "nothing was sent" into "the number zero" and the
+ * clamp below happily accepts it. Missing has to be recognised BEFORE the
+ * coercion, or an omitted ceiling silently becomes the minimum one.
+ */
+function isAbsent(value: unknown): boolean {
+  return value === null || value === undefined || value === "" || typeof value === "object";
+}
+
+/** A seed the engine will accept: whole, in range, never zero. */
+export function normalizeSeed(value: unknown): number {
+  if (isAbsent(value)) return randomSeed();
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return randomSeed();
+  return Math.min(SEED_MAX_SAFE, Math.max(SEED_MIN, n));
+}
+
+/** Snap to the node's step and clamp, so ComfyUI never rejects the graph. */
+export function normalizeTokens(value: unknown): number {
+  if (isAbsent(value)) return TOKENS_DEFAULT;
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return TOKENS_DEFAULT;
+  const snapped = Math.round(n / TOKENS_STEP) * TOKENS_STEP;
+  return Math.min(TOKENS_MAX, Math.max(TOKENS_MIN, snapped));
+}
+
+export function randomSeed(): number {
+  // SEED_MIN is 1, and the node rejects 0 — so the floor is added, never risked.
+  return SEED_MIN + Math.floor(Math.random() * (SEED_MAX_SAFE - SEED_MIN));
+}
+
+export type GenerationOptions = {
+  language?: Language;
+  maxNewTokens?: number;
+};
+
+export function buildWorkflow(
+  text: string,
+  voiceId: string,
+  seed: number,
+  options: GenerationOptions = {},
+) {
   return {
     "1": {
       class_type: "Qwen3Loader",
@@ -62,9 +155,12 @@ export function buildWorkflow(text: string, voiceId: string, seed: number) {
         model: ["1", 0],
         prompt: ["2", 0],
         text,
-        seed,
-        language: "Spanish",
-        max_new_tokens: 4096,
+        seed: normalizeSeed(seed),
+        // Spanish stays the default rather than "Auto": this user writes in
+        // Spanish, and letting the model guess on a short line is a coin flip
+        // nobody asked for.
+        language: options.language ?? "Spanish",
+        max_new_tokens: normalizeTokens(options.maxNewTokens ?? TOKENS_DEFAULT),
       },
     },
     "4": {
@@ -75,11 +171,16 @@ export function buildWorkflow(text: string, voiceId: string, seed: number) {
 }
 
 /** Submit a graph and return ComfyUI's prompt id. */
-export async function submit(text: string, voiceId: string, seed: number): Promise<string> {
+export async function submit(
+  text: string,
+  voiceId: string,
+  seed: number,
+  options: GenerationOptions = {},
+): Promise<string> {
   const res = await comfyFetch(comfyUrl(["prompt"]), {
     method: "POST",
     headers: new Headers({ "content-type": "application/json" }),
-    body: JSON.stringify({ prompt: buildWorkflow(text, voiceId, seed) }),
+    body: JSON.stringify({ prompt: buildWorkflow(text, voiceId, seed, options) }),
   });
 
   const payload = await res.json().catch(() => null);
@@ -115,6 +216,11 @@ export async function statusOf(promptId: string): Promise<GenerationStatus> {
           audioUrl: `/api/comfy/view?filename=${encodeURIComponent(audio.filename)}&subfolder=${encodeURIComponent(audio.subfolder ?? "")}&type=${encodeURIComponent(audio.type ?? "output")}`,
         };
       }
+
+      // The engine said it succeeded and there is no audio to hand back. That
+      // is a completed file-writing graph, not a job still waiting — falling
+      // through to the queue lookup below would report it as queued forever.
+      if (status.completed === true) return { state: "finished" };
     }
   }
 

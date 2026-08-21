@@ -81,3 +81,37 @@ export function useHistory(): Take[] {
 export function addTake(take: Take): void {
   commit([take, ...getSnapshot()]);
 }
+
+/**
+ * Forget a take AND delete its audio from ComfyUI's output directory.
+ *
+ * Two halves that must both happen: the entry lives here in the browser, the
+ * .flac lives on disk, and leaving either behind is the wrong outcome — an
+ * orphan file nothing references, or an entry pointing at nothing.
+ *
+ * The disk delete goes first. If it fails, the entry stays, so the user can see
+ * what happened and try again; dropping the row first would lose the only
+ * handle to the file.
+ *
+ * ⚠️ Irreversible. The audio is not regenerable — the same text with the same
+ * seed produces the same take, but only while the voice still exists.
+ */
+export async function deleteTake(take: Take): Promise<void> {
+  const url = new URL(take.audioUrl, window.location.origin);
+  const filename = url.searchParams.get("filename");
+
+  if (filename) {
+    const params = new URLSearchParams({
+      filename,
+      subfolder: url.searchParams.get("subfolder") ?? "",
+      type: url.searchParams.get("type") ?? "output",
+    });
+    const res = await fetch(`/api/takes?${params}`, { method: "DELETE" });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.message ?? "No se pudo borrar el archivo de audio.");
+    }
+  }
+
+  commit(getSnapshot().filter((t) => t.id !== take.id));
+}
