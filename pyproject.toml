@@ -1,0 +1,11 @@
+[project]
+name = "ttsstudio-execution"
+version = "0.1.0"
+description = "Deterministic Python tools (Layer 3) for TTS Studio."
+requires-python = ">=3.11"
+dependencies = [
+    "faster-whisper>=1.2.1",
+]
+
+[tool.uv]
+package = false
