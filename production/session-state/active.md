@@ -8,9 +8,17 @@ que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 
 ---
 
-**Status:** sesión 2 en curso. Fase 2 completa salvo la procedencia de las
-voces, más opciones avanzadas y borrado real. Falta mirarlo en un navegador.
+**Status:** sesión 2 en curso, **todo commiteado y el árbol limpio** (9 commits
+sobre `main`, sin push). Fase 2 completa salvo la procedencia de las voces, más
+opciones avanzadas, grabación por micrófono y borrado real.
 **Last update:** 2026-08-21
+
+## Lo último que hizo el usuario
+Probó en el navegador la biblioteca de voces y las opciones avanzadas y las
+aprobó («funciona», «me gusta mucho cómo se ve»). Mandó una captura señalando
+que el desplegable de idioma tenía el aspecto del sistema operativo, y eso ya
+está resuelto. **Lo que todavía no ha visto nadie:** la grabación por micrófono
+y el desplegable nuevo.
 
 ## Current task
 **Fase 2 — biblioteca de voces.** Dar de alta voces nuevas desde un audio de
@@ -38,6 +46,9 @@ referencia.
 - **`web/src/lib/comfy-files.ts` + `/api/takes`** — borrado real de archivos del
   disco de ComfyUI (ADR-004). Único módulo que toca `node:fs`.
 - **`execution/check_engine_options.py`** — segundo verificador de costura.
+- **`/api/voices/reference`** — borra el audio de referencia en cuanto la voz
+  queda creada. Verificado contra el disco real con un señuelo; los audios que
+  el usuario ya tenía en `input/` quedaron intactos.
 - **`web/src/components/VoiceRecorder.tsx` + `lib/recording.ts`** — grabar la
   voz desde el micrófono, con guión en pantalla para leer. Convierte a WAV en
   el navegador para no depender del formato de cada navegador.
