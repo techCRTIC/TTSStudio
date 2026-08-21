@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * The waveform of the actual generated audio, decoded from the file — not a
@@ -29,6 +29,9 @@ export function Waveform({
   // reaching in to reset it.
   const [decoded, setDecoded] = useState<Decoded | null>(null);
   const [progress, setProgress] = useState(0);
+  // The continuous position. `progress` state exists only to drive the text
+  // readout, which changes once a second; the canvas follows this instead.
+  const progressRef = useRef(0);
   const [playing, setPlaying] = useState(false);
 
   const fresh = decoded && decoded.src === src ? decoded : null;
@@ -74,40 +77,111 @@ export function Waveform({
     return () => { cancelled = true; };
   }, [src]);
 
-  // Paint
+  /**
+   * Repaint at `p` (0..1). Deliberately NOT driven by React state.
+   *
+   * The played portion has to move at sixty frames a second, and routing that
+   * through setState would re-render this component that often for a value only
+   * the canvas consumes. A canvas is a pixel buffer, not markup — writing to it
+   * imperatively conflicts with nothing React is also rendering.
+   */
+  const paint = useCallback(
+    (p: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const needW = Math.floor(w * dpr);
+      const needH = Math.floor(h * dpr);
+
+      // Resizing a canvas RESETS it, so it is done only when the size really
+      // changed. Doing it per frame — which the previous version did, because
+      // the paint was keyed on progress — threw away and rebuilt the backing
+      // store sixty times a second.
+      if (canvas.width !== needW || canvas.height !== needH) {
+        canvas.width = needW;
+        canvas.height = needH;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      const mid = h / 2;
+      const hasPeaks = !!peaks?.length;
+      const count = hasPeaks ? peaks!.length : Math.floor(w / (BAR_W + BAR_GAP));
+      const played = Math.floor(count * p);
+
+      // No array is built here: the empty state draws flat bars from a
+      // constant. Allocating per frame is what the canvas memory warns about.
+      for (let i = 0; i < count; i += 1) {
+        const value = hasPeaks ? peaks![i] : 0.06;
+        const barH = Math.max(2, value * (h - 8));
+        ctx.fillStyle = i <= played && hasPeaks ? "rgb(250,69,21)" : "rgba(154,154,160,0.34)";
+        ctx.fillRect(i * (BAR_W + BAR_GAP), mid - barH / 2, BAR_W, barH);
+      }
+    },
+    [peaks],
+  );
+
+  // Paint whenever something OTHER than playback changed it: a new shape, a
+  // seek while paused, the first render.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    paint(progressRef.current);
+  }, [paint, progress]);
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-
-    const bars = peaks?.length ? peaks : Array.from({ length: Math.floor(w / (BAR_W + BAR_GAP)) }, () => 0.06);
-    const mid = h / 2;
-    const played = Math.floor(bars.length * progress);
-
-    bars.forEach((p, i) => {
-      const x = i * (BAR_W + BAR_GAP);
-      const barH = Math.max(2, p * (h - 8));
-      ctx.fillStyle = i <= played && peaks?.length ? "rgb(250,69,21)" : "rgba(154,154,160,0.34)";
-      ctx.fillRect(x, mid - barH / 2, BAR_W, barH);
-    });
-  }, [peaks, progress]);
-
-  // Report loudness upward so the backdrop can lift while audio plays.
+  /**
+   * Follow playback frame by frame.
+   *
+   * `timeupdate` is what this used to listen to, and browsers fire it about
+   * four times a second — which is exactly what a cursor advancing in visible
+   * one-second steps looks like. The element's clock is read every frame
+   * instead.
+   *
+   * ⚠️ Reading the clock here is CORRECT, and is the documented exception to
+   * [[canvas-loops-need-accumulated-time-and-zero-allocation]]. That memory says
+   * to accumulate time rather than read it — true for a free-running animation,
+   * wrong for a cursor tracking a medium that owns its own timeline. Accumulate
+   * here and the cursor drifts away from the sound it is supposed to point at.
+   * The other half of that memory — allocate nothing per frame — applies in
+   * full, and `paint` honours it.
+   */
   useEffect(() => {
-    if (!onEnergy) return;
-    if (!playing || !peaks?.length) { onEnergy(0); return; }
-    const idx = Math.min(peaks.length - 1, Math.floor(peaks.length * progress));
-    onEnergy(peaks[idx] ?? 0);
-  }, [playing, progress, peaks, onEnergy]);
+    const audio = audioRef.current;
+    if (!playing || !audio) {
+      onEnergy?.(0);
+      return;
+    }
+
+    let frame = 0;
+    let shownSecond = -1;
+
+    const tick = () => {
+      const p = audio.duration ? audio.currentTime / audio.duration : 0;
+      progressRef.current = p;
+      paint(p);
+
+      if (peaks?.length && onEnergy) {
+        onEnergy(peaks[Math.min(peaks.length - 1, Math.floor(peaks.length * p))] ?? 0);
+      }
+
+      // The readout only changes once a second, so React only hears about it
+      // once a second. Sixty re-renders to redraw the same "0:07" is waste.
+      const second = Math.floor(audio.currentTime);
+      if (second !== shownSecond) {
+        shownSecond = second;
+        setProgress(p);
+      }
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playing, peaks, onEnergy, paint]);
 
   const seek = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const audio = audioRef.current;
@@ -163,10 +237,28 @@ export function Waveform({
           src={src}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
-          onEnded={() => { setPlaying(false); setProgress(0); }}
+          // A different take starts at the beginning. Without this the cursor
+          // keeps the previous one's position and paints it over the new shape
+          // the moment its peaks arrive. Driven by the element rather than by
+          // watching `src` in an effect: the audio knows when it has actually
+          // swapped, and a handler can set state without fighting the linter.
+          onLoadedMetadata={() => {
+            progressRef.current = 0;
+            setProgress(0);
+          }}
+          onEnded={() => {
+            setPlaying(false);
+            progressRef.current = 0;
+            setProgress(0);
+          }}
           onTimeUpdate={(e) => {
+            // While playing, the frame loop owns this. This handler is what
+            // keeps a seek visible when the audio is paused.
+            if (playing) return;
             const a = e.currentTarget;
-            if (a.duration) setProgress(a.currentTime / a.duration);
+            if (!a.duration) return;
+            progressRef.current = a.currentTime / a.duration;
+            setProgress(progressRef.current);
           }}
           className="hidden"
         />

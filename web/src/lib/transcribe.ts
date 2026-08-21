@@ -94,7 +94,18 @@ export async function transcribeFile(
     const child = spawn(
       python,
       [script, audioPath, "--max-seconds", String(maxSeconds)],
-      { cwd: root, windowsHide: true },
+      {
+        cwd: root,
+        windowsHide: true,
+        // Belt and braces on the encoding. The script forces UTF-8 on its own
+        // streams (execution/_console.py), and this makes the interpreter start
+        // that way regardless. Without either, Python writes stdout in the
+        // console's code page — cp1252 here — and "más" arrives as a byte that
+        // is not valid UTF-8, so every accent reaches the browser as U+FFFD.
+        // That is not cosmetic: the transcript is what the voice embedding is
+        // computed against.
+        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+      },
     );
 
     let stdout = "";
@@ -113,6 +124,14 @@ export async function transcribeFile(
       clearTimeout(timer);
       fn();
     };
+
+    // Stated rather than left to the default. Concatenating Buffers with `+=`
+    // decodes each chunk on its own, which splits any multi-byte character that
+    // lands on a chunk boundary — an accent turning into a replacement
+    // character depending on how the pipe happened to break. Setting the
+    // encoding hands us a properly decoded string instead.
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
 
     child.stdout.on("data", (chunk) => (stdout += chunk));
     // The script keeps stderr for diagnostics (model loading, trim notices) so

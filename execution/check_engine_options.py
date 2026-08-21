@@ -47,6 +47,8 @@ import re
 import sys
 from pathlib import Path
 
+from _console import use_utf8
+
 ROOT = Path(__file__).resolve().parent.parent
 TTS_TS = ROOT / "web" / "src" / "lib" / "tts.ts"
 PACK_NODES = Path.home() / "comfy" / "custom_nodes" / "ComfyUI-Qwen3-TTS" / "nodes.py"
@@ -121,6 +123,10 @@ def compare(label: str, ours: float | None, theirs: float | None) -> None:
 
 
 def main() -> int:
+    # Windows defaults stdout to the console code page, which turns every
+    # accented character into a byte Node cannot read back. See _console.
+    use_utf8()
+
     try:
         ts_source = TTS_TS.read_text(encoding="utf-8")
     except OSError as cause:

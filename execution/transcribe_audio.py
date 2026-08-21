@@ -52,6 +52,8 @@ import sys
 import time
 from pathlib import Path
 
+from _console import use_utf8
+
 SAMPLE_RATE = 16_000  # what faster-whisper decodes to, and what we slice against
 
 
@@ -138,6 +140,10 @@ def transcribe(samples, args: argparse.Namespace) -> tuple[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows defaults stdout to the console code page, which turns every
+    # accented character into a byte Node cannot read back. See _console.
+    use_utf8()
+
     args = parse_args(argv)
 
     if not args.audio.is_file():

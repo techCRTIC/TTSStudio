@@ -45,6 +45,8 @@ import re
 import sys
 from pathlib import Path
 
+from _console import use_utf8
+
 ROOT = Path(__file__).resolve().parent.parent
 
 VOICES_TS = ROOT / "web" / "src" / "lib" / "voices.ts"
@@ -92,6 +94,10 @@ def node_ceiling(source: str) -> float | None:
 
 
 def main() -> int:
+    # Windows defaults stdout to the console code page, which turns every
+    # accented character into a byte Node cannot read back. See _console.
+    use_utf8()
+
     ts_source = read(VOICES_TS)
     py_source = read(TRANSCRIBE_PY)
     if ts_source is None or py_source is None:

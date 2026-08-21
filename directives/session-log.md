@@ -50,6 +50,9 @@ persona queda disponible como voz para siempre.
   pasó a estar en minutos y segundos, que es como piensa una persona.
 - **El audio de referencia se borra solo** en cuanto la voz queda creada: ya no
   hace falta, y es la grabación de una persona.
+- Se arregló que **las tildes salieran rotas** en la transcripción, que no era un
+  problema de aspecto: ese texto es con el que se fabrica la voz.
+- Se arregló que **el reproductor avanzara a tirones** de un segundo.
 
 **Qué se decidió y por qué**
 - **Escuchar el audio se hace en la app, no dentro del motor.** La alternativa
@@ -96,7 +99,7 @@ persona queda disponible como voz para siempre.
   llama «12Hz», lo que sugería 12 tokens por segundo. La medición dio 12,56.
   Un nombre es una pista, y aquí las pistas no se publican como hechos.
 
-**Estado al cerrar:** rama `main` · **12 commits hechos** · **65 tests
+**Estado al cerrar:** rama `main` · **13 commits hechos** · **65 tests
 en verde, ninguno saltado** · tipos, lint y compilación limpios · los **dos**
 verificadores de costura en verde · el detector de diseño sin hallazgos. El alta
 de voz se ejecutó **de principio a fin contra el motor real** y creó una voz
@@ -282,6 +285,38 @@ unidad humana, ¿qué tal si haces un benchmark aprox de cuánto tiempo es?»*.
 - El verificador de opciones ahora también comprueba que **ningún preset caiga
   fuera del rango o del paso del motor**: una opción así fallaría justo al
   elegirla.
+
+### Sexta parte — las tildes rotas y el reproductor a tirones
+El usuario probó la grabación («funciona impecable») y encontró dos cosas.
+
+- **Las tildes salían rotas en la transcripción.** La causa: en Windows, la
+  salida de Python usa la página de códigos de la consola (cp1252), no UTF-8.
+  «más» se escribía como un byte que **no es UTF-8 válido**, Node lo leía como
+  UTF-8, y cada tilde se convertía en un rombo.
+  - **No era cosmético.** Ese texto es contra el que se calcula la huella de la
+    voz, así que una transcripción corrupta da una voz peor, en silencio y con
+    todos los tests en verde.
+  - Se comprobó si había contaminado alguna voz existente: **no.** `andres_bobe`
+    se creó a mano en la sesión 1 y está limpia; la voz de prueba ya la había
+    borrado el usuario.
+  - Se arregló **la clase entera**, no el caso: los cuatro scripts de
+    `execution/` tenían el mismo defecto. Se creó `execution/_console.py` y
+    todos lo usan. Del lado de Node se añadió además `PYTHONIOENCODING` y
+    `setEncoding`, esto último porque concatenar Buffers rompe un carácter que
+    caiga justo en el borde de un trozo aunque la codificación sea correcta.
+- **El reproductor avanzaba a saltos de un segundo.** Escuchaba el evento
+  `timeupdate`, que el navegador dispara unas cuatro veces por segundo. Ahora
+  sigue la reproducción por fotograma.
+  - De paso se arregló algo peor que estaba al lado: **el repintado
+    redimensionaba el lienzo en cada cambio**, y redimensionar un lienzo lo
+    reinicia entero. Ahora solo se redimensiona cuando el tamaño cambia de
+    verdad, y el dibujo no asigna nada por fotograma.
+  - El texto del tiempo sigue actualizándose una vez por segundo, que es cuando
+    cambia: sesenta re-renders para volver a escribir «0:07» es desperdicio.
+  - Se dejó escrito en el código que **leer el reloj del audio aquí es correcto**
+    y es la excepción documentada a [[canvas-loops-need-accumulated-time-and-zero-allocation]]:
+    acumular tiempo propio serviría para una animación libre, pero un cursor que
+    sigue al sonido se desincronizaría de él.
 
 ### Next steps / open questions
 - **Falta ver en el navegador la grabación y los desplegables nuevos.** La app del usuario corre un

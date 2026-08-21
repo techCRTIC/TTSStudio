@@ -24,3 +24,6 @@
 - [[nextjs-maxduration-does-nothing-locally]] — en Next, `maxDuration` no
   impone nada en local: lo fija la plataforma de despliegue. Escribirlo simula
   un límite que no existe. *(gotcha)*
+- [[python-stdout-is-not-utf8-on-windows]] — en Windows la salida de Python usa
+  cp1252, no UTF-8; al leerla desde Node cada tilde se rompe. Y la consola
+  miente en las dos direcciones: hay que mirar los bytes. *(gotcha)*

@@ -61,6 +61,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _console import use_utf8
+
 # Long enough that even the largest ceiling below runs out before the text does.
 LONG_TEXT = (
     "Hoy quiero contar algo sencillo, sin apuro. Trabajé varios años en esto y "
@@ -184,6 +186,10 @@ def audio_seconds(base: str, audio: dict) -> float:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows defaults stdout to the console code page, which turns every
+    # accented character into a byte Node cannot read back. See _console.
+    use_utf8()
+
     parser = argparse.ArgumentParser(description="Measure the engine's tokens per second.")
     parser.add_argument("--voice", default="")
     parser.add_argument("--ceilings", default="128,256,512")

@@ -8,7 +8,7 @@ que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 
 ---
 
-**Status:** sesión 2 en curso, **todo commiteado y el árbol limpio** (12 commits
+**Status:** sesión 2 en curso, **todo commiteado y el árbol limpio** (13 commits
 sobre `main`, sin push). Fase 2 completa salvo la procedencia de las voces, más
 opciones avanzadas, grabación por micrófono y borrado real.
 **Last update:** 2026-08-21
@@ -114,6 +114,13 @@ npm start        # desde la RAÍZ
 - **El panel de un desplegable va en portal a `<body>`, y no es opcional.** Un
   panel absoluto lo recorta cualquier ancestro con `overflow: hidden`, y el
   panel «Avanzado» tiene uno porque lo necesita para plegarse. Ya pasó.
+- **Todo script de `execution/` llama a `use_utf8()` antes de imprimir.** En
+  Windows la salida de Python es cp1252 y Node la lee como UTF-8: cada tilde se
+  rompe. Y no es cosmético — ese texto fabrica la voz. Ver
+  [[python-stdout-is-not-utf8-on-windows]].
+- **El reproductor sigue el audio por fotograma, no por `timeupdate`.** Y
+  redimensionar un lienzo lo reinicia, así que solo se hace cuando el tamaño
+  cambia de verdad.
 - **12,56 tokens = 1 segundo de audio.** Medido con
   `execution/benchmark_token_rate.py`, no deducido del «12Hz» del nombre. Y un
   techo solo mide algo mientras de verdad limita: si el texto se acaba antes,
