@@ -11,6 +11,9 @@ import {
   TOKENS_MAX,
   TOKENS_STEP,
   TOKENS_DEFAULT,
+  TOKENS_PER_SECOND,
+  TOKEN_PRESETS,
+  tokensToSeconds,
   LANGUAGES,
 } from "../src/lib/tts.ts";
 
@@ -74,6 +77,67 @@ describe("normalizeTokens", () => {
     for (const junk of [NaN, "muchos", null, undefined]) {
       assert.equal(normalizeTokens(junk), TOKENS_DEFAULT);
     }
+  });
+});
+
+describe("the length presets", () => {
+  test("every preset is a value the engine actually accepts", () => {
+    for (const preset of TOKEN_PRESETS) {
+      assert.ok(
+        preset.tokens >= TOKENS_MIN && preset.tokens <= TOKENS_MAX,
+        `${preset.label} (${preset.tokens}) queda fuera del rango del motor`,
+      );
+      assert.equal(
+        preset.tokens % TOKENS_STEP,
+        0,
+        `${preset.label} (${preset.tokens}) no cae en el paso de ${TOKENS_STEP}`,
+      );
+      // Round-tripping through the server's own clamp must not move it.
+      assert.equal(normalizeTokens(preset.tokens), preset.tokens);
+    }
+  });
+
+  test("each label is honest about the duration it promises", () => {
+    // The labels say minutes and seconds; the values are tokens. If the two
+    // drift apart the interface starts lying, so the claim is checked against
+    // the measured rate rather than trusted.
+    const claims: Record<number, number> = {
+      384: 30,
+      768: 60,
+      1536: 120,
+      3776: 300,
+      8192: 660, // "11 min"
+    };
+    for (const preset of TOKEN_PRESETS) {
+      const claimed = claims[preset.tokens];
+      assert.ok(claimed !== undefined, `falta comprobar "${preset.label}"`);
+      const actual = tokensToSeconds(preset.tokens);
+      const error = Math.abs(actual - claimed) / claimed;
+      assert.ok(
+        error < 0.05,
+        `"${preset.label}" promete ${claimed}s pero da ${actual.toFixed(1)}s`,
+      );
+    }
+  });
+
+  test("they are ordered and distinct", () => {
+    const values = TOKEN_PRESETS.map((p) => p.tokens);
+    assert.deepEqual(values, [...values].sort((a, b) => a - b), "no están en orden");
+    assert.equal(new Set(values).size, values.length, "hay duraciones repetidas");
+  });
+
+  test("the default is one of the offered options", () => {
+    assert.ok(
+      TOKEN_PRESETS.some((p) => p.tokens === TOKENS_DEFAULT),
+      "el valor por defecto no aparece en la lista, así que el control saldría en blanco",
+    );
+  });
+
+  test("the measured rate is close to the model's nominal 12 Hz", () => {
+    // Not asserting equality: the name was a hint and the measurement is the
+    // fact. This only catches a rate that is wrong by an order of magnitude,
+    // which would mean the benchmark measured the wrong thing.
+    assert.ok(TOKENS_PER_SECOND > 10 && TOKENS_PER_SECOND < 16, "la tasa medida no es plausible");
   });
 });
 

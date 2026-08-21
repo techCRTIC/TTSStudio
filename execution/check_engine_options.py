@@ -68,6 +68,18 @@ def ts_languages(source: str) -> set[str] | None:
     return set(re.findall(r'"([^"]+)"', match.group(1)))
 
 
+def ts_presets(source: str) -> list[float] | None:
+    """The token counts inside TOKEN_PRESETS, in order."""
+    match = re.search(
+        r"export\s+const\s+TOKEN_PRESETS\s*=\s*\[(.*?)\]\s*as\s+const", source, re.DOTALL
+    )
+    if not match:
+        return None
+    # `tokens: 384` and `tokens: TOKENS_MAX` both appear; only the literals can
+    # be checked here, and the symbolic one is verified by its own comparison.
+    return [float(n) for n in re.findall(r"tokens:\s*([0-9]+)", match.group(1))]
+
+
 def node_block(source: str) -> str | None:
     """Qwen3VoiceClone's INPUT_TYPES body — the authority for everything here."""
     start = source.find("class Qwen3VoiceClone:")
@@ -168,6 +180,27 @@ def main() -> int:
 
     # 4. The seed floor — the one that made a zero seed a real bug.
     compare("SEED_MIN", ts_number(ts_source, "SEED_MIN"), node_int_field(block, "seed", "min"))
+
+    # 5. The presets the UI offers as durations. Each is a token count shown to
+    #    the user as minutes and seconds, so one that falls outside the node's
+    #    range or off its step is an option that simply fails when picked.
+    presets = ts_presets(ts_source)
+    if presets is None:
+        problems.append("No encontré TOKEN_PRESETS en tts.ts.")
+    elif None in (tokens_min, tokens_max, tokens_step):
+        pass  # already reported above
+    else:
+        assert tokens_min is not None and tokens_max is not None and tokens_step is not None
+        for tokens in presets:
+            if not (tokens_min <= tokens <= tokens_max):
+                problems.append(
+                    f"El preset de {tokens:g} tokens queda fuera del rango del nodo "
+                    f"({tokens_min:g}..{tokens_max:g}): elegirlo fallaría."
+                )
+            elif tokens % tokens_step != 0:
+                problems.append(
+                    f"El preset de {tokens:g} tokens no cae en el paso de {tokens_step:g}."
+                )
 
     if problems:
         for problem in problems:

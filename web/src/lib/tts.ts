@@ -71,7 +71,56 @@ export const SEED_MAX_SAFE = 2 ** 31 - 1;
 export const TOKENS_MIN = 64;
 export const TOKENS_MAX = 8192;
 export const TOKENS_STEP = 64;
-export const TOKENS_DEFAULT = 4096;
+
+/**
+ * How many audio tokens the engine spends per second of speech. MEASURED.
+ *
+ * `execution/benchmark_token_rate.py`, 2026-08-21, against this machine's
+ * engine and the andres_bobe voice. Four ceilings that genuinely constrained
+ * the generation:
+ *
+ *     128 -> 10.16 s   192 -> 15.28 s   256 -> 20.40 s   320 -> 25.52 s
+ *     12.598           12.565           12.549           12.539
+ *
+ * Mean 12.563, spread 0.5%. The model's name (Qwen3-TTS-**12Hz**) suggested 12,
+ * close enough to be tempting and wrong enough to matter — a name is a hint,
+ * and this project does not ship hints as facts.
+ *
+ * ⚠️ Only a ceiling that actually binds measures anything. The first attempt
+ * included a ceiling of 512, which returned the same duration as a ceiling of
+ * 8192 because the text had finished first — averaging it in inflated the rate
+ * to 13.50. The benchmark now runs an unconstrained control first and discards
+ * such samples out loud.
+ */
+export const TOKENS_PER_SECOND = 12.56;
+
+export function tokensToSeconds(tokens: number): number {
+  return tokens / TOKENS_PER_SECOND;
+}
+
+/**
+ * The length ceiling, offered in the unit a person actually thinks in.
+ *
+ * Token counts are what the engine wants and "4096" is what nobody wants to
+ * reason about. Each preset is the measured rate turned back into tokens and
+ * snapped to the node's step of 64, so the labels are honest to within a second
+ * or two rather than being round numbers with a plausible caption.
+ *
+ * ⚠️ A ceiling never LENGTHENS anything. It is the point at which the engine
+ * stops, not a duration to fill: a short text produces short audio no matter
+ * what is chosen here. The only thing a bigger ceiling buys is not being cut
+ * off — and the only thing it costs is nothing at all, which is why the
+ * highest value is not the default: a runaway generation stops sooner.
+ */
+export const TOKEN_PRESETS = [
+  { tokens: 384, label: "Hasta 30 segundos" },
+  { tokens: 768, label: "Hasta 1 minuto" },
+  { tokens: 1536, label: "Hasta 2 minutos" },
+  { tokens: 3776, label: "Hasta 5 minutos" },
+  { tokens: TOKENS_MAX, label: "Todo lo que da el motor (11 min)" },
+] as const;
+
+export const TOKENS_DEFAULT = 3776;
 
 /** The node's own list, in its own order, with Auto first. */
 export const LANGUAGES = [

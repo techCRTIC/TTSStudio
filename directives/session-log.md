@@ -46,6 +46,8 @@ persona queda disponible como voz para siempre.
   leer en voz alta. Hay tres guiones, en tres tonos distintos.
 - Se quitó **el último control con aspecto del sistema operativo** que quedaba
   en la app: ahora todos los desplegables son el mismo componente propio.
+- **Se midió cuánto audio produce el motor por token** y el ajuste de longitud
+  pasó a estar en minutos y segundos, que es como piensa una persona.
 - **El audio de referencia se borra solo** en cuanto la voz queda creada: ya no
   hace falta, y es la grabación de una persona.
 
@@ -90,8 +92,11 @@ persona queda disponible como voz para siempre.
   entre tener uno bien hecho o dos a medias.
 - **El audio de referencia se borra al terminar, y la pantalla lo dice.** Borrar
   algo del disco no puede ser una sorpresa, aunque sea lo correcto.
+- **La duración se mide, no se deduce del nombre del modelo.** El modelo se
+  llama «12Hz», lo que sugería 12 tokens por segundo. La medición dio 12,56.
+  Un nombre es una pista, y aquí las pistas no se publican como hechos.
 
-**Estado al cerrar:** rama `main` · **7 commits hechos** · **60 tests
+**Estado al cerrar:** rama `main` · **12 commits hechos** · **65 tests
 en verde, ninguno saltado** · tipos, lint y compilación limpios · los **dos**
 verificadores de costura en verde · el detector de diseño sin hallazgos. El alta
 de voz se ejecutó **de principio a fin contra el motor real** y creó una voz
@@ -100,8 +105,8 @@ señuelos, sin tocar nada del usuario. El usuario ya probó en el navegador la
 biblioteca de voces y las opciones avanzadas, y las aprobó.
 
 **Siguiente paso concreto:** reiniciar la app y probar lo último que no ha visto
-nadie: grabar una voz leyendo el guión, y el desplegable de idioma ya sin el
-aspecto del sistema operativo.
+nadie: grabar una voz leyendo el guión, el desplegable ya sin cortarse, y el
+ajuste de duración ahora en minutos en vez de en tokens.
 <!-- /cierre -->
 
 **Time:** 14:40 (aprox.)
@@ -247,6 +252,36 @@ se ve») y pidió tres cosas más.
   motor para siempre. El directorio `input` es el más delicado de los tres
   —contiene archivos que puso el usuario— así que se probó explícitamente que
   no se puede alcanzar desde él ni una voz ni una toma.
+
+### Quinta parte — el desplegable cortado y los tokens en minutos
+El usuario mandó otra captura: el desplegable nuevo se veía bien pero **salía
+cortado**. Y planteó algo mejor sobre el techo de longitud: *«esa no es una
+unidad humana, ¿qué tal si haces un benchmark aprox de cuánto tiempo es?»*.
+
+- **El corte.** El panel del desplegable es absoluto, y estaba dentro del bloque
+  que se pliega con `grid-template-rows`, que necesita `overflow: hidden` para
+  poder plegarse. Cualquier ancestro con eso recorta lo que sobresale. Se pasó
+  el panel a un **portal en `<body>`**, con posición fija calculada contra el
+  botón y recalculada al hacer scroll. Además ahora **elige el lado según el
+  espacio real** y se limita a la altura disponible en vez de salirse.
+- **Los tokens, medidos.** Se escribió `execution/benchmark_token_rate.py`, que
+  convierte el techo en lo que se mide: se le da al motor mucho más texto del
+  que cabe, y el audio que vuelve es exactamente el techo en forma de sonido.
+  **12,56 tokens por segundo**, con cuatro medidas y 0,5 % de dispersión.
+- **El primer intento del benchmark estaba mal, y se descubrió mirando.** Dio
+  12,60 / 12,55 / **13,50**, y el tercero no era ruido: con ese techo el texto
+  ya se había acabado antes, así que esa medida no medía el techo sino el largo
+  del párrafo. Una corrida de control con el techo máximo devolvió exactamente
+  la misma duración y lo probó. **El script ahora hace primero esa corrida de
+  control y descarta en voz alta las medidas que no limitan.** Promediarlas era
+  un tope silencioso: un número equivocado con aire de medición.
+- **El campo de tokens pasó a ser un desplegable de duraciones**: hasta 30
+  segundos, 1 minuto, 2 minutos, 5 minutos, y todo lo que da el motor (11 min).
+  Cada etiqueta se comprueba en los tests contra la tasa medida, para que la
+  interfaz no empiece a mentir si algo cambia.
+- El verificador de opciones ahora también comprueba que **ningún preset caiga
+  fuera del rango o del paso del motor**: una opción así fallaría justo al
+  elegirla.
 
 ### Next steps / open questions
 - **Falta ver en el navegador la grabación y los desplegables nuevos.** La app del usuario corre un

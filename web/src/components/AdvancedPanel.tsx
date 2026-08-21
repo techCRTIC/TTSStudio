@@ -3,10 +3,8 @@
 import { useId, useState } from "react";
 import {
   LANGUAGES,
-  normalizeTokens,
+  TOKEN_PRESETS,
   TOKENS_DEFAULT,
-  TOKENS_MAX,
-  TOKENS_MIN,
   type Language,
 } from "@/lib/tts";
 import { Select } from "./Select";
@@ -309,21 +307,28 @@ export function AdvancedPanel({
 
             {/* --- Length ceiling --------------------------------------- */}
             <div>
-              <label htmlFor={tokensId} className="eyebrow mb-2 block">
-                Techo de longitud
-              </label>
-              {/* Text rather than type="number": the numeric spinner is the
-                  browser's own chrome, and it arrives with its own arrows on
-                  hover. The value is snapped to the engine's step on blur
-                  instead, which is also what the server would do anyway. */}
-              <TokenField
-                id={tokensId}
-                value={state.maxNewTokens}
-                onCommit={(tokens) => onChange({ ...state, maxNewTokens: tokens })}
+              <span id={tokensId} className="eyebrow mb-2 block">
+                Duración máxima
+              </span>
+              {/* Offered in minutes and seconds, not tokens. The engine counts
+                  in tokens and nobody thinks in them; the conversion is a
+                  measurement (see TOKENS_PER_SECOND), not a guess. */}
+              <Select
+                options={TOKEN_PRESETS.map((preset) => ({
+                  value: String(preset.tokens),
+                  label: preset.label,
+                }))}
+                value={String(nearestPreset(state.maxNewTokens))}
+                onChange={(tokens) => onChange({ ...state, maxNewTokens: Number(tokens) })}
+                label="Duración máxima"
+                labelledBy={tokensId}
+                variant="field"
+                placement="down"
               />
               <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
-                Cuánto audio puede producir como máximo. Si un texto largo sale
-                cortado, súbelo. Entre {TOKENS_MIN} y {TOKENS_MAX}.
+                Dónde se detiene el motor, no cuánto va a durar: un texto corto
+                da audio corto igualmente. Súbelo solo si un texto largo sale
+                cortado.
               </p>
             </div>
           </div>
@@ -334,55 +339,18 @@ export function AdvancedPanel({
 }
 
 /**
- * The length ceiling, as a plain text field.
+ * The preset closest to a stored value.
  *
- * It keeps a local draft while being typed — clamping on every keystroke would
- * fight the user, turning a half-typed "5" into 64 before they reach "5120" —
- * and commits the snapped, clamped value on blur or Enter. `normalizeTokens` is
- * the same function the server applies, so what is shown is what will run.
+ * The state still carries raw tokens, because that is what the engine takes and
+ * what the server validates. This maps whatever is in there onto something the
+ * list can actually show — so a value arriving from anywhere else (a default
+ * that moved, a future saved setting) selects the nearest offered option
+ * instead of leaving the control blank.
  */
-function TokenField({
-  id,
-  value,
-  onCommit,
-}: {
-  id: string;
-  value: number;
-  onCommit: (tokens: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  const [editing, setEditing] = useState(false);
-
-  const commit = () => {
-    setEditing(false);
-    const tokens = normalizeTokens(draft);
-    setDraft(String(tokens));
-    onCommit(tokens);
-  };
-
-  return (
-    <div className="field px-3 py-2">
-      <input
-        id={id}
-        type="text"
-        inputMode="numeric"
-        value={editing ? draft : String(value)}
-        onFocus={() => {
-          setDraft(String(value));
-          setEditing(true);
-        }}
-        onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.code === "Enter") {
-            e.preventDefault();
-            commit();
-          }
-        }}
-        className="w-full bg-transparent font-mono text-sm text-ink outline-none"
-      />
-    </div>
-  );
+function nearestPreset(tokens: number): number {
+  return TOKEN_PRESETS.reduce((best, preset) =>
+    Math.abs(preset.tokens - tokens) < Math.abs(best.tokens - tokens) ? preset : best,
+  ).tokens;
 }
 
 const LANGUAGE_LABELS: Record<Language, string> = {

@@ -8,7 +8,7 @@ que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 
 ---
 
-**Status:** sesión 2 en curso, **todo commiteado y el árbol limpio** (9 commits
+**Status:** sesión 2 en curso, **todo commiteado y el árbol limpio** (12 commits
 sobre `main`, sin push). Fase 2 completa salvo la procedencia de las voces, más
 opciones avanzadas, grabación por micrófono y borrado real.
 **Last update:** 2026-08-21
@@ -52,7 +52,7 @@ referencia.
 - **`web/src/components/VoiceRecorder.tsx` + `lib/recording.ts`** — grabar la
   voz desde el micrófono, con guión en pantalla para leer. Convierte a WAV en
   el navegador para no depender del formato de cada navegador.
-- 60 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
+- 65 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
   ambos verificadores de costura en verde, detector de diseño sin hallazgos.
 
 ### Lo que falta para cerrar la Fase 2
@@ -111,6 +111,13 @@ npm start        # desde la RAÍZ
   `<select>`, ni `type="number"` (sus flechitas también son chrome del
   navegador). Todo desplegable pasa por `components/Select.tsx`, que es el
   listbox accesible del proyecto, uno solo y compartido.
+- **El panel de un desplegable va en portal a `<body>`, y no es opcional.** Un
+  panel absoluto lo recorta cualquier ancestro con `overflow: hidden`, y el
+  panel «Avanzado» tiene uno porque lo necesita para plegarse. Ya pasó.
+- **12,56 tokens = 1 segundo de audio.** Medido con
+  `execution/benchmark_token_rate.py`, no deducido del «12Hz» del nombre. Y un
+  techo solo mide algo mientras de verdad limita: si el texto se acaba antes,
+  esa medida no vale y hay que descartarla.
 - **El audio de referencia se borra al crear la voz.** Es la grabación de una
   persona y deja de tener función en cuanto existe la huella. La interfaz lo
   dice; borrar del disco no puede ser una sorpresa.
@@ -158,7 +165,8 @@ Detalle y modos de fallo → `README.md`.
 | `web/src/lib/comfy-files.ts` | **Nuevo.** Borrado en el disco de ComfyUI |
 | `web/src/components/VoiceRecorder.tsx` | **Nuevo.** Grabar con micrófono + guión |
 | `web/src/lib/recording.ts` | **Nuevo.** Los guiones y el codificador WAV |
-| `web/src/components/Select.tsx` | **Nuevo.** El único desplegable del proyecto |
+| `web/src/components/Select.tsx` | **Nuevo.** El único desplegable, en portal |
+| `execution/benchmark_token_rate.py` | **Nuevo.** Mide tokens por segundo |
 | `web/src/lib/history.ts` | Historial en localStorage vía store externo |
 | `execution/transcribe_audio.py` | **Nuevo.** La transcripción (Layer 3) |
 | `execution/check_trim_contract.py` | **Nuevo.** El verificador de la costura |

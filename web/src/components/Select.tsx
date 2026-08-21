@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * The project's own dropdown.
@@ -17,12 +18,19 @@ import { useEffect, useId, useRef, useState } from "react";
  * Space choose, Escape closes and returns focus, Tab closes, a click outside
  * closes, and the roles say what this is.
  *
- * Motion follows the house easings. The reference this borrows its shape from
- * uses a spring that overshoots; this design system bans bounce, so the panel
- * arrives on the quart curve instead.
+ * ⚠️ THE PANEL IS PORTALLED TO <body>, AND THAT IS NOT OPTIONAL.
+ *   An absolutely-positioned panel is clipped by any ancestor with
+ *   `overflow: hidden`, and this project has one exactly where a dropdown lives:
+ *   the advanced panel folds with grid-template-rows and needs that overflow to
+ *   fold at all. The language picker rendered cut in half in it — measured, in
+ *   the browser, not theorised. Positioning is `fixed` against the trigger's own
+ *   rect, recomputed while open so scrolling does not leave it stranded.
  */
 
 export type Option = { value: string; label: string };
+
+/** Where the panel sits relative to its trigger, in viewport coordinates. */
+type Rect = { left: number; top: number; bottom: number; width: number };
 
 function ChevronIcon({ open }: { open: boolean }) {
   return (
@@ -48,6 +56,9 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+const GAP = 8; // between the trigger and the panel
+const MARGIN = 12; // the closest the panel may come to the viewport edge
+
 export function Select({
   options,
   value,
@@ -55,7 +66,7 @@ export function Select({
   label,
   disabled,
   emptyLabel = "Sin opciones",
-  /** "up" for a control near the bottom of the screen, "down" otherwise. */
+  /** Preferred side. Flipped automatically when that side has no room. */
   placement = "down",
   /** "pill" matches the voice picker; "field" matches a form field. */
   variant = "pill",
@@ -82,8 +93,10 @@ export function Select({
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [rect, setRect] = useState<Rect | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
   const listboxId = `${generatedId}-listbox`;
 
@@ -93,9 +106,16 @@ export function Select({
   );
   const selected = options[selectedIndex];
 
+  const measure = (): Rect | null => {
+    const box = buttonRef.current?.getBoundingClientRect();
+    if (!box) return null;
+    return { left: box.left, top: box.top, bottom: box.bottom, width: box.width };
+  };
+
   // Opening starts from what is selected, not from the top of the list.
   const show = () => {
     if (disabled || options.length === 0) return;
+    setRect(measure());
     setActive(selectedIndex);
     setOpen(true);
   };
@@ -113,11 +133,26 @@ export function Select({
 
   useEffect(() => {
     if (!open) return;
+
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      // The panel is portalled, so it is NOT inside rootRef — both have to be
+      // checked or clicking an option would count as clicking outside.
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
+
+    // A fixed panel does not follow the page; it has to be told to.
+    const reposition = () => setRect(measure());
+
     document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
   }, [open]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -169,6 +204,36 @@ export function Select({
         // one row rather than as a pill that wandered into a form.
         "field flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-ink disabled:opacity-40";
 
+  /**
+   * Decide the side and the height from the room actually available.
+   *
+   * The preferred side wins unless it genuinely has less room than the other,
+   * and the panel is then capped to whatever that side offers — so it scrolls
+   * internally instead of running off the screen.
+   */
+  const panelPosition = (() => {
+    if (!rect) return null;
+    const below = window.innerHeight - rect.bottom - GAP - MARGIN;
+    const above = rect.top - GAP - MARGIN;
+    const goesUp = placement === "up" ? above > 120 || above >= below : below < 160 && above > below;
+    const room = Math.max(120, goesUp ? above : below);
+    return {
+      goesUp,
+      style: {
+        position: "fixed" as const,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.min(room, 320),
+        ...(goesUp
+          ? { bottom: window.innerHeight - rect.top + GAP }
+          : { top: rect.bottom + GAP }),
+        // Feeds the entry keyframes, so the panel drifts in from the side it
+        // is attached to rather than always from above.
+        ["--menu-from-y" as string]: goesUp ? "4px" : "-4px",
+      },
+    };
+  })();
+
   return (
     <div ref={rootRef} className="relative" onKeyDown={onKeyDown}>
       <button
@@ -191,54 +256,47 @@ export function Select({
         </span>
       </button>
 
-      <div
-        id={listboxId}
-        role="listbox"
-        aria-label={label}
-        aria-activedescendant={open ? `${listboxId}-${active}` : undefined}
-        tabIndex={-1}
-        inert={!open}
-        style={{
-          transitionDuration: "var(--dur-lift)",
-          transitionTimingFunction: "var(--ease-ui)",
-          transformOrigin: placement === "up" ? "bottom left" : "top left",
-        }}
-        className={`absolute left-0 z-40 max-h-[16rem] min-w-full overflow-y-auto rounded-lg border border-hairline bg-surface-raised p-1 transition-[opacity,transform] ${
-          placement === "up" ? "bottom-full mb-2" : "top-full mt-2"
-        } ${
-          open
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : `pointer-events-none scale-[0.98] opacity-0 ${
-                placement === "up" ? "translate-y-1" : "-translate-y-1"
-              }`
-        }`}
-      >
-        {options.map((option, index) => {
-          const isSelected = option.value === value;
-          return (
-            <div
-              key={option.value}
-              id={`${listboxId}-${index}`}
-              role="option"
-              aria-selected={isSelected}
-              onPointerEnter={() => setActive(index)}
-              onClick={() => choose(index)}
-              className={`flex cursor-default items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 ${
-                index === active ? "bg-surface text-ink" : "text-ink-muted"
-              }`}
-            >
-              <span>{option.label}</span>
-              {/* The accent marks the chosen one, once. */}
-              <span
-                aria-hidden="true"
-                className={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity duration-150 ${
-                  isSelected ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            </div>
-          );
-        })}
-      </div>
+      {open &&
+        panelPosition &&
+        createPortal(
+          <div
+            ref={panelRef}
+            id={listboxId}
+            role="listbox"
+            aria-label={label}
+            aria-activedescendant={`${listboxId}-${active}`}
+            tabIndex={-1}
+            style={panelPosition.style}
+            className="menu-in z-50 min-w-[10rem] overflow-y-auto overscroll-contain rounded-lg border border-hairline bg-surface-raised p-1 shadow-[var(--rim-strong)]"
+          >
+            {options.map((option, index) => {
+              const isSelected = option.value === value;
+              return (
+                <div
+                  key={option.value}
+                  id={`${listboxId}-${index}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  onPointerEnter={() => setActive(index)}
+                  onClick={() => choose(index)}
+                  className={`flex cursor-default items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 ${
+                    index === active ? "bg-surface text-ink" : "text-ink-muted"
+                  }`}
+                >
+                  <span>{option.label}</span>
+                  {/* The accent marks the chosen one, once. */}
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity duration-150 ${
+                      isSelected ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                </div>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
