@@ -3,12 +3,13 @@
 import { useId, useState } from "react";
 import {
   LANGUAGES,
+  normalizeTokens,
   TOKENS_DEFAULT,
   TOKENS_MAX,
   TOKENS_MIN,
-  TOKENS_STEP,
   type Language,
 } from "@/lib/tts";
+import { Select } from "./Select";
 import { excerptOf, forgetSeed, saveSeed, useSavedSeeds, type SavedSeed } from "@/lib/favorites";
 
 /**
@@ -289,23 +290,21 @@ export function AdvancedPanel({
 
             {/* --- Language --------------------------------------------- */}
             <div>
-              <label htmlFor={langId} className="eyebrow mb-2 block">
+              <span id={langId} className="eyebrow mb-2 block">
                 Idioma
-              </label>
-              <div className="field px-3 py-2">
-                <select
-                  id={langId}
-                  value={state.language}
-                  onChange={(e) => onChange({ ...state, language: e.target.value as Language })}
-                  className="w-full bg-transparent text-sm text-ink outline-none"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l} value={l}>
-                      {l === "Auto" ? "Detectar solo" : LANGUAGE_LABELS[l]}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              </span>
+              {/* The project's own listbox, not a native <select>: this surface
+                  replaced that control everywhere precisely so the operating
+                  system's popup never lands on top of it. */}
+              <Select
+                options={LANGUAGES.map((l) => ({ value: l, label: LANGUAGE_LABELS[l] }))}
+                value={state.language}
+                onChange={(l) => onChange({ ...state, language: l as Language })}
+                label="Idioma"
+                labelledBy={langId}
+                variant="field"
+                placement="down"
+              />
             </div>
 
             {/* --- Length ceiling --------------------------------------- */}
@@ -313,26 +312,75 @@ export function AdvancedPanel({
               <label htmlFor={tokensId} className="eyebrow mb-2 block">
                 Techo de longitud
               </label>
-              <div className="field px-3 py-2">
-                <input
-                  id={tokensId}
-                  type="number"
-                  min={TOKENS_MIN}
-                  max={TOKENS_MAX}
-                  step={TOKENS_STEP}
-                  value={state.maxNewTokens}
-                  onChange={(e) => onChange({ ...state, maxNewTokens: Number(e.target.value) })}
-                  className="w-full bg-transparent font-mono text-sm text-ink outline-none"
-                />
-              </div>
+              {/* Text rather than type="number": the numeric spinner is the
+                  browser's own chrome, and it arrives with its own arrows on
+                  hover. The value is snapped to the engine's step on blur
+                  instead, which is also what the server would do anyway. */}
+              <TokenField
+                id={tokensId}
+                value={state.maxNewTokens}
+                onCommit={(tokens) => onChange({ ...state, maxNewTokens: tokens })}
+              />
               <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
                 Cuánto audio puede producir como máximo. Si un texto largo sale
-                cortado, súbelo.
+                cortado, súbelo. Entre {TOKENS_MIN} y {TOKENS_MAX}.
               </p>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The length ceiling, as a plain text field.
+ *
+ * It keeps a local draft while being typed — clamping on every keystroke would
+ * fight the user, turning a half-typed "5" into 64 before they reach "5120" —
+ * and commits the snapped, clamped value on blur or Enter. `normalizeTokens` is
+ * the same function the server applies, so what is shown is what will run.
+ */
+function TokenField({
+  id,
+  value,
+  onCommit,
+}: {
+  id: string;
+  value: number;
+  onCommit: (tokens: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+
+  const commit = () => {
+    setEditing(false);
+    const tokens = normalizeTokens(draft);
+    setDraft(String(tokens));
+    onCommit(tokens);
+  };
+
+  return (
+    <div className="field px-3 py-2">
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        value={editing ? draft : String(value)}
+        onFocus={() => {
+          setDraft(String(value));
+          setEditing(true);
+        }}
+        onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.code === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        className="w-full bg-transparent font-mono text-sm text-ink outline-none"
+      />
     </div>
   );
 }
