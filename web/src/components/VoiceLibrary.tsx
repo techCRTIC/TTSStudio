@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Voice } from "./VoiceSelect";
+import { VoiceRecorder } from "./VoiceRecorder";
 
 /**
  * The voice library: a drawer that mirrors the takes tray on the other edge.
@@ -449,6 +450,7 @@ export function VoiceLibrary({
               setDragging={setDragging}
               fileRef={fileRef}
               onFiles={onFiles}
+              onRecordedFile={(file) => void startTranscription(file)}
               onChangeStage={setStage}
               onCreate={create}
             />
@@ -465,6 +467,7 @@ function RegistrationPanel({
   setDragging,
   fileRef,
   onFiles,
+  onRecordedFile,
   onChangeStage,
   onCreate,
 }: {
@@ -473,6 +476,7 @@ function RegistrationPanel({
   setDragging: (d: boolean) => void;
   fileRef: React.RefObject<HTMLInputElement | null>;
   onFiles: (files: FileList | null) => void;
+  onRecordedFile: (file: File) => void;
   onChangeStage: (s: Stage) => void;
   onCreate: () => void;
 }) {
@@ -659,6 +663,11 @@ function RegistrationPanel({
         onChange={(e) => onFiles(e.target.files)}
         className="sr-only"
       />
+
+      {/* The other way in: no file to hunt for, and a script to read so the
+          clip is half a minute of real speech instead of "hola, probando". */}
+      <VoiceRecorder onRecorded={onRecordedFile} />
+
       <p className="mt-4 text-[13px] leading-relaxed text-ink-muted">
         Se usan los primeros 30 segundos. Con medio minuto de alguien hablando
         con claridad basta.

@@ -38,7 +38,10 @@ referencia.
 - **`web/src/lib/comfy-files.ts` + `/api/takes`** — borrado real de archivos del
   disco de ComfyUI (ADR-004). Único módulo que toca `node:fs`.
 - **`execution/check_engine_options.py`** — segundo verificador de costura.
-- 44 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
+- **`web/src/components/VoiceRecorder.tsx` + `lib/recording.ts`** — grabar la
+  voz desde el micrófono, con guión en pantalla para leer. Convierte a WAV en
+  el navegador para no depender del formato de cada navegador.
+- 55 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
   ambos verificadores de costura en verde, detector de diseño sin hallazgos.
 
 ### Lo que falta para cerrar la Fase 2
@@ -96,6 +99,9 @@ npm start        # desde la RAÍZ
 - **No se usan `window.prompt` ni `window.confirm`.** Este proyecto reemplazó el
   desplegable nativo justo para no traer chrome del sistema; un diálogo del
   navegador es lo mismo pero peor. Se pregunta dentro de la propia pantalla.
+- **El runner de tests borra tipos, no los compila.** Nada de *parameter
+  properties* de TypeScript (`constructor(private x: T)`) en código que un test
+  vaya a importar: el campo queda sin definir en tiempo de ejecución.
 - **La app solo ofrece los parámetros que el motor declara.** Hoy son tres:
   semilla, idioma y techo de longitud. Lo vigila
   `execution/check_engine_options.py`.
@@ -132,6 +138,8 @@ Detalle y modos de fallo → `README.md`.
 | `web/src/components/AdvancedPanel.tsx` | **Nuevo.** Semilla, idioma, techo |
 | `web/src/lib/favorites.ts` | **Nuevo.** Semillas guardadas con nombre |
 | `web/src/lib/comfy-files.ts` | **Nuevo.** Borrado en el disco de ComfyUI |
+| `web/src/components/VoiceRecorder.tsx` | **Nuevo.** Grabar con micrófono + guión |
+| `web/src/lib/recording.ts` | **Nuevo.** Los guiones y el codificador WAV |
 | `web/src/lib/history.ts` | Historial en localStorage vía store externo |
 | `execution/transcribe_audio.py` | **Nuevo.** La transcripción (Layer 3) |
 | `execution/check_trim_contract.py` | **Nuevo.** El verificador de la costura |
