@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   outputFilePath,
   voiceFilePath,
+  referenceFilePath,
   UnsafePathError,
   DIRECTORIES,
 } from "../src/lib/comfy-files.ts";
@@ -17,6 +18,7 @@ import {
 
 const OUT = DIRECTORIES.OUTPUT_DIR;
 const PROMPTS = DIRECTORIES.PROMPTS_DIR;
+const IN = DIRECTORIES.INPUT_DIR;
 
 /** True when `p` really sits inside `base` — the property under test. */
 function isInside(base: string, p: string): boolean {
@@ -120,9 +122,67 @@ describe("voiceFilePath", () => {
   });
 });
 
+describe("referenceFilePath", () => {
+  // The input directory is the most delicate of the three: unlike output/ and
+  // prompts/, it holds files the user put there themselves, long before this
+  // app existed. An escape here reaches somebody's own recordings.
+  test("resolves an uploaded clip into the input directory", () => {
+    const p = referenceFilePath("grabacion-20260821-154500.wav");
+    assert.ok(isInside(IN, p), `${p} debería estar dentro de ${IN}`);
+  });
+
+  test("refuses every traversal shape", () => {
+    const attacks = [
+      "../models/Qwen3-TTS/prompts/andres_bobe.safetensors",
+      "..\\..\\output\\ttsstudio_00001.flac",
+      "../../../../Windows/System32/drivers/etc/hosts",
+      "/etc/passwd",
+      "C:\\Windows\\System32\\evil.dll",
+      "sub/../../escapa.wav",
+    ];
+    for (const attack of attacks) {
+      let landed: string | null = null;
+      try {
+        landed = referenceFilePath(attack);
+      } catch (cause) {
+        assert.ok(cause instanceof UnsafePathError);
+        continue;
+      }
+      assert.ok(isInside(IN, landed), `"${attack}" escapó a ${landed}`);
+    }
+  });
+
+  test("refuses an empty name or an embedded null byte", () => {
+    assert.throws(() => referenceFilePath(""), UnsafePathError);
+    assert.throws(() => referenceFilePath("a\u0000.wav"), UnsafePathError);
+  });
+
+  test("cannot be used to reach a voice or a take", () => {
+    // The three directories must stay genuinely separate: reaching a prompt
+    // through the input path would turn a cleanup into a deletion of a voice.
+    for (const attack of ["../models/Qwen3-TTS/prompts/x.safetensors", "../output/x.flac"]) {
+      let landed: string | null = null;
+      try {
+        landed = referenceFilePath(attack);
+      } catch {
+        continue;
+      }
+      assert.ok(!isInside(PROMPTS, landed), "alcanzó el directorio de voces");
+      assert.ok(!isInside(OUT, landed), "alcanzó el directorio de salidas");
+    }
+  });
+});
+
 describe("the allowed directories", () => {
-  test("both live under the configured ComfyUI root", () => {
+  test("all three live under the configured ComfyUI root", () => {
     assert.ok(isInside(DIRECTORIES.COMFY_ROOT, OUT));
     assert.ok(isInside(DIRECTORIES.COMFY_ROOT, PROMPTS));
+    assert.ok(isInside(DIRECTORIES.COMFY_ROOT, IN));
+  });
+
+  test("none of them contains another", () => {
+    assert.ok(!isInside(OUT, PROMPTS) && !isInside(PROMPTS, OUT));
+    assert.ok(!isInside(IN, OUT) && !isInside(OUT, IN));
+    assert.ok(!isInside(IN, PROMPTS) && !isInside(PROMPTS, IN));
   });
 });

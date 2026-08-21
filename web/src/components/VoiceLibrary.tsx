@@ -321,6 +321,10 @@ export function VoiceLibrary({
     const name = stage.name.trim();
     if (!name || !stage.text.trim()) return;
 
+    // Held before the stage changes: once the voice exists, this clip is a
+    // recording of a real person that no longer serves any purpose.
+    const referenceFile = stage.audioFilename;
+
     setStage({ kind: "creating", name });
 
     let promptId: string;
@@ -362,6 +366,14 @@ export function VoiceLibrary({
         if (pollRef.current) window.clearInterval(pollRef.current);
         setStage({ kind: "created", name });
         onVoicesChanged();
+
+        // The embedding exists now, so the recording it came from is personal
+        // data with no remaining purpose. Best-effort on purpose: the voice is
+        // already created, and a failure here must not read as a failed
+        // registration. It is not awaited for the same reason.
+        void fetch(`/api/voices/reference?filename=${encodeURIComponent(referenceFile)}`, {
+          method: "DELETE",
+        }).catch(() => {});
       } else if (s.state === "failed") {
         if (pollRef.current) window.clearInterval(pollRef.current);
         setStage({ kind: "error", message: s.message ?? "El motor no pudo crear la voz.", retryable: false });
@@ -516,9 +528,16 @@ function RegistrationPanel({
     return (
       <div role="status" aria-live="polite">
         <p className="eyebrow mb-3">Lista</p>
-        <p className="mb-4 text-sm leading-relaxed text-ink">
+        <p className="mb-3 text-sm leading-relaxed text-ink">
           <span className="text-accent-text">{stage.name}</span> ya está en la
           lista y se puede usar para generar.
+        </p>
+        {/* Said out loud: deleting something from disk should never be a
+            surprise, even when it is the right thing to do. */}
+        <p className="mb-4 text-[13px] leading-relaxed text-ink-muted">
+          El audio de referencia ya no hace falta —la voz vive en su propia
+          huella— así que se borró. Es la grabación de una persona y no tiene
+          por qué quedarse ahí.
         </p>
         <button
           type="button"

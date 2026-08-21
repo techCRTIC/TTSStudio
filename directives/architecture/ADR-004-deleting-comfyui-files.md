@@ -52,12 +52,20 @@ engine does not expose.
 machine's install actually sits (confirmed against `server_info`). Verified at
 runtime: the default resolved correctly with no configuration.
 
-Only two directories are ever derived from it, and never from client input:
+Only three directories are ever derived from it, and never from client input:
 
 ```
 <root>/output                      — generated takes
 <root>/models/Qwen3-TTS/prompts    — voice embeddings
+<root>/input                       — reference clips awaiting registration
 ```
+
+**The input directory is the most delicate of the three**, and was added last,
+deliberately. Unlike the other two it is not ours: it holds files the user put
+there themselves, long before this app existed. Only a name the app uploaded in
+the same flow is ever passed to it, the caller is the registration flow rather
+than the user, and the tests assert that a path built for it can reach neither
+of the other two.
 
 ## The security posture
 
@@ -89,6 +97,12 @@ throws.
 - Deleting means deleting. The disk actually shrinks.
 - One module owns filesystem access, so the audit surface is one file.
 - Voice deletion completes a Phase 2 deliverable the roadmap already required.
+- **Reference clips stop accumulating.** Once the embedding exists, the
+  recording it came from is personal data with no remaining purpose, and
+  CLAUDE.md § Retention says to purge exactly that. It became urgent the moment
+  the app could record from the microphone: without it, every registration
+  would leave another recording of a person in the engine's input folder
+  forever. The UI says so rather than doing it quietly.
 
 **Negative**
 - **The app now depends on where ComfyUI is installed**, which HTTP alone never

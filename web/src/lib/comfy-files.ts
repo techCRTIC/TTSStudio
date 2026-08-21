@@ -37,9 +37,10 @@ import path from "node:path";
  */
 export const COMFY_ROOT = process.env.COMFY_ROOT ?? path.join(homedir(), "comfy");
 
-/** The two directories this module may ever touch. Nothing else is reachable. */
+/** The directories this module may ever touch. Nothing else is reachable. */
 const OUTPUT_DIR = path.join(COMFY_ROOT, "output");
 const PROMPTS_DIR = path.join(COMFY_ROOT, "models", "Qwen3-TTS", "prompts");
+const INPUT_DIR = path.join(COMFY_ROOT, "input");
 
 export class UnsafePathError extends Error {}
 export class MissingFileError extends Error {}
@@ -101,6 +102,26 @@ export function voiceFilePath(voiceId: string): string {
 }
 
 /**
+ * The absolute path of a reference clip sitting in ComfyUI's input directory.
+ *
+ * This exists so a reference recording can be removed once the voice embedding
+ * has been computed from it. The clip is a real person's voice — personal data
+ * that has served its purpose the moment the .safetensors exists — and CLAUDE.md
+ * § Retention is explicit that intermediates holding personal data get purged
+ * when the task is done.
+ *
+ * ⚠️ The input directory is NOT ours. It holds files the user put there
+ * themselves, long before this app existed. Only a name the app just uploaded
+ * is ever passed here, and the caller is the registration flow, never the user.
+ */
+export function referenceFilePath(filename: string): string {
+  if (!filename || filename.includes("\0")) {
+    throw new UnsafePathError("Nombre de archivo inválido.");
+  }
+  return resolveInside(INPUT_DIR, filename);
+}
+
+/**
  * Delete a file, treating "it was already gone" as success.
  *
  * The user asked for the file not to exist. If it does not exist, that is the
@@ -124,4 +145,4 @@ export async function deleteFile(absolutePath: string): Promise<void> {
 }
 
 /** For diagnostics and the delete routes' error messages. */
-export const DIRECTORIES = { COMFY_ROOT, OUTPUT_DIR, PROMPTS_DIR } as const;
+export const DIRECTORIES = { COMFY_ROOT, OUTPUT_DIR, PROMPTS_DIR, INPUT_DIR } as const;

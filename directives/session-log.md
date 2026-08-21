@@ -42,6 +42,12 @@ persona queda disponible como voz para siempre.
   motor acepta.
 - Se añadió **borrar de verdad**, tanto voces como generaciones: el archivo
   desaparece del disco, no solo de la lista.
+- Se añadió **grabar la voz con el micrófono**, con un guión en pantalla para
+  leer en voz alta. Hay tres guiones, en tres tonos distintos.
+- Se quitó **el último control con aspecto del sistema operativo** que quedaba
+  en la app: ahora todos los desplegables son el mismo componente propio.
+- **El audio de referencia se borra solo** en cuanto la voz queda creada: ya no
+  hace falta, y es la grabación de una persona.
 
 **Qué se decidió y por qué**
 - **Escuchar el audio se hace en la app, no dentro del motor.** La alternativa
@@ -75,20 +81,27 @@ persona queda disponible como voz para siempre.
   semilla ni para confirmar un borrado: se hace dentro de la propia pantalla,
   porque este proyecto ya había reemplazado el desplegable del sistema justo
   para no traer ese aspecto ajeno.
+- **Al grabar, el guión es la función y no el botón.** Con un botón de grabar a
+  secas uno dice «hola, probando» y para, y la voz clonada suena a eso. Un
+  párrafo preparado da medio minuto de habla normal. Y como el texto se conoce
+  de antemano, la transcripción sale casi perfecta.
+- **Un solo desplegable para toda la app.** En vez de maquillar el de idioma, se
+  generalizó el que ya se había construido para las voces. Había que elegir
+  entre tener uno bien hecho o dos a medias.
+- **El audio de referencia se borra al terminar, y la pantalla lo dice.** Borrar
+  algo del disco no puede ser una sorpresa, aunque sea lo correcto.
 
-**Estado al cerrar:** rama `main` · árbol con cambios sin commitear · **44 tests
+**Estado al cerrar:** rama `main` · **7 commits hechos** · **60 tests
 en verde, ninguno saltado** · tipos, lint y compilación limpios · los **dos**
 verificadores de costura en verde · el detector de diseño sin hallazgos. El alta
 de voz se ejecutó **de principio a fin contra el motor real** y creó una voz
-nueva; el borrado de archivos se verificó contra el disco real con un señuelo.
-Lo que falta: **nadie ha mirado en un navegador** ni la pantalla de voces, ni
-las opciones avanzadas, ni los borrados — el usuario tiene la app abierta con
-una versión anterior y hay que reiniciarla.
+nueva; los tres borrados de archivos se verificaron contra el disco real con
+señuelos, sin tocar nada del usuario. El usuario ya probó en el navegador la
+biblioteca de voces y las opciones avanzadas, y las aprobó.
 
-**Siguiente paso concreto:** reiniciar la app (`npm start` desde la raíz, en la
-terminal del usuario) y probar mirando la pantalla: la pestaña «Voces» del borde
-izquierdo, el desplegable «Avanzado» del escenario, y borrar desde ahí la voz de
-prueba que quedó de la validación.
+**Siguiente paso concreto:** reiniciar la app y probar lo último que no ha visto
+nadie: grabar una voz leyendo el guión, y el desplegable de idioma ya sin el
+aspecto del sistema operativo.
 <!-- /cierre -->
 
 **Time:** 14:40 (aprox.)
@@ -207,8 +220,36 @@ disco.
   `e` + `.key` en JavaScript, confundiéndola con un archivo de clave. No se tocó
   el hook: es territorio privilegiado y requiere permiso explícito.
 
+### Cuarta parte — grabar por micrófono, y quitar el chrome del sistema
+El usuario probó lo anterior en el navegador («funciona», «me gusta mucho cómo
+se ve») y pidió tres cosas más.
+
+- **Grabar la voz desde el micrófono, con un guión en pantalla para leer.** El
+  guión es la función, no el botón: con un botón de grabar a secas uno dice
+  «hola, probando» y para, y así suena el clon. Tres guiones en tres tonos,
+  porque cómo se lee se traslada a cómo suena. Hay tests que comprueban que
+  cada guión cubre la erre fuerte, la ñ, la ll, la jota, una pregunta y mezcla
+  de frases largas y cortas; **uno falló y se reescribió el guión, no el test**.
+- **Se convierte a WAV en el navegador.** El navegador no graba wav (Chrome da
+  webm/opus, Safari mp4), así que lo que llegara al motor dependería de con qué
+  navegador se grabó. Se decodifica y se reescribe como PCM, sin remuestrear:
+  bajar la calidad serviría para transcribir y sería un desperdicio para la
+  huella, que sale del mismo archivo.
+- **Fuera el último control nativo.** El usuario mandó una captura del
+  desplegable de idioma con el aspecto del sistema operativo. Se generalizó el
+  listbox que ya existía para las voces a `components/Select.tsx`, y ahora hay
+  **uno solo** en todo el proyecto. `VoiceSelect` pasó a ser una capa fina
+  encima, sin cambiar su API. El campo numérico del techo también perdió sus
+  flechitas nativas.
+- **El audio de referencia se borra al crear la voz.** Lo había señalado como
+  hallazgo de privacidad y el usuario lo aprobó. Era urgente justamente por la
+  grabación: sin esto, cada alta dejaría otra grabación de una persona en el
+  motor para siempre. El directorio `input` es el más delicado de los tres
+  —contiene archivos que puso el usuario— así que se probó explícitamente que
+  no se puede alcanzar desde él ni una voz ni una toma.
+
 ### Next steps / open questions
-- **Nadie ha visto nada de esto en un navegador.** La app del usuario corre un
+- **Falta ver en el navegador la grabación y los desplegables nuevos.** La app del usuario corre un
   build anterior; hay que reiniciarla. Esto es lo único que juzga el acabado.
 - Quedó una voz de prueba (`voz_de_prueba.safetensors`) creada durante la
   validación. **Ahora sí se puede borrar desde la interfaz** — el usuario

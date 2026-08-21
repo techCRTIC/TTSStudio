@@ -41,7 +41,7 @@ referencia.
 - **`web/src/components/VoiceRecorder.tsx` + `lib/recording.ts`** — grabar la
   voz desde el micrófono, con guión en pantalla para leer. Convierte a WAV en
   el navegador para no depender del formato de cada navegador.
-- 55 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
+- 60 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
   ambos verificadores de costura en verde, detector de diseño sin hallazgos.
 
 ### Lo que falta para cerrar la Fase 2
@@ -96,6 +96,13 @@ npm start        # desde la RAÍZ
 - **`Number(null)` es `0`, no `NaN`.** Un valor ausente hay que detectarlo
   ANTES de convertirlo, o «no me mandaron nada» se convierte en «cero» y el
   clamp lo acepta encantado. Fue un bug real que cazó un test.
+- **No hay ni un solo control nativo del sistema en la interfaz.** Ni
+  `<select>`, ni `type="number"` (sus flechitas también son chrome del
+  navegador). Todo desplegable pasa por `components/Select.tsx`, que es el
+  listbox accesible del proyecto, uno solo y compartido.
+- **El audio de referencia se borra al crear la voz.** Es la grabación de una
+  persona y deja de tener función en cuanto existe la huella. La interfaz lo
+  dice; borrar del disco no puede ser una sorpresa.
 - **No se usan `window.prompt` ni `window.confirm`.** Este proyecto reemplazó el
   desplegable nativo justo para no traer chrome del sistema; un diálogo del
   navegador es lo mismo pero peor. Se pregunta dentro de la propia pantalla.
@@ -140,6 +147,7 @@ Detalle y modos de fallo → `README.md`.
 | `web/src/lib/comfy-files.ts` | **Nuevo.** Borrado en el disco de ComfyUI |
 | `web/src/components/VoiceRecorder.tsx` | **Nuevo.** Grabar con micrófono + guión |
 | `web/src/lib/recording.ts` | **Nuevo.** Los guiones y el codificador WAV |
+| `web/src/components/Select.tsx` | **Nuevo.** El único desplegable del proyecto |
 | `web/src/lib/history.ts` | Historial en localStorage vía store externo |
 | `execution/transcribe_audio.py` | **Nuevo.** La transcripción (Layer 3) |
 | `execution/check_trim_contract.py` | **Nuevo.** El verificador de la costura |
