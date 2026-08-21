@@ -6,6 +6,223 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-08-21 — La app aprende a escuchar: alta de voces nuevas
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 2 · 2026-08-21
+
+**En una frase:** la app dejó de tener una sola voz de por vida — ahora tomas un
+audio de alguien, la app entiende qué dice, tú corriges lo que haga falta, y esa
+persona queda disponible como voz para siempre.
+
+**Qué se hizo**
+- Se leyó el código real del motor para averiguar cómo se da de alta una voz, en
+  vez de suponerlo. Resultado: el motor pide el audio **y además el texto de lo
+  que se dice en él**.
+- Se descubrió que en esta máquina no hay nada instalado que sepa escuchar un
+  audio y escribir lo que dice, así que hubo que añadirlo.
+- Se construyó esa pieza: un programa que escucha el audio y escribe el texto.
+  Corre en el procesador, sin robarle la tarjeta gráfica al motor de voz.
+- Se escribió todo el lado servidor del alta: subir el audio, transcribirlo,
+  dejar que el usuario corrija el texto, y crear la voz.
+- Se probó con los audios reales de Andrés y se comparó contra el texto que
+  produjo la voz que ya se usa a diario. Es la comparación más exigente
+  disponible.
+- Se añadió un verificador automático para un error que ningún test podría ver.
+- Se probó todo contra el motor encendido, y ahí apareció un fallo que solo se ve
+  así: un alta que terminaba bien se quedaba diciendo «en cola» para siempre.
+  Se corrigió, se buscó el mismo fallo en el resto de la app —estaba— y se
+  cerraron los dos.
+- Se construyó la pantalla: un cajón en el borde izquierdo, gemelo del de
+  «Tomas» que ya existía en el derecho. Izquierda es lo que entra, derecha lo
+  que sale.
+- Se añadieron las **opciones avanzadas** al escenario: la semilla (con poder
+  fijarla, tirarla de nuevo y **guardarla con nombre** para volver a ella), el
+  idioma y el techo de longitud. Ni una más: son exactamente las tres que el
+  motor acepta.
+- Se añadió **borrar de verdad**, tanto voces como generaciones: el archivo
+  desaparece del disco, no solo de la lista.
+
+**Qué se decidió y por qué**
+- **Escuchar el audio se hace en la app, no dentro del motor.** La alternativa
+  era instalar un complemento de terceros en el motor; se descartó porque
+  cargaría en la misma tarjeta gráfica donde vive la voz, y porque son
+  proyectos ajenos con mantenimiento incierto. Queda como ADR-003.
+- **El usuario corrige el texto antes de crear la voz, y esto no es opcional.**
+  La prueba lo demostró: en el clip corto, el programa escribió *"Andrea"* donde
+  el audio decía *"Andrés"* — el nombre del propio hablante. Sin ese paso de
+  corrección, la voz se habría fabricado contra un texto que nombra a otra
+  persona. Con un clip más largo acertó, así que más contexto ayuda; pero no
+  garantiza.
+- **El usuario descartó escribir el texto a mano**, que era la opción sin
+  instalar nada. De ahí salió todo lo demás.
+- **Se eligió el modelo grande y se midió antes de afirmar nada.** Tarda 27
+  segundos para medio minuto de audio, una sola vez por voz. Aceptable, así que
+  se queda.
+- **Un cajón lateral y no una ventana emergente.** Dar de alta una voz no
+  interrumpe nada ni necesita robar la atención, así que no para la pantalla.
+- **La espera se cuenta, no se adivina.** Se muestra el tiempo que lleva
+  esperando, que es un hecho, en vez de una barra de progreso inventada. Y si
+  pasa de 45 segundos aparece la explicación de la descarga inicial: la
+  información llega cuando hace falta y no antes.
+- **Para borrar de verdad, la app tuvo que empezar a tocar los archivos del
+  motor.** Se comprobó que ComfyUI no ofrece ninguna forma de borrar por su
+  cuenta: su única ruta de borrado alcanza solo su carpeta de ajustes. La
+  alternativa era esconder las cosas y dejar el disco llenándose, que es
+  mentirle al usuario. Queda como ADR-004, con la parte de seguridad medida y
+  probada.
+- **Nada de ventanas del navegador para preguntar.** Ni para nombrar una
+  semilla ni para confirmar un borrado: se hace dentro de la propia pantalla,
+  porque este proyecto ya había reemplazado el desplegable del sistema justo
+  para no traer ese aspecto ajeno.
+
+**Estado al cerrar:** rama `main` · árbol con cambios sin commitear · **44 tests
+en verde, ninguno saltado** · tipos, lint y compilación limpios · los **dos**
+verificadores de costura en verde · el detector de diseño sin hallazgos. El alta
+de voz se ejecutó **de principio a fin contra el motor real** y creó una voz
+nueva; el borrado de archivos se verificó contra el disco real con un señuelo.
+Lo que falta: **nadie ha mirado en un navegador** ni la pantalla de voces, ni
+las opciones avanzadas, ni los borrados — el usuario tiene la app abierta con
+una versión anterior y hay que reiniciarla.
+
+**Siguiente paso concreto:** reiniciar la app (`npm start` desde la raíz, en la
+terminal del usuario) y probar mirando la pantalla: la pestaña «Voces» del borde
+izquierdo, el desplegable «Avanzado» del escenario, y borrar desde ahí la voz de
+prueba que quedó de la validación.
+<!-- /cierre -->
+
+**Time:** 14:40 (aprox.)
+
+**User request:** empezar la sesión con `/start`, y tras el briefing elegir la
+Fase 2 (alta de voces). Ante la pregunta de de dónde sale la transcripción del
+audio de referencia, el usuario pidió primero una explicación en lenguaje llano
+y después eligió la opción de transcribir automáticamente. También preguntó si
+el proyecto se podría portar a Tauri más adelante.
+
+### Actions taken
+- `/start`: andamiaje completo verificado, sin acción. Briefing sintetizado sin
+  delegar (todo el estado ya estaba leído; fanear habría sido gasto puro).
+- Se leyó el código fuente del pack `ComfyUI-Qwen3-TTS` y de `server.py` de
+  ComfyUI para extraer la cadena real de alta de voz, en vez de recordarla.
+- Se verificó en PyPI que `faster-whisper` no arrastra PyTorch.
+- Se creó el entorno de Python del proyecto (`uv`, `pyproject.toml`) — el
+  primero que tiene este proyecto.
+- Se escribieron: `execution/transcribe_audio.py`, `web/src/lib/transcribe.ts`,
+  `web/src/lib/voices.ts`, `POST /api/voices/transcribe`, `POST /api/voices`,
+  `web/tests/voices.test.ts` y `execution/check_trim_contract.py`.
+- Se consultaron los docs de Next 16 incluidos en `node_modules` antes de dar
+  por buena la forma de los route handlers.
+- Se midió la transcripción contra dos clips reales, comparando con el
+  `ref_text` guardado en la metadata de la voz `andres_bobe.safetensors`.
+
+### Decisions
+- **ADR-003 — la transcripción vive en la app.** Razones y alternativas
+  descartadas en el propio ADR.
+- **El número del recorte es un contrato entre dos lenguajes.** El motor recorta
+  el audio de referencia a 30 s antes de calcular la voz. Si la transcripción
+  cubriera 60 s, describiría audio que el modelo no escuchó, y **nada fallaría**.
+  Se decidió recortar en la app y pasar el mismo número al motor, y se escribió
+  un verificador determinista (`check_trim_contract.py`) porque es exactamente
+  la clase de fallo silencioso que CLAUDE.md manda blindar.
+- **Se quitó un `maxDuration` que no hacía nada.** Sus propios docs dicen que lo
+  fija la plataforma de despliegue, así que en una app local es decorativo.
+  Dejarlo habría hecho creer que existe un límite que no existe.
+- **La constante compartida se movió de `transcribe.ts` a `voices.ts`**, porque
+  el grafo es quien impone el límite — y así `voices.ts` deja de arrastrar
+  `child_process` a todo el que lo importe.
+
+### Outcomes
+- 17 tests en verde (antes 7). Los nuevos incluyen seis de seguridad sobre el
+  saneado del nombre: `Qwen3SavePrompt` construye su ruta sin sanear nada, así
+  que un nombre con `..` escribiría fuera del directorio de voces.
+- Transcripción medida: 16,2 s para 10,6 s de audio; 26,9 s para 30 s. Dos
+  corridas del mismo clip devolvieron texto idéntico.
+- Precisión medida contra la verdad guardada: 2 errores en 33 palabras en el
+  clip corto (uno de ellos, el nombre del hablante), 0 en el de 30 s.
+- La descarga del modelo resultó ser de **2,9 GB** y tardó ~10 minutos. Se
+  anotó en B-006 porque es lo que haría pensar a un usuario nuevo que la app se
+  colgó.
+- Se guardó una memoria nueva ([[nextjs-maxduration-does-nothing-locally]]) con
+  el gotcha de la configuración de rutas de Next, indexada en `MEMORY.md`.
+
+### Segunda mitad — validación contra el motor y la pantalla
+El usuario levantó ComfyUI y pidió validar antes de implementar la interfaz.
+
+- **La cadena completa funcionó a la primera** contra el motor real: subir el
+  audio (27 s de transcripción), corregir, crear. La voz nueva apareció en disco
+  y en el selector sin tocar nada más.
+- **Se encontró un bug real que solo aparece contra el motor.** Un alta de voz
+  termina con éxito pero **sin audio de salida** (guarda un archivo, no genera
+  sonido). La lectura de estado solo consideraba «terminado» si encontraba
+  audio, así que un alta exitosa se reportaba **«en cola» para siempre**. La
+  generación normal nunca lo destapó porque siempre produce audio.
+  - Se añadió el estado `finished` y se verificó contra el motor vivo.
+  - **Se barrió la clase del bug:** la página tenía el mismo agujero al otro
+    lado (se habría quedado girando), y también se cerró.
+  - Se blindó con 4 tests nuevos usando como fixture la respuesta real que
+    devolvió el motor, para que no pueda volver.
+- **Se unificó un import** (`./comfy` → `./comfy.ts`) que impedía probar
+  `tts.ts` con el runner — la misma clase de problema ya corregida en
+  `voices.ts`.
+- **La pantalla:** `VoiceLibrary.tsx`, una bandeja en el borde **izquierdo**,
+  simétrica a la de «Tomas» del derecho. Izquierda es lo que entra (las voces),
+  derecha lo que sale (las tomas).
+  - Se cargó la suite de diseño obligatoria y el contexto de `impeccable` antes
+    de escribir nada, y se heredó el mundo visual del código existente.
+  - **Cajón, no ventana modal**: dar de alta una voz no interrumpe nada.
+  - **La espera se cuenta, no se predice:** un contador de tiempo transcurrido
+    real. Y si pasa de 45 segundos, aparece la explicación de la descarga de
+    2,9 GB — información cuando hace falta, silencio cuando no.
+  - Detector de diseño: sin hallazgos.
+
+### Tercera parte — opciones avanzadas y borrado real
+El usuario aprobó la pantalla («me gusta mucho cómo se ve»), preguntó si la voz
+de prueba era Bobe duplicado (sí lo era), y pidió opciones avanzadas con
+semillas etiquetables, más poder borrar voces **y** generaciones de verdad del
+disco.
+
+- **Se verificó qué expone el motor antes de ofrecer nada.** Leyendo el nodo:
+  solo `seed`, `language` y `max_new_tokens`. No hay temperatura, velocidad,
+  emoción ni tono. Se expusieron esos tres y ninguno más.
+- **Semillas guardables**, con nombre, edición en línea y reutilización de un
+  clic (`lib/favorites.ts` + `components/AdvancedPanel.tsx`). Se dejó escrito en
+  el código lo que una semilla guardada **no** promete: que el mismo número dé
+  el mismo carácter en textos distintos no está medido, así que la interfaz no
+  lo afirma.
+- **Borrado real** (ADR-004): `lib/comfy-files.ts` es el único módulo que toca
+  el sistema de archivos, con dos directorios permitidos y comprobación de que
+  cada ruta resuelta cae dentro de ellos. Rutas `DELETE` para voces y para
+  tomas. Verificado contra disco real con un archivo señuelo, sin tocar nada
+  del usuario.
+- **Un test encontró un bug de verdad:** `Number(null)` es `0`, no `NaN`, así
+  que un techo de longitud ausente se colaba como cero y acababa clampado al
+  mínimo. Se arregló la función, no el test.
+- **Se escribió un segundo verificador de costura**
+  (`execution/check_engine_options.py`): compara los rangos e idiomas que ofrece
+  la interfaz contra los que declara el nodo. El pack se actualiza por su
+  cuenta, y sin esto la primera señal de que cambió sería una generación
+  rechazada. Se comprobó además que detecta un desacuerdo, no solo que pasa.
+- **Falso positivo del hook de seguridad, anotado como B-008:**
+  `validate-commit.sh` bloqueó dos comandos por contener la subcadena que forma
+  `e` + `.key` en JavaScript, confundiéndola con un archivo de clave. No se tocó
+  el hook: es territorio privilegiado y requiere permiso explícito.
+
+### Next steps / open questions
+- **Nadie ha visto nada de esto en un navegador.** La app del usuario corre un
+  build anterior; hay que reiniciarla. Esto es lo único que juzga el acabado.
+- Quedó una voz de prueba (`voz_de_prueba.safetensors`) creada durante la
+  validación. **Ahora sí se puede borrar desde la interfaz** — el usuario
+  eligió esa vía en lugar de que se borrara por detrás.
+- La Fase 2 pide además **procedencia visible** de cada voz (son personas
+  identificables). Sigue sin hacerse.
+- Sin medir: si una misma semilla transfiere carácter entre textos distintos.
+  Es lo que decide cuánto valen realmente las semillas guardadas, y solo se
+  puede juzgar escuchando.
+- La pantalla de alta de voz no existe. Debe pasar por la suite de diseño
+  obligatoria.
+- `npm start` no comprueba ni crea el entorno de Python. Encaja con B-006.
+- Sigue abierto de la sesión 1: ventanas angostas y B-007.
+
 ## 2026-08-19 — De carpeta vacía a una app que genera voz
 
 <!-- cierre -->

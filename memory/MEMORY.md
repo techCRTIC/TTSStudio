@@ -21,3 +21,6 @@
   brinca, y tirona rítmicamente. *(gotcha)*
 - [[agent-background-server-dies-with-turn]] — un servidor arrancado como tarea
   de fondo de un agente no sobrevive al turno; el usuario lo levanta. *(constraint)*
+- [[nextjs-maxduration-does-nothing-locally]] — en Next, `maxDuration` no
+  impone nada en local: lo fija la plataforma de despliegue. Escribirlo simula
+  un límite que no existe. *(gotcha)*

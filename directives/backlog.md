@@ -57,6 +57,14 @@ guíe la instalación de lo que falte y sirva de puerta de entrada. Se solapa co
 B-003 (arranque y salud de ComfyUI desde la app), que probablemente quede
 absorbido por esto.
 
+**Ampliado en la sesión 2 (2026-08-21):** ahora hay una dependencia más, y es
+la más pesada de todas. El alta de voces necesita el modelo de transcripción
+(`faster-whisper large-v3`), que son **2,9 GB que se descargan la primera vez**.
+Medido: la primera ejecución tardó **610 segundos, casi todo descarga**, y
+mientras tanto la interfaz no tendría nada que mostrar. Una fase de instalación
+que descargue esto por adelantado —con progreso visible— es lo que evita que el
+primer usuario piense que la app se colgó. Ver [[ADR-003]].
+
 ## B-007 — Cerrar formalmente el trabajo de diseño
 **Status:** idea
 El flujo de `impeccable` exige dos cosas al terminar un mundo visual, y ninguna
@@ -70,6 +78,38 @@ Relacionado: el comportamiento en ventanas angostas tampoco está verificado.
 Las dos excepciones de animación de maquetación (`transition: height` en
 `ScriptField`, `transition: width` en `StatusLine`) deben quedar registradas ahí
 como decisiones, no como deuda.
+
+## B-008 — El guardián de secretos bloquea código JavaScript legítimo
+**Status:** idea
+Detectado el 2026-08-21. El hook `validate-commit.sh` impide que un comando lea
+archivos de secretos, y hace bien. Pero busca la subcadena de la extensión de un
+archivo de clave **en cualquier parte del comando**, y en JavaScript la propiedad
+que dice qué tecla se pulsó contiene esa misma subcadena literalmente.
+Resultado: bloqueó dos comandos que solo escribían código y documentación, sin
+ningún secreto de por medio.
+
+Costó dos rodeos en la sesión 2. El arreglo natural es exigir que la coincidencia
+sea un **nombre de archivo** —precedida de separador, espacio o comilla, y no
+pegada a un identificador— en vez de una subcadena suelta.
+
+**No se tocó el hook**: `.claude/hooks/` es territorio privilegiado y CLAUDE.md
+exige un permiso fresco y explícito del usuario para modificarlo. Queda aquí
+para que él decida.
+
+## B-009 — ¿Una semilla transfiere carácter entre textos distintos?
+**Status:** idea
+Abierto en la sesión 2 al construir las semillas guardables. Está medido que la
+misma semilla con el **mismo** texto reproduce la misma toma. Lo que **no** está
+medido es si la misma semilla con textos **distintos** conserva algo reconocible
+—un tono, una energía, una manera de respirar—. La respuesta cambia cuánto valen
+las semillas guardadas: si transfiere, guardar «la seria» es oro; si no, sirven
+solo para repetir una frase concreta.
+
+La interfaz hoy **no afirma** ninguna de las dos cosas, a propósito (está escrito
+así en `lib/favorites.ts`). Solo se puede responder escuchando: generar dos
+textos distintos con la misma semilla y compararlos contra los mismos textos con
+semillas diferentes. Ver [[ADR-003]] para el precedente de medir antes de
+afirmar.
 
 
 ## Cerradas
