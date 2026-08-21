@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AdvancedPanel, ADVANCED_DEFAULTS, type AdvancedState } from "@/components/AdvancedPanel";
 import { AudioField } from "@/components/AudioField";
 import { ScriptField } from "@/components/ScriptField";
 import { StatusLine, type Phase } from "@/components/StatusLine";
+import { VoiceLibrary } from "@/components/VoiceLibrary";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
-import { addTake, useHistory, type Take } from "@/lib/history";
+import { addTake, deleteTake, useHistory, type Take } from "@/lib/history";
 
 type Voice = { id: string; label: string };
 
@@ -19,6 +21,10 @@ export default function Studio() {
   const [current, setCurrent] = useState<Take | null>(null);
   const history = useHistory();
   const [trayOpen, setTrayOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [advanced, setAdvanced] = useState<AdvancedState>(ADVANCED_DEFAULTS);
+  const [confirmingTake, setConfirmingTake] = useState<string | null>(null);
+  const [takeError, setTakeError] = useState<string | null>(null);
   const [energy, setEnergy] = useState(0);
   const [engineDown, setEngineDown] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -47,20 +53,34 @@ export default function Studio() {
     [text, current, phase],
   );
 
-  useEffect(() => {
-    fetch("/api/voices")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.voices?.length) {
+  /**
+   * The library is read from the engine, never cached as truth — registering a
+   * voice writes a file into ComfyUI's prompts directory, and this re-read is
+   * what makes it appear. An empty list is not an error: it is a fresh install
+   * with no voices yet, which the library drawer says in its own words.
+   */
+  const loadVoices = useCallback(
+    () =>
+      fetch("/api/voices")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!Array.isArray(d.voices)) {
+            setEngineDown(true);
+            return;
+          }
           setVoices(d.voices);
-          setVoiceId((v) => v || d.voices[0].id);
+          setVoiceId((v) =>
+            v && d.voices.some((x: Voice) => x.id === v) ? v : (d.voices[0]?.id ?? ""),
+          );
           setEngineDown(false);
-        } else {
-          setEngineDown(true);
-        }
-      })
-      .catch(() => setEngineDown(true));
-  }, []);
+        })
+        .catch(() => setEngineDown(true)),
+    [],
+  );
+
+  useEffect(() => {
+    loadVoices();
+  }, [loadVoices]);
 
   useEffect(() => () => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -90,7 +110,15 @@ export default function Studio() {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: body, voiceId }),
+      body: JSON.stringify({
+        text: body,
+        voiceId,
+        // A pinned seed is sent; null means "roll a fresh one", which the
+        // server does rather than the client, so the take records what ran.
+        seed: advanced.seed,
+        language: advanced.language,
+        maxNewTokens: advanced.maxNewTokens,
+      }),
     });
     const submitted = await res.json();
 
@@ -131,13 +159,43 @@ export default function Studio() {
         setPhase("done");
         setDetail("Listo");
         addTake(take);
+      } else if (s.state === "finished") {
+        // The engine finished successfully but handed back no audio. Normal for
+        // a graph that writes a file (voice registration); for a generation it
+        // means something is wrong with the graph, and saying so beats spinning
+        // forever waiting for audio that is never coming.
+        if (pollRef.current) window.clearInterval(pollRef.current);
+        setPhase("failed");
+        setDetail("El motor terminó pero no devolvió audio.");
       } else if (s.state === "failed") {
         if (pollRef.current) window.clearInterval(pollRef.current);
         setPhase("failed");
         setDetail(s.message ?? "La generación falló.");
       }
     }, 700);
-  }, [text, voiceId, busy, voices]);
+  }, [text, voiceId, busy, voices, advanced]);
+
+  /**
+   * Delete a take: the audio file on disk AND the entry here. If the file
+   * cannot be removed, the entry stays and the error is shown — dropping the
+   * row first would lose the only handle to the orphaned file.
+   */
+  const removeTake = async (take: Take) => {
+    setTakeError(null);
+    try {
+      await deleteTake(take);
+      // The stage is showing a player pointed at a file that no longer exists.
+      if (current?.id === take.id) {
+        setCurrent(null);
+        setPhase("idle");
+        setDetail("");
+      }
+    } catch (cause) {
+      setTakeError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setConfirmingTake(null);
+    }
+  };
 
   const recall = (take: Take) => {
     setCurrent(take);
@@ -242,6 +300,18 @@ export default function Studio() {
                 placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
               />
 
+              {/* Between the writing and the player: it belongs to what is
+                  about to be generated, not to what already came back. */}
+              <div className="mt-5">
+                <AdvancedPanel
+                  state={advanced}
+                  onChange={setAdvanced}
+                  lastSeed={current?.seed ?? null}
+                  lastText={current?.text ?? ""}
+                  lastVoiceLabel={current?.voiceLabel ?? ""}
+                />
+              </div>
+
               <div className="mt-6 border-t border-hairline pt-6">
                 <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />
               </div>
@@ -290,6 +360,15 @@ export default function Studio() {
         </section>
       </div>
 
+      <VoiceLibrary
+        voices={voices}
+        selectedId={voiceId}
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onVoicesChanged={() => void loadVoices()}
+        onSelect={setVoiceId}
+      />
+
       <button
         type="button"
         onClick={() => setTrayOpen((o) => !o)}
@@ -335,42 +414,132 @@ export default function Studio() {
         </div>
 
         <div className="h-[calc(100dvh-73px)] overflow-y-auto">
+          {takeError && (
+            <p
+              role="alert"
+              className="mx-5 mt-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm leading-relaxed text-ink"
+            >
+              {takeError}
+            </p>
+          )}
           {history.length === 0 ? (
             <p className="px-5 py-8 text-sm leading-relaxed text-ink-muted">
               Todavía no hay tomas. Lo que generes queda aquí, y sigue aquí mañana.
             </p>
           ) : (
             <ul>
-              {history.map((t) => {
-                const active = current?.id === t.id;
-                return (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      onClick={() => recall(t)}
-                      style={{ boxShadow: active ? "inset 2px 0 0 var(--accent)" : "none" }}
-                      className="w-full border-b border-hairline px-5 py-4 text-left transition-colors duration-200 hover:bg-surface-raised"
-                    >
-                      <p className="line-clamp-2 text-sm leading-snug text-ink">{t.text}</p>
-                      <p className="mt-2 flex items-center gap-2 font-mono text-[11px] text-ink-muted">
-                        <span>{t.voiceLabel}</span>
-                        <span aria-hidden="true">·</span>
-                        <time dateTime={new Date(t.createdAt).toISOString()}>
-                          {new Date(t.createdAt).toLocaleTimeString("es", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </time>
-                      </p>
-                    </button>
-                  </li>
-                );
-              })}
+              {history.map((t) => (
+                <li key={t.id}>
+                  <TakeRow
+                    take={t}
+                    active={current?.id === t.id}
+                    confirming={confirmingTake === t.id}
+                    onRecall={() => recall(t)}
+                    onAskDelete={() => setConfirmingTake(t.id)}
+                    onCancelDelete={() => setConfirmingTake(null)}
+                    onConfirmDelete={() => void removeTake(t)}
+                  />
+                </li>
+              ))}
             </ul>
           )}
         </div>
       </aside>
     </main>
+  );
+}
+
+/**
+ * One take in the tray.
+ *
+ * Its seed is on show because a seed is the only handle that makes a delivery
+ * repeatable — and because a saved seed in the advanced panel is worth nothing
+ * if you cannot see which take it came from.
+ *
+ * Deleting asks first, in place. The audio file is removed from disk for real,
+ * and it is not regenerable once the take is gone from here.
+ */
+function TakeRow({
+  take,
+  active,
+  confirming,
+  onRecall,
+  onAskDelete,
+  onCancelDelete,
+  onConfirmDelete,
+}: {
+  take: Take;
+  active: boolean;
+  confirming: boolean;
+  onRecall: () => void;
+  onAskDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
+}) {
+  if (confirming) {
+    return (
+      <div className="border-b border-hairline px-5 py-4">
+        <p className="mb-3 text-[13px] leading-relaxed text-ink">
+          ¿Borrar esta toma? El archivo de audio se elimina del disco.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onConfirmDelete}
+            className="rounded-full border border-accent px-4 py-1.5 text-sm text-accent-text transition-colors duration-200 hover:bg-accent hover:text-accent-ink"
+          >
+            Borrar
+          </button>
+          <button
+            type="button"
+            onClick={onCancelDelete}
+            autoFocus
+            className="rounded-full px-3 py-1.5 text-sm text-ink-muted transition-colors duration-200 hover:text-ink"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ boxShadow: active ? "inset 2px 0 0 var(--accent)" : "none" }}
+      className="group flex items-start border-b border-hairline transition-colors duration-200 hover:bg-surface-raised"
+    >
+      <button type="button" onClick={onRecall} className="flex-1 px-5 py-4 text-left">
+        <p className="line-clamp-2 text-sm leading-snug text-ink">{take.text}</p>
+        <p className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[11px] text-ink-muted">
+          <span>{take.voiceLabel}</span>
+          <span aria-hidden="true">·</span>
+          <time dateTime={new Date(take.createdAt).toISOString()}>
+            {new Date(take.createdAt).toLocaleTimeString("es", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </time>
+          <span aria-hidden="true">·</span>
+          <span title="La semilla con la que se generó">{take.seed}</span>
+        </p>
+      </button>
+      <button
+        type="button"
+        onClick={onAskDelete}
+        aria-label="Borrar esta toma"
+        className="mr-3 mt-3 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-muted opacity-0 transition-opacity duration-200 hover:text-accent-text focus-visible:opacity-100 group-hover:opacity-100"
+      >
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path
+            d="M2.5 3.5h9M5.5 3.5V2.4h3v1.1M3.6 3.5l.5 7.4a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.5-7.4"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
   );
 }
 
