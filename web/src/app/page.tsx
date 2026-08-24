@@ -1,16 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdvancedPanel, ADVANCED_DEFAULTS, type AdvancedState } from "@/components/AdvancedPanel";
+import {
+  AdvancedPanel,
+  ADVANCED_DEFAULTS,
+  isModified,
+  type AdvancedState,
+} from "@/components/AdvancedPanel";
 import { AudioField } from "@/components/AudioField";
-import { ScriptField } from "@/components/ScriptField";
+import { ImprovePanel } from "@/components/ImprovePanel";
+import {
+  ScriptField,
+  MAX_HEIGHT,
+  MAX_HEIGHT_COMPACT,
+} from "@/components/ScriptField";
+import {
+  DockButton,
+  TakesIcon,
+  VoicesIcon,
+  type Origin,
+} from "@/components/DockButton";
+import { PanelSlot } from "@/components/PanelSlot";
+import { ToolRail, type Tool } from "@/components/ToolRail";
 import { StatusLine, type Phase } from "@/components/StatusLine";
-import { VoiceLibrary } from "@/components/VoiceLibrary";
+import { VoiceLibrary, type Voice } from "@/components/VoiceLibrary";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
-import { addTake, deleteTake, useHistory, type Take } from "@/lib/history";
-
-type Voice = { id: string; label: string };
+import { addTake, deleteTake, toggleGood, useHistory, type Take } from "@/lib/history";
+import { useImprove } from "@/lib/improve";
+import { clipFor, revealAt, REVEAL_CENTRE } from "@/lib/reveal";
+import { useTextReview } from "@/lib/review";
 
 export default function Studio() {
   const [text, setText] = useState("");
@@ -22,6 +41,28 @@ export default function Studio() {
   const history = useHistory();
   const [trayOpen, setTrayOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  /**
+   * Where each drawer's reveal starts, as a CSS position.
+   *
+   * Computed in the click handler rather than during render, because it reads
+   * the pressed button's box and the window's width. It survives the close so a
+   * reopen grows from the same place — and so does the collapse.
+   */
+  const [voicesAt, setVoicesAt] = useState(REVEAL_CENTRE);
+  const [trayAt, setTrayAt] = useState(REVEAL_CENTRE);
+
+  const openDrawer = useCallback(
+    (side: "left" | "right", origin: Origin) => {
+      if (side === "left") {
+        setVoicesAt(revealAt("left", origin));
+        setLibraryOpen(true);
+      } else {
+        setTrayAt(revealAt("right", origin));
+        setTrayOpen(true);
+      }
+    },
+    [],
+  );
   const [advanced, setAdvanced] = useState<AdvancedState>(ADVANCED_DEFAULTS);
   const [confirmingTake, setConfirmingTake] = useState<string | null>(null);
   const [takeError, setTakeError] = useState<string | null>(null);
@@ -98,6 +139,45 @@ export default function Studio() {
   }, [trayOpen]);
 
   const busy = phase === "queued" || phase === "running";
+
+  /**
+   * Which of the field's tools is open — at most one, ever.
+   *
+   * That is not a simplification, it is what keeps the card centred. The stage
+   * sits in the middle of the viewport; two panels open at once would push it
+   * past the fold and the user would have to scroll to reach the button they
+   * were already looking at.
+   */
+  const [tool, setTool] = useState<Tool>(null);
+  /**
+   * What the slot is still RENDERING, which lags `tool` on the way down.
+   *
+   * React unmounts children in the same render that closes a panel, so the box
+   * would collapse from a height it no longer has and the fold would simply not
+   * be seen. The panel stays mounted until the collapse actually ends.
+   */
+  const [shownTool, setShownTool] = useState<Tool>(null);
+  const improve = useImprove();
+
+  // A quiet, continuous read of the text, with no model involved (~80 ms of
+  // pure stdlib). It is what lets the rail's rewrite control mean something: it
+  // wakes up when there is genuinely a finding, and stays still otherwise.
+  const verdict = useTextReview(text, expanded && !busy);
+
+  const openTool = useCallback(
+    (next: Tool) => {
+      setTool(next);
+      // On the way UP the rendered panel changes immediately: the slot animates
+      // to the new content's height and the contents rise into it.
+      if (next !== null) setShownTool(next);
+      // Opening the rewrite runs it, unless the answer on hand already
+      // describes exactly this text. Pressing a control should produce a
+      // result, not another button to press.
+      const fresh = improve.state.kind === "done" && improve.state.source === text;
+      if (next === "improve" && !fresh) improve.run(text);
+    },
+    [improve, text],
+  );
 
   const generate = useCallback(async () => {
     const body = text.trim();
@@ -243,6 +323,28 @@ export default function Studio() {
             expanded ? "max-w-3xl p-8" : "max-w-lg p-2"
           }`}
         >
+          {/* The two handles, anchored to the card's own edges so they travel
+              with it when the stage unfolds. Each one becomes its panel. */}
+          <DockButton
+            side="left"
+            label="Voces"
+            count={voices.length}
+            open={libraryOpen}
+            onOpen={(origin) => openDrawer("left", origin)}
+          >
+            <VoicesIcon />
+          </DockButton>
+
+          <DockButton
+            side="right"
+            label="Tomas"
+            count={history.length}
+            open={trayOpen}
+            onOpen={(origin) => openDrawer("right", origin)}
+          >
+            <TakesIcon />
+          </DockButton>
+
           {/* Collapsed: one quiet line, sized like a search box. It collapses
               through the same grid technique as the body, in reverse, so each
               state contributes its own height and neither needs a fixed one. */}
@@ -291,26 +393,72 @@ export default function Studio() {
                 <StatusLine phase={phase} detail={detail} />
               </div>
 
-              <ScriptField
-                id="script"
-                inputRef={scriptRef}
-                value={text}
-                onChange={setText}
-                onSubmit={() => void generate()}
-                placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
-              />
+              {/* The field and its tools share one row. The rail costs no
+                  vertical space — it stands in the margin the text never used —
+                  where the same two controls as separate rows underneath cost
+                  the centred card a line each, open or not. */}
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <ScriptField
+                    id="script"
+                    inputRef={scriptRef}
+                    value={text}
+                    onChange={setText}
+                    onSubmit={() => void generate()}
+                    // The field yields its ceiling to whatever panel is open,
+                    // through the growth transition it already had. That is what
+                    // keeps the card's total height nearly constant.
+                    maxHeight={tool ? MAX_HEIGHT_COMPACT : MAX_HEIGHT}
+                    placeholder="Escribe lo que debe decir. La puntuación es la palanca: los puntos suspensivos y las frases cortas cambian el ritmo."
+                  />
+                </div>
 
-              {/* Between the writing and the player: it belongs to what is
-                  about to be generated, not to what already came back. */}
-              <div className="mt-5">
-                <AdvancedPanel
-                  state={advanced}
-                  onChange={setAdvanced}
-                  lastSeed={current?.seed ?? null}
-                  lastText={current?.text ?? ""}
-                  lastVoiceLabel={current?.voiceLabel ?? ""}
+                <ToolRail
+                  open={tool}
+                  onOpen={openTool}
+                  advancedModified={isModified(advanced)}
+                  textMark={
+                    (verdict?.blocking ?? 0) > 0
+                      ? "attention"
+                      : (verdict?.total ?? 0) > 0
+                        ? "set"
+                        : "none"
+                  }
+                  disabled={busy}
                 />
               </div>
+
+              {/* One slot, one panel at a time. It measures its contents and
+                  animates an explicit height, which is the only way the same
+                  rule can cover opening, SWITCHING between panels, and a panel
+                  growing while it is open. See PanelSlot. */}
+              <PanelSlot
+                open={tool !== null}
+                contentKey={shownTool ?? "none"}
+                onClosed={() => setShownTool(null)}
+              >
+                {shownTool === "improve" && (
+                  <ImprovePanel
+                    state={improve.state}
+                    text={text}
+                    onRun={() => improve.run(text)}
+                    onApply={(improved) => {
+                      setText(improved);
+                      setTool(null);
+                    }}
+                  />
+                )}
+                {shownTool === "advanced" && (
+                  <AdvancedPanel
+                    chromeless
+                    state={advanced}
+                    onChange={setAdvanced}
+                    lastSeed={current?.seed ?? null}
+                    lastText={current?.text ?? ""}
+                    lastVoiceLabel={current?.voiceLabel ?? ""}
+                  />
+                )}
+              </PanelSlot>
 
               <div className="mt-6 border-t border-hairline pt-6">
                 <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />
@@ -367,18 +515,8 @@ export default function Studio() {
         onOpenChange={setLibraryOpen}
         onVoicesChanged={() => void loadVoices()}
         onSelect={setVoiceId}
+        revealAt={voicesAt}
       />
-
-      <button
-        type="button"
-        onClick={() => setTrayOpen((o) => !o)}
-        aria-expanded={trayOpen}
-        className="fixed right-0 top-1/2 z-20 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-l-lg border border-r-0 border-hairline bg-surface px-3 py-7 text-ink-muted transition-colors duration-200 hover:text-accent-text"
-      >
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] [writing-mode:vertical-rl]">
-          Tomas{history.length > 0 ? " · " + history.length : ""}
-        </span>
-      </button>
 
       <aside
         aria-label="Historial de tomas"
@@ -386,63 +524,67 @@ export default function Studio() {
         // buttons stay in the tab order, so keyboard focus walks into a panel
         // nobody can see.
         inert={!trayOpen}
-        style={{
-          transform: trayOpen ? "translateX(0)" : "translateX(100%)",
-          transitionDuration: "var(--dur-glide)",
-          transitionTimingFunction: "var(--ease-wave)",
-        }}
-        className="fixed right-0 top-0 z-30 h-dvh w-[380px] max-w-[86vw] border-l border-hairline bg-surface transition-transform"
+        // Revealed from its handle rather than slid in. See lib/reveal.
+        style={{ clipPath: clipFor(trayOpen, trayAt) }}
+        className="panel-reveal fixed right-0 top-0 z-30 h-dvh w-[380px] max-w-[86vw] border-l border-hairline bg-surface"
       >
-        <div className="flex items-center justify-between border-b border-hairline px-5 py-5">
-          <span className="eyebrow">Tomas</span>
-          <button
-            type="button"
-            onClick={() => setTrayOpen(false)}
-            aria-label="Cerrar historial"
-            className="grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink"
-          >
-            {/* Drawn, not a Unicode glyph standing in for an icon. */}
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path
-                d="M2.5 2.5 9.5 9.5M9.5 2.5 2.5 9.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div className="h-[calc(100dvh-73px)] overflow-y-auto">
-          {takeError && (
-            <p
-              role="alert"
-              className="mx-5 mt-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm leading-relaxed text-ink"
+        {/* The contents arrive after the panel. See .drawer-reveal. */}
+        <div
+          data-open={trayOpen}
+          className="drawer-reveal drawer-reveal--right flex h-full flex-col"
+        >
+          <div className="flex shrink-0 items-center justify-between border-b border-hairline px-5 py-5">
+            <span className="eyebrow">Tomas</span>
+            <button
+              type="button"
+              onClick={() => setTrayOpen(false)}
+              aria-label="Cerrar historial"
+              className="grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink"
             >
-              {takeError}
-            </p>
-          )}
-          {history.length === 0 ? (
-            <p className="px-5 py-8 text-sm leading-relaxed text-ink-muted">
-              Todavía no hay tomas. Lo que generes queda aquí, y sigue aquí mañana.
-            </p>
-          ) : (
-            <ul>
-              {history.map((t) => (
-                <li key={t.id}>
-                  <TakeRow
-                    take={t}
-                    active={current?.id === t.id}
-                    confirming={confirmingTake === t.id}
-                    onRecall={() => recall(t)}
-                    onAskDelete={() => setConfirmingTake(t.id)}
-                    onCancelDelete={() => setConfirmingTake(null)}
-                    onConfirmDelete={() => void removeTake(t)}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
+              {/* Drawn, not a Unicode glyph standing in for an icon. */}
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path
+                  d="M2.5 2.5 9.5 9.5M9.5 2.5 2.5 9.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {takeError && (
+              <p
+                role="alert"
+                className="mx-5 mt-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-3 text-sm leading-relaxed text-ink"
+              >
+                {takeError}
+              </p>
+            )}
+            {history.length === 0 ? (
+              <p className="px-5 py-8 text-sm leading-relaxed text-ink-muted">
+                Todavía no hay tomas. Lo que generes queda aquí, y sigue aquí mañana.
+              </p>
+            ) : (
+              <ul>
+                {history.map((t) => (
+                  <li key={t.id}>
+                    <TakeRow
+                      take={t}
+                      active={current?.id === t.id}
+                      confirming={confirmingTake === t.id}
+                      onRecall={() => recall(t)}
+                      onToggleGood={() => toggleGood(t.id)}
+                      onAskDelete={() => setConfirmingTake(t.id)}
+                      onCancelDelete={() => setConfirmingTake(null)}
+                      onConfirmDelete={() => void removeTake(t)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </aside>
     </main>
@@ -464,6 +606,7 @@ function TakeRow({
   active,
   confirming,
   onRecall,
+  onToggleGood,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -472,6 +615,7 @@ function TakeRow({
   active: boolean;
   confirming: boolean;
   onRecall: () => void;
+  onToggleGood: () => void;
   onAskDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -522,6 +666,31 @@ function TakeRow({
           <span aria-hidden="true">·</span>
           <span title="La semilla con la que se generó">{take.seed}</span>
         </p>
+      </button>
+      {/* A take that was marked keeps its mark VISIBLE at rest; the unmarked
+          control only appears on hover. The list should read as "these are the
+          good ones" at a glance, without hovering every row. */}
+      <button
+        type="button"
+        onClick={onToggleGood}
+        aria-pressed={Boolean(take.good)}
+        aria-label={take.good ? "Quitar la marca de buena" : "Marcar como buena"}
+        className={`mt-3 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-opacity duration-200 focus-visible:opacity-100 group-hover:opacity-100 ${
+          take.good
+            ? "text-accent-text opacity-100"
+            : "text-ink-muted opacity-0 hover:text-ink"
+        }`}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path
+            d="M7 1.8l1.6 3.3 3.6.5-2.6 2.6.6 3.6L7 10.1 3.8 11.8l.6-3.6L1.8 5.6l3.6-.5L7 1.8Z"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeLinejoin="round"
+            fill={take.good ? "currentColor" : "none"}
+            fillOpacity={take.good ? 0.22 : 0}
+          />
+        </svg>
       </button>
       <button
         type="button"

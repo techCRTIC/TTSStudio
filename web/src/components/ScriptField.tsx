@@ -22,7 +22,18 @@ import { useCallback, useEffect, useRef } from "react";
  */
 
 const MIN_HEIGHT = 132; // roughly four lines at this size
-const MAX_HEIGHT = 340; // past this it scrolls rather than pushing the card off-screen
+/** Past this it scrolls rather than pushing the card off-screen. */
+export const MAX_HEIGHT = 340;
+/**
+ * The ceiling while one of the field's tool panels is open.
+ *
+ * ⚠️ This is what keeps the stage centred. The card is vertically centred in
+ * the viewport, so a panel opening under the field would push the whole thing
+ * past the fold — and the reader would have to scroll to reach the very button
+ * they were heading for. Instead the field gives the panel the room, through
+ * the growth transition it already had.
+ */
+export const MAX_HEIGHT_COMPACT = 160;
 const FADE = 36;
 
 export function ScriptField({
@@ -33,6 +44,7 @@ export function ScriptField({
   placeholder,
   disabled,
   inputRef,
+  maxHeight = MAX_HEIGHT,
 }: {
   id: string;
   value: string;
@@ -42,6 +54,8 @@ export function ScriptField({
   disabled?: boolean;
   /** Lets the stage put the caret here the moment it unfolds. */
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  /** Ceiling before the field scrolls. Lowered while a tool panel is open. */
+  maxHeight?: number;
 }) {
   // One stable internal ref. A conditional `inputRef ?? ownRef` would not be a
   // stable identity, which costs the memoisation of everything reading it; the
@@ -49,6 +63,9 @@ export function ScriptField({
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const topFadeRef = useRef<HTMLDivElement>(null);
   const bottomFadeRef = useRef<HTMLDivElement>(null);
+  // What the ceiling was last time the box was measured. It is the only way to
+  // tell the two reasons a height changes apart — see `resize`.
+  const lastCeilingRef = useRef(maxHeight);
 
   const updateFades = useCallback(() => {
     const el = areaRef.current;
@@ -81,13 +98,35 @@ export function ScriptField({
     const content = el.scrollHeight;
     el.style.height = previous;
     void el.offsetHeight;
+    // Clearing the shorthand also clears any duration override left by a
+    // previous ceiling move, so the next content-driven resize falls back to
+    // the stylesheet's short ease without anyone having to remember to reset it.
     el.style.transition = "";
 
-    const next = Math.max(MIN_HEIGHT, Math.min(content, MAX_HEIGHT));
+    /**
+     * A height changes for two different reasons, and they want two tempos.
+     *
+     *   The CONTENT grew — you typed past the end of a line. Small, frequent,
+     *   something to feel rather than watch: the short ease from the stylesheet.
+     *
+     *   The CEILING moved — a tool panel opened and the field is handing over
+     *   its room. That is one half of a single gesture whose other half is the
+     *   panel unfolding, and the two have to move together or you see a gap
+     *   open and then fill. So it borrows the panel's own glide.
+     */
+    const ceilingMoved = lastCeilingRef.current !== maxHeight;
+    lastCeilingRef.current = maxHeight;
+
+    if (ceilingMoved) {
+      el.style.transitionDuration = "var(--dur-glide)";
+      el.style.transitionTimingFunction = "var(--ease-wave)";
+    }
+
+    const next = Math.max(MIN_HEIGHT, Math.min(content, maxHeight));
     el.style.height = `${next}px`;
-    el.style.overflowY = content > MAX_HEIGHT ? "auto" : "hidden";
+    el.style.overflowY = content > maxHeight ? "auto" : "hidden";
     updateFades();
-  }, [updateFades]);
+  }, [updateFades, maxHeight]);
 
   useEffect(resize, [value, resize]);
 
@@ -113,31 +152,17 @@ export function ScriptField({
         }}
         spellCheck={false}
         placeholder={placeholder}
-        style={{
-          /**
-           * `height` is deliberately ABSENT here and owned by the effect alone.
-           *
-           * As a React inline style it was re-applied on every render, so every
-           * keystroke reset the box to its floor and the effect grew it back —
-           * replaying the whole animation per character. The floor is now a
-           * class (`min-h-[132px]`), which React never fights over, and the
-           * measured height is written imperatively.
-           *
-           * The design detector flags animating `height` as a layout animation,
-           * and it is right — this is a deliberate exception, not an oversight.
-           * Its usual advice (transform, or grid-template-rows) has no
-           * substitute here: transform would distort the text, and
-           * grid-template-rows animates layout just the same while taking away
-           * the explicit height the textarea needs in order to scroll at its
-           * ceiling. The cost is bounded: it fires when the line count changes,
-           * not per keystroke, for 150ms, over a small subtree. The canvas
-           * behind is `position: fixed` and never re-lays-out with it.
-           *
-           * Under reduced motion the global rule drops `height` from the
-           * animatable set, so growth becomes instant with no extra code.
-           */
-          transition: "height 150ms var(--ease-ui)",
-        }}
+        /**
+         * No `style` prop at all, and that is the point.
+         *
+         * `height` is owned by the effect: as a React inline style it was
+         * re-applied on every render, so every keystroke reset the box to its
+         * floor and the effect grew it back, replaying the whole animation per
+         * character. `transition` left for the same reason — the effect
+         * overrides its duration when the ceiling moves, and React would stomp
+         * that on the next render. Both live in `.script-area` now, which React
+         * never fights over. See memory/react-inline-style-fights-imperative-dom.
+         */
         className="script-area min-h-[132px] w-full resize-none bg-transparent text-[19px] leading-[1.55] text-ink placeholder:text-ink-muted"
       />
 
@@ -147,13 +172,13 @@ export function ScriptField({
         ref={topFadeRef}
         aria-hidden="true"
         style={{ height: FADE, opacity: 0 }}
-        className="pointer-events-none absolute inset-x-3 top-2 bg-gradient-to-b from-surface-raised to-transparent transition-opacity duration-150"
+        className="pointer-events-none absolute inset-x-3 top-2 z-20 bg-gradient-to-b from-surface-raised to-transparent transition-opacity duration-150"
       />
       <div
         ref={bottomFadeRef}
         aria-hidden="true"
         style={{ height: FADE, opacity: 0 }}
-        className="pointer-events-none absolute inset-x-3 bottom-2 bg-gradient-to-t from-surface-raised to-transparent transition-opacity duration-150"
+        className="pointer-events-none absolute inset-x-3 bottom-2 z-20 bg-gradient-to-t from-surface-raised to-transparent transition-opacity duration-150"
       />
     </div>
   );

@@ -227,7 +227,129 @@ body {
   animation: menu-in var(--dur-lift) var(--ease-ui) both;
 }
 
+/* A control that has something to say.
+
+   ⚠️ It is a SIGNAL, not decoration, and the difference is enforced by where it
+   is applied: the rewrite control in the field's rail carries it only while the
+   text actually holds a finding, and drops it the moment the text is clean. A
+   breath that never stops is a spinner nobody asked for.
+
+   Slow and small on purpose — 3.6s and a 22% swell, at the edge of noticing.
+   The eye should catch it when it looks over, not be pulled there mid-sentence.
+
+   Under `prefers-reduced-motion` the global rule collapses this to a single
+   1ms iteration, so it simply settles at its resting frame with no extra code. */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.22);
+  }
+}
+
+.breathe {
+  animation: breathe 3.6s var(--ease-wave) infinite;
+}
+
+/* The rail's tools. Small square targets that live beside the writing surface
+   and cost it no vertical space. The resting state is nearly invisible so the
+   field keeps the focus; the open one wears the accent because it is the one
+   whose panel is on screen. */
+.rail-tool {
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  /* Transform is separated because it carries a different message and so
+     wants a different tempo: colour and surface describe STATE and take the
+     slower lift, while the press is FEEDBACK and has to land immediately.
+     One duration for both makes the press feel like latency. */
+  transition:
+    color var(--dur-lift) var(--ease-ui),
+    background-color var(--dur-lift) var(--ease-ui),
+    box-shadow var(--dur-lift) var(--ease-ui),
+    transform var(--dur-press) var(--ease-ui);
+}
+
+.rail-tool:hover {
+  color: var(--ink-0);
+  background: color-mix(in srgb, var(--ink-0) 5%, transparent);
+}
+
+.rail-tool:active {
+  transform: scale(0.92);
+}
+
+/* The open tool is lit from inside rather than merely tinted: it is the one
+   whose panel is on screen, and the rim ties it to the panel's own edge. */
+.rail-tool[aria-expanded="true"] {
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent),
+    0 0 18px -6px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* The mark a tool wears when it has something pending: a pinned seed, or a
+   finding in the text. Placed at the corner so it reads as a badge on the tool
+   rather than as part of the icon. */
+@keyframes mark-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.rail-dot {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background: var(--accent);
+  /* It arrives. A mark that pops into existence reads as a rendering glitch,
+     and this one appears while the user is mid-sentence — the least welcome
+     moment for something to blink into the corner of the eye. */
+  animation: mark-in var(--dur-lift) var(--ease-reveal) both;
+}
+
+/* The breathing variant replaces that entrance with the loop, so the two do
+   not fight over the same transform. */
+.rail-dot.breathe {
+  animation: breathe 3.6s var(--ease-wave) infinite;
+}
+
 .script-area {
+  /* The growth transition lives HERE and not in the React `style` prop.
+     The resize effect overrides `transition-duration` when the CEILING moves
+     rather than the content, and a property React re-applies every render
+     would stomp that override on the next keystroke. Same trap as
+     memory/react-inline-style-fights-imperative-dom.
+
+     The design detector flags animating `height` as a layout animation, and it
+     is right — this is a deliberate exception, not an oversight. Its usual
+     advice has no substitute here: transform would distort the text, and
+     grid-template-rows animates layout just the same while taking away the
+     explicit height the textarea needs in order to scroll at its ceiling. The
+     cost is bounded: it fires when the line count changes, not per keystroke,
+     over a small subtree, and the canvas behind is `position: fixed` and never
+     re-lays-out with it.
+
+     Under reduced motion the global rule drops `height` from the animatable
+     set, so growth becomes instant with no extra code. */
+  transition: height 150ms var(--ease-ui);
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color var(--dur-lift) var(--ease-ui);
@@ -278,4 +400,143 @@ body {
   .elevated--interactive:hover {
     transform: none;
   }
+}
+
+/* The drawer's contents, arriving after the drawer itself.
+
+   The panel slides; its contents settle in behind it a beat later. That is the
+   same two-part move the stage card makes when it unfolds — the box changes
+   first, then the body blooms into it — and it is what separates a surface
+   arriving from a rectangle sliding across the screen.
+
+   The offset points AWAY from the edge the drawer comes from, so the contents
+   appear to be carried in rather than to slide independently.
+
+   Closing skips the delay and takes the shorter duration: an exit that mirrors
+   its entrance reads as hesitation. */
+.drawer-reveal {
+  opacity: 0;
+  transition:
+    opacity var(--dur-lift) var(--ease-ui),
+    transform var(--dur-lift) var(--ease-ui);
+}
+
+.drawer-reveal--left {
+  transform: translateX(-14px);
+}
+
+.drawer-reveal--right {
+  transform: translateX(14px);
+}
+
+.drawer-reveal[data-open="true"] {
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity var(--dur-glide) var(--ease-reveal) 80ms,
+    transform var(--dur-glide) var(--ease-reveal) 80ms;
+}
+
+/* A tool panel arriving in the field's slot.
+
+   It rises a little as it fades, in the same direction the slot is growing, so
+   the two read as one movement rather than as a box opening with something
+   appearing inside it. Short, because the slot's own glide is the longer part
+   of the gesture and the contents should land before it settles. */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-in {
+  animation: panel-in var(--dur-lift) var(--ease-reveal) both;
+}
+
+/* ── The stage's two round handles ────────────────────────────────────────
+   They flank the writing card: what goes IN on the left, what comes OUT on the
+   right. Round because they are one thing each and carry no text, and because
+   a circle is the shape the panel's reveal grows from — the control and the
+   opening gesture share a geometry.
+
+   The accent glow is the one the focal card already wears, at a lower
+   amplitude. It is what makes them read as lit objects belonging to the card
+   rather than as two grey dots parked beside it. */
+.dock-button {
+  /* The vertical half of the transform lives here so every other rule can
+     restate it: a `transform` declaration replaces the property wholesale, and
+     any rule that forgets it drops the button half its own height. */
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    var(--rim),
+    0 0 22px -10px color-mix(in srgb, var(--accent) 60%, transparent);
+  transition:
+    color var(--dur-lift) var(--ease-ui),
+    border-color var(--dur-lift) var(--ease-ui),
+    box-shadow var(--dur-lift) var(--ease-ui),
+    opacity var(--dur-press) var(--ease-ui),
+    transform var(--dur-lift) var(--ease-ui);
+}
+
+.dock-button:hover,
+.dock-button:focus-visible {
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--hairline));
+  box-shadow:
+    var(--rim-strong),
+    0 0 34px -8px color-mix(in srgb, var(--accent) 85%, transparent);
+  /* The vertical half must be restated: this rule replaces `transform`
+     wholesale, and dropping it would make the button jump half its height the
+     moment the pointer arrives. */
+  transform: translateY(-50%) scale(1.06);
+}
+
+.dock-button:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+/* Last on purpose: it shares specificity with :hover, so source order is what
+   decides, and an open handle must stay gone even under the pointer. */
+.dock-button[data-open="true"] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.7);
+}
+
+/* How many voices, how many takes. A numeral rather than a dot, because the
+   count is the useful part and there is room for it. */
+.dock-count {
+  position: absolute;
+  bottom: -0.45rem;
+  font-size: 10px;
+  line-height: 1;
+  padding: 0.15rem 0.34rem;
+  border-radius: 999px;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+/* ── The panels, revealed from their handle ───────────────────────────────
+   A drawer no longer slides in from off-screen. It sits where it belongs and
+   is CLIPPED to nothing until it opens, then the clip grows from the exact
+   point the button occupied. That is what makes the button read as becoming
+   the panel rather than as summoning it.
+
+   Both ends of the transition are `circle()` on purpose: CSS interpolates
+   clip-path only between the same shape function, so a closed `circle()` and
+   an open `inset()` would simply snap.
+
+   `clip-path` also clips hit-testing, so a closed panel cannot be clicked
+   through — `inert` is still set, as belt and braces for the keyboard. */
+.panel-reveal {
+  transition: clip-path var(--dur-glide) var(--ease-wave);
+  will-change: clip-path;
 }

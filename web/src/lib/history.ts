@@ -26,6 +26,19 @@ export type Take = {
   audioUrl: string;
   filename: string;
   createdAt: number;
+  /**
+   * Marked by the user as one that came out well.
+   *
+   * ⚠️ It is a JUDGEMENT, and it is the only one in this file. Everything else
+   * a take stores is a fact the app knows on its own — the text, the voice, the
+   * seed, the file. Whether it SOUNDS good is something only a person can say,
+   * and until they say it the history knows what was generated and nothing
+   * about what was worth keeping.
+   *
+   * Optional because takes written before this existed have no answer, and
+   * "unmarked" must not read as "bad".
+   */
+  good?: boolean;
 };
 
 const KEY = "ttsstudio.history.v1";
@@ -80,6 +93,17 @@ export function useHistory(): Take[] {
 
 export function addTake(take: Take): void {
   commit([take, ...getSnapshot()]);
+}
+
+/**
+ * Mark a take as one that came out well, or take the mark back.
+ *
+ * Deliberately a toggle with no middle state: "good" and "not said" are the
+ * only two things a person actually knows after listening once. A rating scale
+ * would ask for a precision nobody has and would go unused.
+ */
+export function toggleGood(id: string): void {
+  commit(getSnapshot().map((t) => (t.id === id ? { ...t, good: !t.good } : t)));
 }
 
 /**

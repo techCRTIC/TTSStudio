@@ -118,9 +118,12 @@ export function AdvancedPanel({
   lastSeed,
   lastText,
   lastVoiceLabel,
+  chromeless = false,
 }: {
   state: AdvancedState;
   onChange: (next: AdvancedState) => void;
+  /** Render only the contents: no toggle, no fold. See `body` below. */
+  chromeless?: boolean;
   /** The seed of the take on screen — what "save this one" refers to. */
   lastSeed: number | null;
   lastText: string;
@@ -144,42 +147,16 @@ export function AdvancedPanel({
   const pin = (seed: number) => onChange({ ...state, seed });
   const unpin = () => onChange({ ...state, seed: null });
 
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted transition-colors duration-200 hover:text-ink"
-      >
-        Avanzado
-        {isModified(state) && (
-          // A quiet mark that something is off-default — otherwise a pinned
-          // seed is invisible once this is folded, and every take afterwards
-          // is a surprise.
-          <span
-            className="h-1.5 w-1.5 rounded-full bg-accent"
-            aria-label="con ajustes cambiados"
-          />
-        )}
-        <ChevronIcon open={open} />
-      </button>
-
-      <div
-        id={panelId}
-        className="grid"
-        inert={!open}
-        style={{
-          gridTemplateRows: open ? "1fr" : "0fr",
-          transitionProperty: "grid-template-rows, opacity",
-          transitionDuration: "var(--dur-glide)",
-          transitionTimingFunction: "var(--ease-wave)",
-          opacity: open ? 1 : 0,
-        }}
-      >
-        <div className="overflow-hidden">
-          <div className="mt-5 grid gap-6 border-t border-hairline pt-5 sm:grid-cols-2">
+  /**
+   * The contents alone.
+   *
+   * Extracted so the panel can render WITHOUT its own header and fold: its
+   * trigger now lives in the field's rail and the fold is the stage's shared
+   * panel slot, because a toggle row under the writing surface cost the
+   * centred card a line of height whether or not anyone ever opened it.
+   */
+  const body = (
+    <div className="grid gap-6 sm:grid-cols-2">
             {/* --- Seed ------------------------------------------------- */}
             <div className="sm:col-span-2">
               <div className="mb-2 flex items-center justify-between gap-3">
@@ -331,7 +308,47 @@ export function AdvancedPanel({
                 cortado.
               </p>
             </div>
-          </div>
+    </div>
+  );
+
+  if (chromeless) return body;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted transition-colors duration-200 hover:text-ink"
+      >
+        Avanzado
+        {isModified(state) && (
+          // A quiet mark that something is off-default — otherwise a pinned
+          // seed is invisible once this is folded, and every take afterwards
+          // is a surprise.
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-accent"
+            aria-label="con ajustes cambiados"
+          />
+        )}
+        <ChevronIcon open={open} />
+      </button>
+
+      <div
+        id={panelId}
+        className="grid"
+        inert={!open}
+        style={{
+          gridTemplateRows: open ? "1fr" : "0fr",
+          transitionProperty: "grid-template-rows, opacity",
+          transitionDuration: "var(--dur-glide)",
+          transitionTimingFunction: "var(--ease-wave)",
+          opacity: open ? 1 : 0,
+        }}
+      >
+        <div className="overflow-hidden">
+          <div className="mt-5 border-t border-hairline pt-5">{body}</div>
         </div>
       </div>
     </div>
