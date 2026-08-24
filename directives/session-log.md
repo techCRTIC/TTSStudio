@@ -6,6 +6,328 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-08-24 — Procedencia de las voces, escritura asistida y el rediseño del escenario
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 3 · 2026-08-24
+
+**En una frase:** la app dejó de tratar el texto y las voces como cosas que
+llegan ya listas — ahora cada voz dice de quién es y se puede escuchar, y el
+texto se revisa y se reescribe antes de convertirse en audio.
+
+**Qué se hizo**
+- **Cada voz dice de quién es.** Junto a cada voz vive un archivo con su nombre
+  bien escrito, cuándo se registró, de dónde salió el audio y una nota libre
+  donde va el permiso de la persona. Se puede rellenar también para las voces
+  que ya existían.
+- **Se puede escuchar una voz sin generar una toma.** La primera vez el motor
+  dice una frase corta y queda guardada; medido, 2,1 segundos.
+- **Apareció un registro de procedencia que llevaba desde la primera sesión en
+  el disco** y que la app nunca había leído, con el detalle de de qué entrevista
+  salió la voz de Andrés. Se trajo sin pisar nada.
+- **La app aprendió a escribir para la voz.** Un botón revisa ortografía y ritmo
+  y propone una versión mejor, **marcando qué palabras cambiaron de verdad**.
+- **Se puede marcar una toma como buena**, que es lo único que la app no puede
+  saber por su cuenta.
+- **Se rediseñó el escenario.** Los controles secundarios se fueron a un raíl al
+  costado del campo, el campo cede su altura cuando se abre un panel —así la
+  tarjeta ya no se estira fuera de la pantalla— y los cajones laterales se abren
+  desde dos botones circulares: el panel no se desliza, **crece desde el botón**.
+- **Se quitó el autocompletado que sugería texto mientras escribías**, a
+  petición del usuario.
+
+**Qué se decidió y por qué**
+- **La procedencia vive junto a la voz, no en el navegador.** En el navegador se
+  perdería al cambiar de perfil mientras el archivo de la voz sobrevive, que es
+  justo lo que no se puede perder. Queda como ADR-005.
+- **Escuchar una voz es escuchar la imitación, no a la persona.** El audio
+  original se borra al crear la voz, y además enseñaría la muestra equivocada
+  para elegir.
+- **Lo mecánico lo hace código, no el modelo.** Detectar una tilde ausente o
+  convertir «31/12/2026» en palabras tiene una sola respuesta correcta. El
+  modelo solo hace lo que es criterio. Queda como ADR-006.
+- **La investigación ya estaba hecha y el usuario lo señaló.** Se iba a medir la
+  puntuación desde cero; estaba medida en su skill de voz, con dos programas ya
+  escritos. Se trajeron tal cual en vez de rehacerlos.
+- **Se cambió a mitad de sesión cómo se le pregunta al modelo.** Se le pedía la
+  respuesta rápido, y así no obedece instrucciones: continúa un patrón, que es
+  el mecanismo que inventa cosas. Ahora piensa antes de responder: tarda veinte
+  o treinta segundos y es mucho más fiel. Esa rapidez solo hacía falta por el
+  autocompletado, que ya no existe.
+- **Y como razonar no elimina el invento, el guardián se movió a la pantalla:**
+  la propuesta marca las palabras que cambiaron. Pedirle a una persona que
+  encuentre una letra distinta dentro de un párrafo reescrito no funciona.
+- **Un modelo más grande no cabe.** Los dos que hay son de 18 GB y el motor de
+  voz deja 16 libres.
+
+**Estado al cerrar:** rama `main` · **todo commiteado al cerrar** · **109 tests
+en verde, ninguno saltado** · tipos, lint y compilación limpios · los **tres**
+verificadores de costura en verde · el detector de diseño solo con excepciones
+ya documentadas. El usuario revisó el resultado en pantalla y lo aprobó
+(«quedó increíble», «está impecable»). **Nada a medias.**
+
+**Siguiente paso concreto:** empezar la **Fase 3 del roadmap — guiones largos**:
+partir un texto de varios minutos en tramos, generarlos y unirlos. El plan de
+cómo trocear ya existe medido en la skill `voz-local`
+(`scripts/tts_narrar_largo.py`), así que el primer paso es leer ese script y
+decidir qué parte se trae a `execution/`.
+<!-- /cierre -->
+
+**Hora:** 15:00 (aprox.)
+
+**Lo que pidió el usuario:** cerrar la Fase 2 del roadmap — las dos cosas que
+faltaban para darla por terminada: que se vea **de quién es** cada voz
+(procedencia) y poder **escuchar una voz sin tener que generar una toma**.
+
+### Acciones
+
+- `/start`: el andamiaje estaba completo, no se creó nada. Se detectó que
+  `project-overview.md` describe el estado de la sesión 1 y afirma cosas que
+  dejaron de ser ciertas («la Fase 2 no ha empezado», «hoy solo existe una
+  voz»). Queda por corregir.
+- Se leyó el código real antes de proponer nada, y apareció el hallazgo que da
+  forma a toda la sesión: **hoy no existe ninguna metadata de voces**.
+  `listVoices()` no lee un registro; lee el desplegable que ComfyUI expone en
+  `object_info` y parte el nombre del archivo. Así que la procedencia no es
+  mostrar un dato que ya se tiene: es empezar a guardar datos que no se guardan.
+- Se verificó en el código del pack (`nodes.py:636-638`) que la lista de voces
+  filtra por `.safetensors`, así que un archivo de datos al lado **no** se
+  convierte en una voz fantasma en el selector. Comprobado, no supuesto.
+
+### Decisiones
+
+- **La procedencia vive en un archivo junto a la voz, en el disco del motor**
+  (`<slug>.json` al lado de `<slug>.safetensors`). Alternativas descartadas:
+  `localStorage` —donde se perdería al cambiar de navegador mientras el archivo
+  de la voz sobrevive, que es justo lo que la fase pide no perder— y un registro
+  único del proyecto, que no viaja con la voz y hay que reconciliar a mano.
+- **La reconciliación: el motor manda.** Una voz sin archivo de procedencia se
+  muestra como «sin procedencia registrada», que es la verdad, y se puede
+  rellenar. Un archivo de procedencia sin voz se ignora. Borrar una voz borra
+  los dos.
+- **Escuchar una voz significa escuchar lo que el motor produce con ella**, no
+  el clip original: ese clip se borra al crear la voz (decisión de la sesión 2)
+  y además enseñaría a la persona real en vez de la imitación, que es la
+  muestra equivocada para elegir. Se genera una frase fija —la misma para todas,
+  para poder compararlas— la primera vez que se pulsa, y se recuerda.
+  Descartado generarla al dar de alta: alarga el alta justo cuando el usuario
+  espera, y paga una generación por voz aunque nunca se escuche.
+- **Hay que poder editar la procedencia de una voz que ya existe**, no solo
+  capturarla al registrar. Sin esto, `andres_bobe.safetensors` —la única voz
+  real del proyecto, anterior a todo esto— se quedaría sin procedencia para
+  siempre y la funcionalidad sería invisible justo donde importa.
+- **No se guarda la transcripción del clip.** No hace falta para acreditar
+  procedencia y es la frase que dijo una persona (CLAUDE.md § minimización).
+
+### Acciones (continuación, con el motor encendido)
+
+- Se midió la muestra **por la ruta real de la app**, no por un atajo: 2,1 s la
+  primera pulsación con el modelo caliente, 110 KB de audio, instantánea la
+  segunda. Un segundo dato («0,0 s» en una generación idéntica) se **descartó
+  por inválido**: era la caché de grafos de ComfyUI, no una medición.
+- Apareció un fallo de verdad que ningún test unitario veía: la ruta de la
+  muestra guardaba el nombre del archivo en crudo como nombre visible, y como la
+  lista prefiere el nombre guardado, **escuchar una voz la renombraba**
+  («Alexander Frings» → «alexander_frings»). El usuario lo vio en pantalla en el
+  mismo momento. Se corrigió la ruta y se repararon los dos archivos ya escritos.
+  Se barrió el resto de sitios donde la app escribe un valor visible sin que lo
+  teclee el usuario: no había más casos.
+- Al inspeccionar el directorio del motor apareció **`voces.json`**, del
+  2026-08-19, con la procedencia de Andrés (la entrevista, el pasaje
+  5.02–15.66 s, la duración) que la app nunca había leído. Se escribió
+  `execution/migrate_voice_provenance.py` para traerla.
+- Se corrigió el ADR-005, que afirmaba que no existía dónde guardar la
+  procedencia.
+
+### Resultados
+
+- **85 tests en verde, ninguno saltado** (los dos que hablan con ComfyUI
+  volvieron a correr al estar el motor encendido), tipos, lint y compilación
+  limpios, los tres verificadores de costura en verde.
+- El verificador nuevo se probó **contra cuatro formas de rotura** y las caza
+  todas; también se le corrigió una afirmación no ganada cuando el pack no está
+  instalado.
+- La app, corriendo, devuelve ya los nombres correctos y la procedencia real de
+  Andrés.
+- Nada commiteado.
+
+### Acciones (tercera parte: escritura asistida)
+
+**Lo que pidió el usuario:** dos cosas — un modelo que sugiera la continuación
+del texto en modo fantasma, aceptable con Tab; y un botón que mejore lo escrito
+con las reglas de puntuación y lo aprendido de los mejores resultados.
+
+- Se investigó antes de proponer, y el planteamiento inicial resultó equivocado:
+  se iba a medir la puntuación desde cero porque en ESTE repo no había nada. El
+  usuario corrigió el rumbo — la investigación estaba hecha, en su skill
+  `voz-local`. Ahí estaban **las mediciones** (la ortografía cambia la locución
+  entre +15 % y +29 %; la puntuación mueve el ritmo 3,5× más que el parámetro
+  `instruct` de un fine-tune) **y dos scripts ya escritos** que las aplican.
+- Eso redujo el papel del modelo enormemente: lo determinista lo hacen los dos
+  scripts traídos a `execution/`, y el modelo solo hace lo que es juicio de
+  lenguaje. Es la arquitectura de tres capas de CLAUDE.md aplicada tal cual.
+- Se descargó `qwen3:4b` (2,5 GB) con permiso explícito del usuario. Los dos
+  modelos que ya había son de 18 GB y **no caben** junto al motor de voz, que
+  deja 16 GB libres.
+- Se midió todo antes de construir, y apareció el hallazgo que da forma al
+  módulo: **Qwen3 razona antes de responder, y el interruptor no funciona** vía
+  ollama — vuelca el razonamiento dentro de la respuesta, en inglés. 21 s y
+  11.854 caracteres de deliberación para sugerir dos palabras. El **completado
+  crudo**, sin plantilla de chat, responde en 50 ms y en español limpio.
+- Se construyó: el puente compartido a Python (extraído de `transcribe.ts`,
+  que tenía las reglas escondidas), el cliente del modelo, dos rutas, el panel
+  de mejora y el texto fantasma con Tab sobre un elemento espejo.
+- Se añadió **marcar una toma como buena**, que es el único dato que la app no
+  puede saber sola y el prerrequisito para aprender de lo que al usuario le gusta.
+- La verificación real encontró tres fallos propios: el fantasma podía sugerir
+  **código Python** con poco contexto; el filtro que lo evitaba bloqueaba
+  «definitivamente» e «importante» porque buscaba `def` e `import` como
+  subcadenas; y el guardián estaba en la capa equivocada. Los tres corregidos y
+  cubiertos con tests.
+
+### Acciones (cuarta parte: el escenario recupera su centro)
+
+**Lo que reportó el usuario:** la tarjeta central se estiraba de más y perdía el
+centrado, con scroll. Pidió mover esos controles a los lados del campo
+reutilizando su animación de crecimiento, darles presencia con una respiración,
+y revisar si la lista de voces desbordaría.
+
+- Se cargó la suite de diseño obligatoria (`impeccable`) antes de tocar nada,
+  como exige CLAUDE.md para cualquier trabajo de UI.
+- **Diagnóstico con números, no a ojo:** la tarjeta apilaba etiqueta, campo
+  (132-340 px), panel de mejora, panel avanzado, onda y botones. Con el campo
+  lleno y un panel abierto pasaba de 1.100 px y dejaba de caber.
+- **Un raíl vertical junto al campo** con los dos disparadores. Ocupa el margen
+  que el texto no usaba, así que su coste vertical es cero — donde antes cada
+  uno gastaba una fila estuviera abierto o no.
+- **Un solo espacio de panel**, uno abierto a la vez, que se despliega con la
+  misma técnica de rejilla que ya usa el escenario.
+- **El campo cede su techo cuando un panel se abre** (340 → 160 px) usando su
+  propia transición de crecimiento. Nada nuevo se anima: solo se mueve el techo.
+  Es lo que mantiene la altura total casi constante.
+- **La respiración es señal, no adorno.** Se añadió una revisión continua del
+  texto —determinista, sin modelo, ~80 ms— y el punto del botón **respira solo
+  cuando hay un problema bloqueante**. Un aviso menor lleva punto fijo. Un punto
+  que respira con cada dígito suelto equivale a no tener punto.
+- **El cajón de voces sí desbordaba**, y de la peor manera: la lista y el
+  formulario de alta compartían un único contenedor con scroll, así que con
+  muchas voces el alta —la puerta de entrada al cajón— quedaba enterrada debajo
+  de todas ellas. Ahora la lista scrollea sola y el alta está anclada abajo, con
+  su propio techo para cuando crece durante el registro.
+- El detector de diseño no encontró ningún hallazgo nuevo: solo la excepción de
+  `transition: height` que ya estaba documentada en el propio archivo.
+
+### Acciones (quinta parte: el movimiento)
+
+**Lo que reportó el usuario:** los botones del raíl no seguían la fluidez del
+resto, y aclaró que «los laterales» eran **las pestañas de los cajones** —
+quería glow en ellas y que los cajones se abrieran con el mismo juego de
+animación que la tarjeta central.
+
+- Se escribió una tesis de movimiento antes de tocar, como pide la referencia:
+  el momento focal es la apertura del cajón; la continuidad es que pestaña y
+  cajón son el mismo objeto; y los botones del raíl necesitan acuse de pulsación.
+- **Las pestañas** llevan ahora el glow de acento que ya usaba la tarjeta focal
+  (`--glow-accent` es token de la casa, no decoración importada), se inclinan
+  hacia fuera al pasar el cursor —en la misma dirección en que va a salir el
+  cajón, así el gesto adelanta el resultado— y les crece un filo de acento en el
+  borde exterior.
+- **Los cajones florecen**: el panel entra y su contenido se asienta detrás con
+  80 ms de retraso. Es el mismo movimiento en dos tiempos que hace la tarjeta al
+  desplegarse. Al cerrar no hay retraso y la duración es más corta: una salida
+  que imita a su entrada se lee como duda.
+- **Los botones del raíl**: pulsación con escala, estado abierto encendido por
+  dentro con anillo y halo, y la marca **llega** con una animación de entrada en
+  vez de aparecer de golpe.
+- **Se encontró un defecto de fluidez real que nadie había señalado:** al abrir
+  un panel, el campo se encogía en 150 ms mientras el panel se desplegaba en
+  360 ms — se veía un hueco abrirse y luego rellenarse. Ahora el campo distingue
+  las dos razones por las que cambia de alto: si creció el CONTENIDO usa su ritmo
+  corto de siempre; si se movió el TECHO toma el mismo glide que el panel, porque
+  son dos mitades de un solo gesto.
+- Para lograrlo hubo que sacar `transition` del `style` de React y llevarlo al
+  CSS: es exactamente la trampa de [[react-inline-style-fights-imperative-dom]],
+  que ya estaba documentada en la memoria del proyecto.
+- De paso se quitó un número mágico: la bandeja de tomas calculaba el alto de su
+  lista como `100dvh - 73px`, la altura de su cabecera medida una vez y
+  congelada. Ahora es una columna flex y no necesita el número.
+- Detector de diseño: **sin hallazgos nuevos**. El único que sale es la
+  excepción de `transition: height`, que se mudó de archivo con el código y
+  lleva su justificación escrita al lado.
+
+### Acciones (sexta parte: cuatro pasos pedidos por el usuario)
+
+**Lo que reportó:** las pestañas laterales «quedaron horribles, escondidas
+abajo»; quería en su lugar botones circulares junto al chatbox que se
+transformen en su panel; la animación se anulaba al cambiar de panel y al
+cerrar; y fuera el texto fantasma. Pidió explícitamente ir paso por paso.
+
+- **La causa de las pestañas rotas, medida y no adivinada:** `position: relative`
+  en CSS plano le gana a la clase `fixed` de Tailwind, que va en una capa. Las
+  pestañas dejaron de estar fijas y cayeron al flujo del documento, al final de
+  la página. Revertido antes que nada.
+- **Paso 1 — fuera el fantasma.** Borrado entero: el espejo del campo, el
+  enganche, la ruta y la función del modelo, con sus tests.
+- **Paso 2 — la animación.** El contenido se desmontaba en el mismo render que
+  cerraba el panel, así que no quedaba nada de donde plegarse; y
+  `grid-template-rows` no puede interpolar entre dos alturas de contenido, que
+  es lo que hace falta al cambiar de panel. Se hizo un `PanelSlot` que mide su
+  contenido y anima una altura explícita: cubre abrir, cambiar, cerrar y un
+  panel que crece solo, con una sola regla.
+- **Paso 3 — los botones circulares.** Dos, flanqueando la tarjeta, y el cajón
+  ya no se desliza: se **revela con un `clip-path` circular que nace justo donde
+  está el botón**. Las pestañas del borde desaparecieron.
+- Se cazó el mismo tipo de fallo antes de que lo viera el usuario: un
+  `transform` en línea en el botón habría pisado sus reglas de `:hover` y
+  `:active`. Todo el `transform` pasó al CSS.
+- **Paso 4 — la calidad de la reescritura**, que el usuario reportó a mitad de
+  camino («algunas son bastante alucinación»). Resultó ser consecuencia del paso
+  1: el modo de completado crudo existía por la latencia del fantasma, y en ese
+  modo el modelo **no obedece instrucciones, continúa un patrón** — que es el
+  mecanismo que inventa. Sin fantasma, esa restricción desapareció.
+- Se midió: crudo cambiaba «cambió todo» por «cambié todo»; razonando lo
+  respetaba. Una primera instrucción salió fiel pero sin ritmo, así que se
+  reequilibró y se volvió a medir hasta lograr las dos cosas.
+- **Y se comprobó que razonar no basta:** en la verificación final volvió a
+  fallar una de tres. Así que el guardián se movió del modelo a la interfaz: un
+  diff que **marca las palabras que de verdad cambiaron**, plegando tildes,
+  mayúsculas y puntuación fuera de la comparación para que las correcciones
+  pedidas no ensucien las marcas.
+
+### Acciones (séptima parte: el cierre)
+
+- El usuario aprobó el rediseño y mandó una captura con **el botón «Revisar»
+  cortado por la mitad**. Tres defectos en una sola imagen, los tres corregidos:
+  1. **El recorte, que era el fallo real.** El panel medía el alto de su
+     contenido con `offsetHeight`, y **el alto de una caja no incluye sus
+     márgenes**. Ese elemento llevaba `mt-5`: la caja quedaba 20 px corta y, al
+     ocultar el desbordamiento, se comía el final. El espacio pasó a ser padding
+     dentro del elemento medido.
+  2. **El botón salía muerto con el campo vacío** — en la captura lo que se lee
+     es el texto de ejemplo. Ahora sin texto no se ofrece ninguna acción.
+  3. **Competía con «Generar»**: mismo naranja sólido. Ahora va con contorno.
+- Se actualizó `project-overview.md`, que seguía describiendo la sesión 1 y
+  afirmaba que la Fase 2 no había empezado.
+- Se escribieron dos memorias nuevas con las trampas que costaron rondas:
+  una propiedad CSS con dos dueños, y medir un alto sin contar los márgenes.
+
+### Próximos pasos / preguntas abiertas
+
+- **Fase 3 — guiones largos.** Es lo siguiente del roadmap. El troceo por frases
+  completas ya está resuelto y medido en `tts_narrar_largo.py` de la skill
+  `voz-local`; hay que decidir qué parte se trae a `execution/`.
+- **Ventanas angostas:** sin verificar desde la sesión 1.
+- **B-008:** el hook de secretos bloquea código JavaScript legítimo. Mordió tres
+  veces esta sesión. Sin tocar porque `.claude/hooks/` exige permiso fresco.
+- **B-009:** ¿una semilla transfiere carácter entre textos distintos? Sin medir.
+- **B-010:** el normalizador dice «un veintiuno por ciento» donde va «veintiún».
+- **B-011:** unir las tomas marcadas como buenas con la reescritura.
+- **B-012:** la app no instala ollama ni el modelo de texto.
+- **PII en el repositorio:** el nombre de una persona real aparece en ADRs,
+  bitácora y código desde sesiones anteriores. Mientras el repo sea privado no
+  pasa nada; si se publicara, es exposición. Decisión del usuario.
+
+
 ## 2026-08-21 — La app aprende a escuchar: alta de voces nuevas
 
 <!-- cierre -->

@@ -17,30 +17,43 @@ despliegue a terceros.
 Nace de una investigación previa (`comfy-mcp/`, cerrada el 2026-08-18) que
 validó la clonación de voz zero-shot con material real y dejó el stack montado.
 
-## Estado actual (sesión 1, 2026-08-19)
+## Estado actual (sesión 3, 2026-08-24)
 
-**La aplicación existe, funciona y el usuario ya generó voz con ella.**
+**La aplicación existe, se usa a diario, y ya no es solo un generador: revisa el
+texto antes de convertirlo en audio y sabe de quién es cada voz.**
 
 - `web/` — Next.js 16.3.1 + React 19 + Tailwind 4 + Geist. Se levanta con
-  `npm start` desde la raíz: un lanzador comprueba ComfyUI (y lo arranca si
-  hace falta), libera el puerto, compila, sirve y abre el navegador.
-- **La pantalla** es un escenario que arranca plegado como una barra de búsqueda
-  y se despliega al pincharlo: área de escritura que crece con el texto, campo
-  de audio animado de fondo, reproductor con forma de onda leída del audio real,
-  selector de voz propio y bandeja lateral con el historial.
+  `npm start` desde la raíz: un lanzador comprueba ComfyUI, libera el puerto,
+  compila, sirve y abre el navegador.
+- **La pantalla** es un escenario centrado que arranca plegado como una barra de
+  búsqueda y se despliega al pincharlo: área de escritura que crece con el
+  texto, un raíl de herramientas a su costado, y **dos botones circulares que se
+  transforman en los cajones laterales** — voces a la izquierda, historial a la
+  derecha.
+- **Biblioteca de voces (Fase 2, terminada).** Alta desde un audio de
+  referencia o grabando con el micrófono, transcripción propia que el usuario
+  corrige antes de calcular la voz, **procedencia visible** de cada una
+  (ADR-005), escucharla sin generar una toma, y borrado real del disco
+  (ADR-004).
+- **Escritura asistida.** Un botón revisa ortografía y ritmo con reglas
+  **medidas** —no opinadas— y propone una versión escrita para que la lea una
+  voz, marcando qué palabras cambiaron de verdad. Lo determinista lo hacen dos
+  scripts de `execution/`; el modelo local solo hace lo que es criterio
+  (ADR-006).
 - **El puente al motor** vive en `web/src/lib/comfy.ts` + las rutas bajo
-  `web/src/app/api/`. 7 tests en verde, dos de ellos contra el ComfyUI real.
-- **Salud verificada al cierre:** tipos, lint, compilación y detector de diseño
-  limpios; las únicas marcas del detector son dos excepciones documentadas en su
-  propio archivo.
+  `web/src/app/api/`. **109 tests en verde, ninguno saltado**, dos de ellos
+  contra el ComfyUI real.
+- **Salud verificada al cierre:** tipos, lint, compilación limpios; **tres
+  verificadores de costura** (`execution/check_*.py`) en verde; el detector de
+  diseño solo con excepciones documentadas en su propio archivo.
 
-**Fases 0 y 1 del roadmap (el MVP) terminadas.** La Fase 2 —dar de alta voces
-nuevas desde un audio de referencia— no ha empezado: hoy solo existe una voz,
-*Andres Bobe*, porque ya estaba calculada en disco.
+**Fases 0, 1 y 2 del roadmap terminadas.** La siguiente es la **Fase 3 —
+guiones largos**: segmentar un texto de varios minutos, regenerar un tramo
+suelto y unir el resultado.
 
-**Sin verificar:** el comportamiento en ventanas angostas. No hubo navegador en
-la sesión para probarlo; el código no tiene anchos fijos, pero nadie lo ha
-abierto estrecho.
+**Sin verificar:** el comportamiento en ventanas angostas, pendiente desde la
+sesión 1. Y sin medir: si una misma semilla conserva el carácter entre textos
+distintos (B-009).
 
 ## Visión
 Que clonar una voz y producir audio con ella deje de ser un experimento de

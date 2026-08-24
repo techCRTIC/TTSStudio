@@ -1,198 +1,88 @@
 # Active Session State
 
 <!-- cierre -->
-## 🧾 Cierre — Sesión 2 en curso · 2026-08-21
+## 🧾 Cierre — Sesión 3 · 2026-08-24
 El resumen completo de cada sesión vive en `directives/session-log.md`, y es lo
 que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 <!-- /cierre -->
 
 ---
 
-**Status:** sesión 2 en curso, **todo commiteado y el árbol limpio** (13 commits
-sobre `main`, sin push). Fase 2 completa salvo la procedencia de las voces, más
-opciones avanzadas, grabación por micrófono y borrado real.
-**Last update:** 2026-08-21
-
-## Lo último que hizo el usuario
-Probó en el navegador la biblioteca de voces y las opciones avanzadas y las
-aprobó («funciona», «me gusta mucho cómo se ve»). Mandó una captura señalando
-que el desplegable de idioma tenía el aspecto del sistema operativo, y eso ya
-está resuelto. **Lo que todavía no ha visto nadie:** la grabación por micrófono
-y el desplegable nuevo.
+**Status:** sesión 3 **cerrada limpia**. Rama `main`, árbol limpio, todo
+commiteado. 109 tests en verde (ninguno saltado), tipos, lint y compilación
+limpios, los tres verificadores de costura en verde. **Nada a medias.**
+**Last update:** 2026-08-24 (by /close)
 
 ## Current task
-**Fase 2 — biblioteca de voces.** Dar de alta voces nuevas desde un audio de
-referencia.
+Ninguna. La Fase 2 del roadmap quedó terminada.
 
-### Lo que ya está hecho y verificado
-- **`execution/transcribe_audio.py`** — transcribe el audio de referencia.
-  Medido contra los clips reales de Andrés: 16 s para un clip de 10,6 s, 27 s
-  para uno de 30 s. Determinista (dos corridas, texto idéntico).
-- **`web/src/lib/transcribe.ts`** — lanza ese script desde el servidor.
-- **`web/src/lib/voices.ts`** — subida del audio a ComfyUI + el grafo
-  `LoadAudio → Qwen3PromptMaker → Qwen3SavePrompt` + el saneado del nombre.
-- **`POST /api/voices/transcribe`** — paso 1: sube y devuelve el borrador de
-  transcripción.
-- **`POST /api/voices`** — paso 2: crea la voz con la transcripción ya corregida.
-- **`execution/check_trim_contract.py`** — el verificador de la costura.
-- **`web/src/components/VoiceLibrary.tsx`** — la pantalla: cajón en el borde
-  izquierdo, gemelo del de «Tomas». Subir → escuchar → corregir → nombrar → crear.
-- **Probado de principio a fin contra ComfyUI corriendo:** creó
-  `voz_de_prueba.safetensors` y apareció sola en el selector.
-- **`web/src/components/AdvancedPanel.tsx`** — semilla (fijar / tirar de nuevo /
-  guardar con nombre), idioma y techo de longitud. Los tres únicos parámetros
-  que el motor acepta, verificados en su código.
-- **`web/src/lib/favorites.ts`** — semillas guardadas con nombre, en el navegador.
-- **`web/src/lib/comfy-files.ts` + `/api/takes`** — borrado real de archivos del
-  disco de ComfyUI (ADR-004). Único módulo que toca `node:fs`.
-- **`execution/check_engine_options.py`** — segundo verificador de costura.
-- **`/api/voices/reference`** — borra el audio de referencia en cuanto la voz
-  queda creada. Verificado contra el disco real con un señuelo; los audios que
-  el usuario ya tenía en `input/` quedaron intactos.
-- **`web/src/components/VoiceRecorder.tsx` + `lib/recording.ts`** — grabar la
-  voz desde el micrófono, con guión en pantalla para leer. Convierte a WAV en
-  el navegador para no depender del formato de cada navegador.
-- 65 tests en verde (ninguno saltado), tipos, lint y compilación limpios,
-  ambos verificadores de costura en verde, detector de diseño sin hallazgos.
+## Siguiente paso
+**Fase 3 — guiones largos.** El motor topa en ~3 minutos de audio y 2048
+caracteres por pasada, así que un guión real nunca es una sola llamada: hay que
+trocearlo, generar cada tramo y unirlos.
 
-### Lo que falta para cerrar la Fase 2
-1. **Mirarlo en un navegador.** Es lo único que juzga el acabado, y nadie lo ha
-   hecho: ni la biblioteca de voces, ni las opciones avanzadas, ni los dos
-   borrados. La app del usuario corre un build anterior: hay que reiniciarla.
-2. **Procedencia visible** de cada voz — son personas identificables. Está en el
-   roadmap de la Fase 2 y sigue sin hacerse. Escuchar una voz sin generar
-   tampoco existe.
-3. Quedó `voz_de_prueba.safetensors` de la validación. Ya **se puede borrar
-   desde la interfaz**: el usuario eligió esa vía en lugar de borrarla por
-   detrás.
+**El primer paso concreto:** leer
+`Claude/Investigación/.claude/skills/voz-local/scripts/tts_narrar_largo.py` y
+decidir qué parte se trae a `execution/`. Ese script ya resuelve, medido, lo
+difícil: trocea por frases completas (cortar a mitad de oración destruye la
+entonación de las dos mitades), verifica cada tramo contra el bug de loop y lo
+regenera con otra semilla si falla, y une con pausas distintas entre frase y
+entre párrafo.
 
-## ⚠️ Para continuar hay que reiniciar la app
-El servidor lo levanta **el usuario, en su terminal** — una tarea de fondo de un
-agente muere al terminar el turno. Ver
-[[agent-background-server-dies-with-turn]]. Y `npm start` compila al arrancar,
-así que **un cambio de código no se ve hasta reiniciarlo**.
-
-```
-npm start        # desde la RAÍZ
-```
-
-## Decisiones de esta sesión
-- **ADR-003: la transcripción se hace en la app, no dentro de ComfyUI.** El
-  motor exige el texto del audio de referencia (`ref_text`) y no hay ningún ASR
-  instalado. Se usa `faster-whisper` (sin PyTorch) desde un script de
-  `execution/`, en vez de instalar un pack de terceros en el motor.
-- **El usuario corrige la transcripción antes de crear la voz.** No es un
-  adorno: en la prueba real, Whisper convirtió *"Andrés"* en *"Andrea"* — el
-  nombre del propio hablante — en el clip corto. Sin ese paso, la voz se habría
-  calculado contra un texto que nombra a otra persona.
-- **El usuario descartó escribir la transcripción a mano** cuando se le
-  presentaron las tres opciones. De ahí viene todo lo anterior.
-
-## Reglas nuevas que no se deben deshacer
-- **El contrato del recorte.** `REF_AUDIO_MAX_SECONDS` (en `voices.ts`) y el
-  `--max-seconds` del script Python **tienen que ser el mismo número**. Si se
-  separan, la transcripción describe audio que el modelo no escuchó y la voz
-  sale peor **sin que nada falle**. Lo vigila `execution/check_trim_contract.py`.
-- **`voiceSlug` es seguridad, no cosmética.** `Qwen3SavePrompt` construye su
-  ruta sin sanear nada, así que un nombre con `..` escribiría fuera del
-  directorio de voces. Los tests de traversal existen por eso.
-- **`maxDuration` de Next no limita nada en local** (sus propios docs: "set by
-  deployment platform"). El límite real es el del proceso, en `transcribe.ts`.
-  Guardado como memoria: [[nextjs-maxduration-does-nothing-locally]].
-- **Un grafo que guarda un archivo termina SIN audio**, y eso es normal. El
-  estado `finished` existe por eso. Esperar `done` en un alta de voz es esperar
-  para siempre — fue un bug real, medido contra el motor.
-- **Los imports locales llevan `.ts` explícito.** El runner de tests no resuelve
-  sin extensión; `tsconfig` ya tiene `allowImportingTsExtensions`.
-- **`Number(null)` es `0`, no `NaN`.** Un valor ausente hay que detectarlo
-  ANTES de convertirlo, o «no me mandaron nada» se convierte en «cero» y el
-  clamp lo acepta encantado. Fue un bug real que cazó un test.
-- **No hay ni un solo control nativo del sistema en la interfaz.** Ni
-  `<select>`, ni `type="number"` (sus flechitas también son chrome del
-  navegador). Todo desplegable pasa por `components/Select.tsx`, que es el
-  listbox accesible del proyecto, uno solo y compartido.
-- **El panel de un desplegable va en portal a `<body>`, y no es opcional.** Un
-  panel absoluto lo recorta cualquier ancestro con `overflow: hidden`, y el
-  panel «Avanzado» tiene uno porque lo necesita para plegarse. Ya pasó.
-- **Todo script de `execution/` llama a `use_utf8()` antes de imprimir.** En
-  Windows la salida de Python es cp1252 y Node la lee como UTF-8: cada tilde se
-  rompe. Y no es cosmético — ese texto fabrica la voz. Ver
-  [[python-stdout-is-not-utf8-on-windows]].
-- **El reproductor sigue el audio por fotograma, no por `timeupdate`.** Y
-  redimensionar un lienzo lo reinicia, así que solo se hace cuando el tamaño
-  cambia de verdad.
-- **12,56 tokens = 1 segundo de audio.** Medido con
-  `execution/benchmark_token_rate.py`, no deducido del «12Hz» del nombre. Y un
-  techo solo mide algo mientras de verdad limita: si el texto se acaba antes,
-  esa medida no vale y hay que descartarla.
-- **El audio de referencia se borra al crear la voz.** Es la grabación de una
-  persona y deja de tener función en cuanto existe la huella. La interfaz lo
-  dice; borrar del disco no puede ser una sorpresa.
-- **No se usan `window.prompt` ni `window.confirm`.** Este proyecto reemplazó el
-  desplegable nativo justo para no traer chrome del sistema; un diálogo del
-  navegador es lo mismo pero peor. Se pregunta dentro de la propia pantalla.
-- **El runner de tests borra tipos, no los compila.** Nada de *parameter
-  properties* de TypeScript (`constructor(private x: T)`) en código que un test
-  vaya a importar: el campo queda sin definir en tiempo de ejecución.
-- **La app solo ofrece los parámetros que el motor declara.** Hoy son tres:
-  semilla, idioma y techo de longitud. Lo vigila
-  `execution/check_engine_options.py`.
-
-## Documentación actualizada en esta sesión
-- `directives/architecture/ADR-003-transcription-outside-comfyui.md` — nuevo,
-  con la tabla de mediciones reales al final.
-- `directives/session-log.md` — entrada de la sesión 2 arriba del todo.
-- `directives/backlog.md` — B-006 ampliado con la descarga de 2,9 GB.
-- `memory/nextjs-maxduration-does-nothing-locally.md` — nuevo, e indexado en
-  `memory/MEMORY.md`.
+## Decisiones de esta sesión, con dónde viven
+| Decisión | Dónde |
+|---|---|
+| La procedencia vive en un archivo junto a la voz | `ADR-005` |
+| El motor manda: sin ficha → «sin procedencia registrada» | `ADR-005` |
+| Lo determinista lo hace código; el modelo solo lo que es criterio | `ADR-006` |
+| La reescritura razona antes de responder, y nunca se aplica sola | `ADR-006` |
+| El guardián contra el invento está en la pantalla, no en el modelo | `web/src/lib/diff.ts` |
 
 ## Cómo levantarlo
 ```
-npm start        # desde la RAÍZ. Un solo comando.
-uv sync          # si el entorno de Python no existe
+npm start        # desde la RAÍZ. Compila al arrancar: un cambio de código no
+                 # se ve hasta reiniciarla.
 ```
-Detalle y modos de fallo → `README.md`.
+Lo levanta **el usuario**: una tarea de fondo de un agente no sobrevive al turno
+([[agent-background-server-dies-with-turn]]). Hace falta **ComfyUI encendido**
+y, para el botón de reescribir, **ollama con `qwen3:4b`**.
 
-## Dónde están las cosas
+Nota: el núcleo de ComfyUI está desactualizado (`v0.33.0-23` instalado,
+`v0.33.3` disponible). Decisión del usuario cuándo actualizarlo.
+
+## Dónde están las cosas que nacieron en esta sesión
 | Ruta | Qué es |
 |---|---|
-| `web/src/app/page.tsx` | El escenario: plegado → desplegado, con la bandeja |
-| `web/src/components/ScriptField.tsx` | Área de escritura que crece + desvanecidos |
-| `web/src/components/AudioField.tsx` | Campo de audio animado de fondo |
-| `web/src/components/Waveform.tsx` | Onda decodificada del audio real + transporte |
-| `web/src/components/VoiceSelect.tsx` | Selector de voz propio (listbox accesible) |
-| `web/src/components/StatusLine.tsx` | Estado del motor, con ancho que transforma |
-| `web/src/lib/comfy.ts` | El saneador de cabeceras del ADR-001 |
-| `web/src/lib/tts.ts` | Grafo Qwen3 de generación, envío y lectura de estado |
-| `web/src/lib/voices.ts` | **Nuevo.** Alta de voces: subida, grafo y saneado |
-| `web/src/lib/transcribe.ts` | **Nuevo.** Puente al script de transcripción |
-| `web/src/components/VoiceLibrary.tsx` | **Nuevo.** Cajón izquierdo: voces, alta y borrado |
-| `web/src/components/AdvancedPanel.tsx` | **Nuevo.** Semilla, idioma, techo |
-| `web/src/lib/favorites.ts` | **Nuevo.** Semillas guardadas con nombre |
-| `web/src/lib/comfy-files.ts` | **Nuevo.** Borrado en el disco de ComfyUI |
-| `web/src/components/VoiceRecorder.tsx` | **Nuevo.** Grabar con micrófono + guión |
-| `web/src/lib/recording.ts` | **Nuevo.** Los guiones y el codificador WAV |
-| `web/src/components/Select.tsx` | **Nuevo.** El único desplegable, en portal |
-| `execution/benchmark_token_rate.py` | **Nuevo.** Mide tokens por segundo |
-| `web/src/lib/history.ts` | Historial en localStorage vía store externo |
-| `execution/transcribe_audio.py` | **Nuevo.** La transcripción (Layer 3) |
-| `execution/check_trim_contract.py` | **Nuevo.** El verificador de la costura |
-| `scripts/start.mjs` | El lanzador de `npm start` |
-| `directives/architecture/` | ADR-001 (puente), ADR-002 (stack), ADR-003 (ASR), ADR-004 (borrado) |
+| `web/src/lib/provenance.ts` | La forma del dato de procedencia y sus reglas |
+| `web/src/lib/comfy-files.ts` | Ampliado: lee y escribe el archivo de procedencia |
+| `web/src/app/api/voices/provenance/` | Editar la procedencia de una voz existente |
+| `web/src/app/api/voices/preview/` | Generar la muestra de una voz y recordarla |
+| `web/src/lib/python.ts` | El puente compartido a los scripts de `execution/` |
+| `web/src/lib/text-quality.ts` | El lado TypeScript de los dos scripts medidos |
+| `web/src/lib/llm.ts` | El cliente de ollama. Chat **con razonamiento** |
+| `web/src/lib/diff.ts` | Marca las palabras que de verdad cambiaron |
+| `web/src/app/api/text/` | `review` (determinista) e `improve` (con modelo) |
+| `web/src/components/ImprovePanel.tsx` | El panel de reescritura |
+| `web/src/components/ToolRail.tsx` | El raíl de herramientas junto al campo |
+| `web/src/components/PanelSlot.tsx` | El espacio de panel que mide y anima su alto |
+| `web/src/components/DockButton.tsx` | Los dos botones circulares del escenario |
+| `web/src/lib/reveal.ts` | El revelado circular de los cajones |
+| `execution/tts_revisar_texto.py` | Traído de la skill `voz-local`, no reescrito |
+| `execution/tts_normalizar_texto.py` | Ídem. Números y fechas a forma hablada |
+| `execution/check_voice_sidecar.py` | Tercer verificador de costura |
+| `execution/migrate_voice_provenance.py` | Trajo la procedencia del legado `voces.json` |
 
 ## Abierto / sin verificar
-- **Nadie ha visto nada de lo nuevo en un navegador.** Todo lo verificado es
-  automático: tests, tipos, compilación y el detector de diseño. Ninguno de esos
-  juzga cómo se ve.
-- **Sin medir: si una semilla transfiere carácter entre textos distintos.** Es
-  lo que decide cuánto valen las semillas guardadas, y solo se juzga
-  escuchando. Anotado como B-009.
-- **B-008:** el hook de secretos tiene un falso positivo con código JavaScript.
-  No se tocó porque `.claude/hooks/` requiere permiso explícito.
-- **`npm start` no sabe nada del entorno de Python.** Si `.venv/` no existe, el
-  alta de voz falla con un mensaje claro, pero el lanzador no lo comprueba ni lo
-  crea. Encaja con B-006.
-- **Ventanas angostas:** sigue sin verificar desde la sesión 1.
-- **B-007:** la revisión de acabado y el `DESIGN.md` del spinoff siguen sin
-  hacerse.
-- Los tres bocetos de dirección siguen en `.tmp/sketches/`, territorio de purga.
+- **Ventanas angostas:** sin verificar desde la sesión 1.
+- **B-008:** el hook de secretos bloquea código JavaScript legítimo. Mordió tres
+  veces esta sesión. Sin tocar: `.claude/hooks/` exige permiso fresco.
+- **B-009:** ¿una semilla transfiere carácter entre textos distintos? Sin medir.
+- **B-010:** el normalizador dice «un veintiuno por ciento» donde va «veintiún».
+  No se toca aquí para no separar la copia del original de la skill.
+- **B-011:** unir las tomas marcadas como buenas con la reescritura.
+- **B-012:** la app no instala ollama ni el modelo; degrada con honestidad.
+- **B-007:** revisión de acabado y `DESIGN.md` del spinoff, sin hacer.
+- **PII:** el nombre de una persona real aparece en ADRs, bitácora y código
+  desde sesiones anteriores. Privado hoy; si el repo se publicara, es exposición.
+- **`voces.json`** sigue en el directorio del motor con el `ref_text` dentro. Es
+  del usuario; la migración no lo tocó.

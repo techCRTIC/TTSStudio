@@ -27,3 +27,13 @@
 - [[python-stdout-is-not-utf8-on-windows]] — en Windows la salida de Python usa
   cp1252, no UTF-8; al leerla desde Node cada tilde se rompe. Y la consola
   miente en las dos direcciones: hay que mirar los bytes. *(gotcha)*
+- [[qwen3-razona-salvo-en-completado-crudo]] — Qwen3 razona antes de responder
+  y el interruptor no funciona vía ollama: vuelca el razonamiento dentro de la
+  respuesta, en inglés. El completado crudo lo evita, pero a cambio el modelo
+  deja de obedecer instrucciones y se inventa cosas. *(gotcha)*
+- [[una-propiedad-css-con-dos-duenos-se-rompe-en-silencio]] — si dos sitios
+  escriben la misma propiedad CSS, uno gana y el otro desaparece sin error.
+  CSS propio > utilidad de Tailwind; `style` en línea > hoja de estilos. *(gotcha)*
+- [[medir-un-alto-no-incluye-los-margenes]] — el alto de una caja excluye sus
+  márgenes, así que animar un contenedor hasta el alto medido de su contenido lo
+  deja corto y el recorte se come el final. *(gotcha)*

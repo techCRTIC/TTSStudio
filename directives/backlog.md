@@ -30,13 +30,6 @@ La app necesita que ComfyUI esté corriendo. Decidir si lo arranca ella
 asume que ya corre, o si detecta y guía al usuario. Afecta directamente el
 manejo de errores de la Fase 1.
 
-## B-004 — Controles de la interfaz acotados por el modelo
-**Status:** idea
-Qwen3-TTS en modo Voice Clone **no** expone velocidad ni emoción como
-parámetros (solo `CustomVoice` los tiene). La interfaz no puede prometer
-controles que el motor no da. Lo que sí influye es la puntuación del texto —
-evaluar si eso se convierte en una ayuda visible al usuario.
-
 ## B-005 — Convertirlo en app de escritorio
 **Status:** idea
 Pedido por el usuario el 2026-08-19: "lo que cambiaría luego es que fuera una
@@ -112,6 +105,39 @@ semillas diferentes. Ver [[ADR-003]] para el precedente de medir antes de
 afirmar.
 
 
+## B-010 — «veintiún» apocopado en el normalizador de texto
+**Status:** idea
+Detectado el 2026-08-24 al traer `tts_normalizar_texto.py` desde la skill
+`voz-local`. Con la entrada «un 21% más» devuelve «un veintiuno por ciento
+más», cuando el español pide «un veintiún por ciento». El script YA tiene la
+lógica de apócope (`_apocopar`, `NO_APOCOPAR_ANTES_DE`) pero no dispara en este
+caso.
+
+No se tocó a propósito: el original vive en la skill y arreglarlo solo aquí
+separaría las dos copias. El arreglo correcto es en la skill y luego re-importar.
+Ver [[ADR-006-local-language-model-for-text]].
+
+## B-011 — Usar las tomas marcadas como ejemplos de la reescritura
+**Status:** idea
+Abierto el 2026-08-24. Ya se puede marcar una toma como buena, y la reescritura
+ya funciona con ejemplos fijos (los medidos de la skill). Lo que falta es unir
+las dos cosas: usar los textos de las tomas que al usuario le gustaron como
+ejemplos adicionales, para que la propuesta se parezca a lo que a él le funciona
+y no solo a lo que funciona en general.
+
+Requiere pensar cuántos ejemplos caben sin encarecer la llamada, y qué pasa
+cuando las tomas marcadas se contradicen entre sí. **No hacerlo sin medir si
+mejora**: hoy la reescritura ya es buena, y más contexto no es gratis.
+
+## B-012 — La app no instala ollama ni el modelo de texto
+**Status:** idea
+Abierto el 2026-08-24 con [[ADR-006-local-language-model-for-text]]. El botón de
+mejora y el texto fantasma necesitan ollama corriendo y `qwen3:4b` (2,5 GB)
+descargado. La app degrada con honestidad —la parte determinista responde igual
+y el panel dice que la reescritura no está disponible—, pero no instala nada ni
+guía la instalación. Encaja dentro de B-006, que ya acumula el modelo de
+transcripción de 2,9 GB.
+
 ## Cerradas
 
 ## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`
@@ -131,3 +157,12 @@ midió que ComfyUI responde **403 a cualquier petición con `Origin` ajeno**, as
 que un frontend estático puro no es implementable. El servidor MCP `comfy` queda
 fuera del runtime de la app.
 
+## ✅ B-004 — [CERRADO] Controles de la interfaz acotados por el modelo
+**Status:** ✅ hecho
+Resuelto por [[ADR-006-local-language-model-for-text]] el 2026-08-24. La
+pregunta era si la puntuación —la única palanca real, porque `instruct` no
+existe en voz clonada— se convertía en ayuda visible. Sí: el botón «Escribirlo
+para la voz» revisa el texto con las reglas medidas en la investigación
+`comfy-mcp` (ortografía +15 a +29 %, puntuación 3,5× más que un fine-tune),
+normaliza números y fechas, y propone una reescritura. La app sigue sin
+prometer controles que el motor no da.
