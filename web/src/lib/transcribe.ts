@@ -13,6 +13,11 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+// The path rules and the encoding guard live in one place now: each of them is
+// a bug that already bit this project once, and a copy is where the fix goes
+// missing. See ./python.
+import { projectRoot, pythonPath } from "./python.ts";
+
 // The trim bound is imported, never redeclared: the graph is what imposes it,
 // and two copies of the number is exactly how the contract in ADR-003 would
 // come apart.
@@ -32,47 +37,6 @@ export type Transcription = {
   transcribedSeconds: number;
   elapsedSeconds: number;
 };
-
-/**
- * The project root, from wherever Next happens to be running.
- *
- * `process.cwd()` is `web/` under `next dev` but the repo root under some
- * runners, so neither is assumed: walk up until the venv is found.
- */
-function projectRoot(): string {
-  let dir = process.cwd();
-  for (let i = 0; i < 4; i += 1) {
-    if (existsSync(path.join(dir, "pyproject.toml"))) return dir;
-    dir = path.dirname(dir);
-  }
-  throw new Error(
-    "No encuentro la raíz del proyecto (busqué pyproject.toml hacia arriba desde " +
-      `${process.cwd()}).`,
-  );
-}
-
-/**
- * The venv interpreter.
- *
- * Deliberately the real `python.exe`, never `uv.cmd` or any other `.cmd`
- * shim: on Windows, Node refuses to spawn a `.cmd` without a shell, and
- * spawning with a shell warns on every run. Pointing at the executable
- * sidesteps that entirely.
- */
-function pythonPath(root: string): string {
-  const candidates =
-    process.platform === "win32"
-      ? [path.join(root, ".venv", "Scripts", "python.exe")]
-      : [path.join(root, ".venv", "bin", "python3"), path.join(root, ".venv", "bin", "python")];
-
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (!found) {
-    throw new Error(
-      "El entorno de Python del proyecto no existe. Ejecuta `uv sync` en la raíz.",
-    );
-  }
-  return found;
-}
 
 /**
  * Transcribe an audio file that is already on disk.
