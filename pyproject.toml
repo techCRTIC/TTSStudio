@@ -5,7 +5,24 @@ description = "Deterministic Python tools (Layer 3) for TTS Studio."
 requires-python = ">=3.11"
 dependencies = [
     "faster-whisper>=1.2.1",
+    "soundfile>=0.14.0",
+    # Imported directly by execution/tts_unir_tramos.py. It already arrived as
+    # a transitive dependency of the two above, which is exactly why it is
+    # declared here: an import we rely on must not depend on someone else's
+    # dependency tree staying the same.
+    "numpy>=2.0",
 ]
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+# The deterministic half of the project (CLAUDE.md Layer 3) lives in
+# `execution/`, and so do its tests. `web/tests/` is Vitest and must never be
+# collected here.
+testpaths = ["execution/tests"]
