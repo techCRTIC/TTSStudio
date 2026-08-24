@@ -14,17 +14,21 @@
  * THE SECURITY POSTURE
  *   Every path this module builds comes from data that reached us through the
  *   browser, so nothing is trusted:
- *     1. Only two directories are reachable at all, and they are derived from
+ *     1. Only three directories are reachable at all, and they are derived from
  *        one configured root — never from a client-supplied path.
  *     2. Every resolved path is proven to sit INSIDE its allowed directory
  *        before any operation, so `..` cannot escape.
- *     3. Deleting is the only mutation offered. There is no write, no move,
- *        no read-arbitrary-file.
+ *     3. The mutations offered are exactly two, and both are narrow: DELETE a
+ *        file, and READ/WRITE a voice's provenance sidecar. There is no move,
+ *        no append, and no read-arbitrary-file. The sidecar name is BUILT here
+ *        from an already-validated voice id — a caller never supplies it — and
+ *        it can only ever land in PROMPTS_DIR. See ADR-005, which records why
+ *        this module stopped being delete-only.
  *
  * Server-only: it touches `node:fs`.
  */
 
-import { unlink } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -139,6 +143,64 @@ export async function deleteFile(absolutePath: string): Promise<void> {
     }
     if (code === "EBUSY") {
       throw new Error("El archivo está en uso ahora mismo. Ciérralo y prueba otra vez.");
+    }
+    throw cause;
+  }
+}
+
+/**
+ * The absolute path of a voice's provenance sidecar. See ADR-005.
+ *
+ * ⚠️ The caller does NOT get to name this file. It is derived from the voice
+ * id — which has already been proven to match `^[a-zA-Z0-9_-]+\.safetensors$`
+ * by `voiceFilePath`, and which callers additionally check against the engine's
+ * own list — by swapping the extension. A traversal cannot be expressed through
+ * that id, so it cannot be expressed here either.
+ */
+export function voiceSidecarPath(voiceId: string): string {
+  // Reuse the voice check rather than restating it: one shape rule, in one
+  // place, so the two files can never disagree about what a valid id is.
+  voiceFilePath(voiceId);
+  return resolveInside(PROMPTS_DIR, voiceId.replace(/\.safetensors$/i, ".json"));
+}
+
+/**
+ * Read a sidecar. Absent, unreadable or malformed all mean the same thing:
+ * `null`.
+ *
+ * The engine's list is the voice library (ADR-005), so a bad sidecar must cost
+ * a decoration and nothing else. Throwing here would let one hand-edited file
+ * take down the whole library, which is a much worse outcome than a voice
+ * showing as undocumented.
+ */
+export async function readSidecar(absolutePath: string): Promise<unknown | null> {
+  try {
+    return JSON.parse(await readFile(absolutePath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write a sidecar.
+ *
+ * Whole-file and pretty-printed: it sits in the user's own model directory
+ * where they may well open it, and a record about a person should be readable
+ * by that person. Unlike `readSidecar`, a failure here IS reported — the user
+ * pressed save and has a right to know it did not save.
+ */
+export async function writeSidecar(absolutePath: string, data: unknown): Promise<void> {
+  try {
+    await writeFile(absolutePath, JSON.stringify(data, null, 2) + "\n", "utf-8");
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException).code;
+    if (code === "EPERM" || code === "EACCES") {
+      throw new Error("El sistema no dejó guardar la procedencia (permisos).");
+    }
+    if (code === "ENOENT") {
+      throw new Error(
+        "No existe el directorio de voces del motor. ¿COMFY_ROOT apunta al sitio correcto?",
+      );
     }
     throw cause;
   }

@@ -4,16 +4,21 @@ import path from "node:path";
 import {
   outputFilePath,
   voiceFilePath,
+  voiceSidecarPath,
   referenceFilePath,
   UnsafePathError,
   DIRECTORIES,
 } from "../src/lib/comfy-files.ts";
 
 /**
- * These are the security tests for the only module in the project that deletes
- * files. Everything it receives — filenames, subfolders, voice ids — arrives
- * from the browser, so the question each test asks is the same: can a crafted
- * value make this resolve to a path outside the two allowed directories?
+ * These are the security tests for the only module in the project that touches
+ * the user's own files. Everything it receives — filenames, subfolders, voice
+ * ids — arrives from the browser, so the question each test asks is the same:
+ * can a crafted value make this resolve to a path outside the three allowed
+ * directories?
+ *
+ * Since ADR-005 the module also READS and WRITES provenance sidecars, so the
+ * write path is held to the same standard the delete path always was.
  */
 
 const OUT = DIRECTORIES.OUTPUT_DIR;
@@ -184,5 +189,45 @@ describe("the allowed directories", () => {
     assert.ok(!isInside(OUT, PROMPTS) && !isInside(PROMPTS, OUT));
     assert.ok(!isInside(IN, OUT) && !isInside(OUT, IN));
     assert.ok(!isInside(IN, PROMPTS) && !isInside(PROMPTS, IN));
+  });
+});
+
+describe("voiceSidecarPath", () => {
+  test("lands next to the voice, with the extension swapped", () => {
+    const p = voiceSidecarPath("andres_bobe.safetensors");
+    assert.ok(isInside(PROMPTS, p), `${p} debería estar dentro de ${PROMPTS}`);
+    assert.equal(path.basename(p), "andres_bobe.json");
+  });
+
+  test("refuses every id the voice path refuses", () => {
+    // The sidecar reuses `voiceFilePath`'s shape check on purpose: one rule, in
+    // one place. This test is what proves the reuse is real — if someone ever
+    // reimplements the check here and gets it wrong, these ids start resolving.
+    const attacks = [
+      "../../../../Windows/System32/config.safetensors",
+      "..\..\evil.safetensors",
+      "sub/dir/voice.safetensors",
+      "voice.json",
+      "voice",
+      "",
+      ".gitconfig.safetensors",
+    ];
+
+    for (const id of attacks) {
+      assert.throws(
+        () => voiceSidecarPath(id),
+        UnsafePathError,
+        `"${id}" no debería producir una ruta`,
+      );
+    }
+  });
+
+  test("the id cannot smuggle a different extension past the swap", () => {
+    // Only a trailing `.safetensors` is replaced. An id like
+    // "a_safetensors_b.safetensors" is still shape-valid and must still land on
+    // a single .json inside the prompts directory.
+    const p = voiceSidecarPath("a_safetensors_b.safetensors");
+    assert.ok(isInside(PROMPTS, p));
+    assert.equal(path.extname(p), ".json");
   });
 });

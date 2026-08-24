@@ -1,12 +1,72 @@
 import { listVoices } from "@/lib/tts";
 import { registerVoice, voiceSlug } from "@/lib/voices";
-import { deleteFile, UnsafePathError, voiceFilePath } from "@/lib/comfy-files";
+import {
+  deleteFile,
+  outputFilePath,
+  readSidecar,
+  UnsafePathError,
+  voiceFilePath,
+  voiceSidecarPath,
+  writeSidecar,
+} from "@/lib/comfy-files";
+import { parseProvenance, provenanceFromInput, type Provenance } from "@/lib/provenance";
 
 export const dynamic = "force-dynamic";
 
+/** A voice as the interface sees it: the engine's entry plus its record, if any. */
+export type VoiceWithProvenance = {
+  id: string;
+  label: string;
+  provenance: Provenance | null;
+  /** Where the cached preview can be played from, if one was ever generated. */
+  sampleUrl: string | null;
+};
+
+/** The engine's `view` route, proxied. Same shape the generation flow returns. */
+function sampleUrlFor(filename: string): string {
+  return `/api/comfy/view?filename=${encodeURIComponent(filename)}&subfolder=&type=output`;
+}
+
+/**
+ * The voice library.
+ *
+ * ⚠️ THE ENGINE IS STILL THE LIST (ADR-005). `listVoices()` decides which
+ * voices exist; the sidecar only decorates entries that are already there. A
+ * sidecar with no voice is never read, so it cannot invent one, and a voice
+ * with no sidecar is reported honestly as undocumented rather than hidden.
+ *
+ * The label prefers the recorded name because the slug destroys accents:
+ * "Andrés Bobe" becomes `andres_bobe`, and `labelFor` can only ever bring back
+ * "Andres Bobe". The sidecar is the only place the real spelling survives.
+ */
 export async function GET() {
   try {
-    return Response.json({ voices: await listVoices() });
+    const voices = await listVoices();
+
+    const withProvenance: VoiceWithProvenance[] = await Promise.all(
+      voices.map(async (voice) => {
+        // A malformed sidecar costs a decoration and nothing else — readSidecar
+        // and parseProvenance both degrade to null rather than throwing, so one
+        // hand-edited file cannot take down the library.
+        let provenance: Provenance | null = null;
+        try {
+          provenance = parseProvenance(await readSidecar(voiceSidecarPath(voice.id)));
+        } catch {
+          provenance = null;
+        }
+
+        return {
+          id: voice.id,
+          label: provenance?.displayName || voice.label,
+          provenance,
+          sampleUrl: provenance?.sampleFilename
+            ? sampleUrlFor(provenance.sampleFilename)
+            : null,
+        };
+      }),
+    );
+
+    return Response.json({ voices: withProvenance });
   } catch (cause) {
     return Response.json(
       {
@@ -23,9 +83,14 @@ export async function GET() {
  * Step 2 of registering a voice: compute the embedding and save it.
  *
  * The transcript arrives already corrected by the user (step 1 produced a
- * draft; this is what they approved). Nothing is written to any registry —
- * Qwen3SavePrompt drops a .safetensors into the engine's prompts directory,
- * and GET above reports it from there on the next read. One source of truth.
+ * draft; this is what they approved). It is used and then dropped — ADR-005 is
+ * explicit that the transcript is NOT part of the provenance record.
+ *
+ * The sidecar is written here, before the graph finishes, and that is safe by
+ * the reconciliation rule: a sidecar with no voice yet is simply ignored, and
+ * it is waiting when the .safetensors lands. The alternative — a second round
+ * trip once the job completes — buys nothing and can be lost if the browser
+ * closes mid-job.
  */
 export async function POST(request: Request) {
   try {
@@ -38,7 +103,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { audioFilename, refText, displayName, maxSeconds } = body as Record<string, unknown>;
+    const { audioFilename, refText, displayName, maxSeconds, source, note } =
+      body as Record<string, unknown>;
 
     for (const [field, value] of Object.entries({ audioFilename, refText, displayName })) {
       if (typeof value !== "string" || !value.trim()) {
@@ -53,8 +119,9 @@ export async function POST(request: Request) {
     // letting Qwen3SavePrompt overwrite it silently — a voice embedding is not
     // regenerable without the original clip.
     const slug = voiceSlug(displayName as string);
+    const voiceId = `${slug}.safetensors`;
     const existing = await listVoices();
-    if (existing.some((voice) => voice.id === `${slug}.safetensors`)) {
+    if (existing.some((voice) => voice.id === voiceId)) {
       return Response.json(
         {
           error: "voice_exists",
@@ -71,9 +138,28 @@ export async function POST(request: Request) {
       maxSeconds: typeof maxSeconds === "number" ? maxSeconds : undefined,
     });
 
+    // Provenance is written best-effort: the voice is what the user asked for,
+    // and a record that failed to save is worth reporting but must never read
+    // as "the voice was not created". It can be filled in from the interface.
+    let provenanceSaved = true;
+    try {
+      await writeSidecar(
+        voiceSidecarPath(voiceId),
+        provenanceFromInput({
+          displayName: displayName as string,
+          registeredAt: Date.now(),
+          source,
+          refSeconds: maxSeconds,
+          note,
+        }),
+      );
+    } catch {
+      provenanceSaved = false;
+    }
+
     // The caller polls /api/status/<promptId>; the voice appears in GET
     // /api/voices once the graph finishes.
-    return Response.json({ promptId, voiceId: `${slug}.safetensors` }, { status: 202 });
+    return Response.json({ promptId, voiceId, provenanceSaved }, { status: 202 });
   } catch (cause) {
     return Response.json(
       {
@@ -86,10 +172,17 @@ export async function POST(request: Request) {
 }
 
 /**
- * Delete a voice.
+ * Delete a voice — and everything that only existed to describe it.
  *
- * ComfyUI has no route for this (its only DELETE is scoped to `user/`), so the
- * server removes the file itself. See ADR-004.
+ * Three files, in the order that fails safest. The embedding goes first because
+ * it is the thing the user asked to destroy and the only one that is not
+ * regenerable; if it survives, nothing else should be removed either. The
+ * sidecar and the cached sample follow best-effort: once the voice is gone they
+ * describe nothing, and a failure to tidy them up must not report as a failed
+ * delete of a voice that IS gone.
+ *
+ * ComfyUI has no route for any of this (its only DELETE is scoped to `user/`),
+ * so the server removes the files itself. See ADR-004.
  *
  * The id is validated against the engine's OWN list before anything touches the
  * disk: an id that is not a real voice is refused outright, which means a
@@ -115,9 +208,37 @@ export async function DELETE(request: Request) {
       );
     }
 
+    // Read the record BEFORE deleting it: it is the only thing that knows
+    // whether a cached sample exists, and where.
+    const sidecarPath = voiceSidecarPath(voiceId);
+    const provenance = parseProvenance(await readSidecar(sidecarPath));
+
     await deleteFile(voiceFilePath(voiceId));
 
-    return Response.json({ deleted: voiceId, label: match.label });
+    // Both are best-effort, and the try/catch has to WRAP the path building,
+    // not just the delete: `outputFilePath` throws synchronously on a bad
+    // filename, so a `.catch()` on its result never sees it. A sidecar
+    // hand-edited to point outside the output directory would then abort a
+    // delete whose voice is already gone, and report failure for something
+    // that succeeded.
+    try {
+      await deleteFile(sidecarPath);
+    } catch {
+      // The voice is gone; an orphan record describing nothing is not worth
+      // failing the request over.
+    }
+
+    if (provenance?.sampleFilename) {
+      try {
+        await deleteFile(outputFilePath({ filename: provenance.sampleFilename }));
+      } catch {
+        // Same, plus: an UnsafePathError here means the sidecar was tampered
+        // with. Refusing to follow it is the correct outcome, and it must not
+        // become the caller's problem.
+      }
+    }
+
+    return Response.json({ deleted: voiceId, label: provenance?.displayName ?? match.label });
   } catch (cause) {
     const status = cause instanceof UnsafePathError ? 400 : 502;
     return Response.json(
