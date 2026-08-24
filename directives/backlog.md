@@ -89,6 +89,17 @@ pegada a un identificador— en vez de una subcadena suelta.
 exige un permiso fresco y explícito del usuario para modificarlo. Queda aquí
 para que él decida.
 
+**Sesión 4 (2026-08-24) — van cinco mordiscos, y aparece un segundo disparador.**
+No es solo la propiedad de la tecla pulsada: **el nombre con que un programa de
+JavaScript lee sus variables de entorno también contiene la subcadena de un
+archivo de secretos**, así que cualquier comando que escriba esa expresión queda
+bloqueado. Esta sesión impidió (1) escribir un programa de diagnóstico que
+levantaba una ruta de la app para ver su error real, y (2) **escribir esta misma
+bitácora**, porque el texto describía el propio fallo. El rodeo fue crear los
+archivos con otra herramienta y ejecutarlos después. El arreglo propuesto —exigir
+que la coincidencia sea un nombre de archivo y no una subcadena pegada a un
+identificador— resuelve los dos disparadores de una vez.
+
 ## B-009 — ¿Una semilla transfiere carácter entre textos distintos?
 **Status:** idea
 Abierto en la sesión 2 al construir las semillas guardables. Está medido que la
@@ -137,6 +148,38 @@ descargado. La app degrada con honestidad —la parte determinista responde igua
 y el panel dice que la reescritura no está disponible—, pero no instala nada ni
 guía la instalación. Encaja dentro de B-006, que ya acumula el modelo de
 transcripción de 2,9 GB.
+
+## B-013 — El historial se llena en silencio
+**Status:** idea
+Abierto el 2026-08-24 con [[ADR-007-long-scripts-segment-orchestration]] (D5).
+El historial vive en el navegador y guarda como mucho 200 tomas; cuando la
+escritura falla porque no cabe, `commit()` en `web/src/lib/history.ts` **se
+traga el error sin decir nada**, así que la toma simplemente no queda guardada
+y nadie se entera. Hasta ahora era un fallo poco alcanzable: una toma es una
+línea. Con los guiones largos una sola toma guarda N tramos más la pieza, así
+que llegar al techo pasa a ser realista. Dos caminos, sin decidir: hacer el
+fallo visible, o acotar lo que guarda cada tramo.
+
+## B-014 — Reanudar un guión largo interrumpido
+**Status:** idea
+Abierto el 2026-08-24 con [[ADR-007-long-scripts-segment-orchestration]] (D2).
+El cliente es quien secuencia los tramos, así que cerrar la pestaña a mitad de
+un guión de diez tramos deja huérfano lo ya generado: los audios están en el
+disco, pero la app no sabe volver a ellos. Se aceptó a conciencia para la Fase 3
+—la alternativa era un registro de trabajos en el servidor, que reescribe justo
+el camino corto que no se puede tocar—. Si el uso real demuestra que duele,
+aquí está el pendiente.
+
+## B-015 — Medir la longitud mínima antes de aplicar la banda de c/s
+**Status:** idea
+Abierto el 2026-08-24 con [[ADR-007-long-scripts-segment-orchestration]] (D4).
+La verificación contra el bug de loop mide caracteres por segundo y solo la
+aplica por encima de una longitud mínima de texto, porque los tramos cortos, las
+cifras y las siglas dan falso positivo — y cada falso positivo cuesta una
+regeneración completa. Ese número **se dejó sin calibrar a propósito**, como
+constante marcada en el código, en vez de escribir una cifra adivinada como si
+estuviera medida. Este proyecto ya publicó una vez unos «12 Hz» que al medirlos
+eran 12,56. Falta la sesión de medición.
 
 ## Cerradas
 

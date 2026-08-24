@@ -6,6 +6,132 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-08-24 (tarde) — Fase 3: se abre el camino de los guiones largos
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 4 · 2026-08-24
+
+**En una frase:** se construyó, se revisó y se dejó lista para commitear la
+mitad de dentro de los guiones largos —partir el texto, revisar cada trozo y
+unirlos—, y por el camino aparecieron dos errores que venían de antes: la app
+nunca tuvo el seguimiento del motor que sus propios documentos prometían, y el
+guardián de secretos vuelve a bloquear código perfectamente normal.
+
+**Qué se hizo**
+- **Se leyó entero el programa de la skill de voz del usuario** que ya resolvía
+  los guiones largos, y se decidió parte por parte qué se trae. Se trae la
+  mitad: partir el texto por frases y unir los trozos con silencios.
+- **No se trae su forma de hablarle al motor.** Ese programa llama al motor por
+  la línea de comandos y se queda quieto hasta cinco minutos sin decir nada; la
+  app ya tiene su propio camino, que además informa de en qué va.
+- **Quedó construido y probado**: el que parte el texto, el que revisa y une los
+  trozos, un cuarto verificador que vigila que un número clave no se
+  desincronice entre los dos lenguajes, y las piezas de servidor que lo conectan.
+- **La revisión de seguridad encontró cinco cosas y se arreglaron ANTES de
+  commitear**, no se anotaron como deuda. Las dos que importaban: no había
+  ningún tope al número de archivos por petición —una petición con diez mil
+  trozos pedía un plazo de once horas mientras un proceso acumulaba audio en
+  memoria—, y los mensajes de error devolvían al navegador **rutas completas
+  del disco, con el nombre de usuario dentro**.
+- **Salió a la luz un error que venía de antes:** los documentos decían que la
+  app seguía al motor por una conexión permanente. No existe. La app pregunta
+  cada 0,7 segundos y el motor solo sabe decir «estás en la cola, en tal
+  puesto» o «estoy trabajando». Corregido en el roadmap.
+- **Un especialista borró sin querer el trabajo de otro.** Necesitaba el
+  programa de unir para probar lo suyo, todavía no existía, puso una imitación
+  en su lugar y al terminar la borró — llevándose por delante el original, que
+  para entonces sí existía. Se recuperó entero desde el registro de la sesión.
+- **El guardián de secretos volvió a morder, dos veces más** (van cinco), y una
+  de ellas impidió escribir esta misma bitácora. Ya estaba anotado como B-008;
+  ahora se le conoce un segundo disparador.
+
+**Qué se decidió y por qué**
+- **El número que decide «esto es largo» vive en dos lenguajes, a propósito.**
+  Preguntarle al programa que parte el texto cuántos trozos hay ya sería el
+  gasto extra que el usuario prohibió para las frases cortas. Esa duplicación se
+  paga en la misma sesión con un verificador que salta si dejan de coincidir.
+- **Quien escribe la pieza final es Python, pero no elige dónde.** Un solo
+  módulo de la app decide qué carpetas son legales; el programa recibe la ruta
+  ya decidida y se niega a inventarse ninguna.
+- **La frecuencia del audio se lee, nunca se supone.** Los 24000 Hz eran una
+  creencia, no una medición. Unir con la frecuencia equivocada produce una voz
+  acelerada y ningún aviso.
+- **Un número se dejó sin medir a conciencia.** Revisar un trozo comparando su
+  duración con la del texto da falsos avisos en trozos muy cortos, con cifras o
+  siglas, y cada falso aviso cuesta rehacer el trozo entero. Dónde está ese
+  límite quedó marcado en el código como pendiente de medir, porque este
+  proyecto ya dio por bueno una vez un «12» que medido era 12,56.
+- **Primero la mitad de dentro, después la pantalla.** La interfaz de «trozo 3
+  de 10» irá después, sobre cimientos ya verificados.
+- **Se commitea a `main` sin rama.** Las once funcionalidades anteriores de
+  tamaño parecido fueron directas, no hay a quién pedirle una revisión en un
+  proyecto de una sola persona, y esa revisión ya la hicieron las pruebas y la
+  seguridad. Cuando empiece la mitad de pantalla, que puede durar varias
+  sesiones, ahí sí conviene una rama.
+
+**Estado al cerrar:** rama `main` · **árbol sucio: 22 archivos SIN COMMITEAR** ·
+**todo verificado y en verde: 136 pruebas de la app, 21 de Python, los cuatro
+verificadores de costura, tipos y lint** · la revisión automática dio PASS en
+sus 9 criterios y la de seguridad quedó sin nada bloqueante, con sus cinco
+arreglos ya aplicados y probados · **hay una propuesta de 4 commits escrita y
+esperando el sí del usuario** · falta entera la mitad de pantalla.
+
+**Siguiente paso concreto:** el usuario aprueba (o corrige) la propuesta de los
+cuatro commits y se ejecutan. Después, la mitad de frontend: el bucle que
+recorre los trozos y el «trozo K de N» en pantalla.
+<!-- /cierre -->
+
+**Hora:** 14:30–15:10 (aprox.)
+
+**Lo que pidió el usuario:** `/start`, y al elegir el siguiente paso, abrir la
+Fase 3 del roadmap leyendo `tts_narrar_largo.py` de su skill `voz-local` y
+decidiendo qué parte se trae a `execution/`.
+
+### Acciones
+
+- `/start` completo: andamiaje ya presente, sin action book, salud documental al
+  día (project-overview describía la sesión 3, cero desfase).
+- Se localizó y leyó entero
+  `Proyectos/Claude/Investigación/.claude/skills/voz-local/scripts/tts_narrar_largo.py`.
+- Se cruzó contra el código real: `web/src/lib/tts.ts`, `web/src/lib/python.ts`,
+  `web/src/app/api/generate/route.ts`, `web/src/lib/history.ts`,
+  `web/src/app/api/takes/route.ts`.
+- `uv add soundfile` (0.14.0) y `uv add --dev pytest` (9.1.1), ambos con permiso
+  explícito. Verificado que `soundfile` lee FLAC, que es lo que escribe el nodo
+  `SaveAudio` — comprobado, no supuesto.
+- Se montó el arnés de pruebas de Python: `execution/tests/conftest.py` y
+  `testpaths` en `pyproject.toml`, apuntando solo a `execution/tests` para no
+  recoger nunca los tests de Vitest.
+- Pipeline `/team-new-feature` en modo plan. El plan volvió con dos fallos que
+  se corrigieron antes de construir: (1) ninguna tarea añadía la constante de
+  TypeScript que el verificador de costura debía comparar; (2) el pipeline aísla
+  a cada especialista en su propio worktree, y aquí las tareas se leen entre sí.
+  Se trabajó sobre una copia del script con árbol compartido y con los archivos
+  de cada tarea declarados.
+- Se escribió `directives/architecture/ADR-007-...md`, se corrigió la línea del
+  websocket en `directives/roadmap.md`, y se abrieron B-013, B-014 y B-015.
+- Modo build lanzado; **no había terminado al cerrar la sesión**.
+
+### Decisiones
+
+Las seis (D1–D6) están razonadas en el ADR-007. Las que el usuario aprobó
+explícitamente: la enmienda a ADR-004 sobre quién calcula la ruta de la pieza,
+el ensanche del borrado para aceptar una lista, y añadir `pytest`.
+
+### Resultados
+
+- ADR-007 aceptado; roadmap corregido; tres entradas nuevas en el backlog.
+- Dos dependencias nuevas, ambas anotadas en `pyproject.toml` en el mismo
+  cambio que las introdujo.
+- Construcción incompleta y **sin verificar**. No se afirma nada sobre ella.
+
+### Próximos pasos / preguntas abiertas
+
+- Correr los cuatro verificadores, `pytest` y Vitest, y ver qué hay de verdad.
+- Terminar `execution/tts_trocear_guion.py` y sus tests si el build no los dejó.
+- Después: la mitad de frontend (el secuenciador y el «tramo K de N»), que
+  quedó fuera de esta pasada a propósito.
+
 ## 2026-08-24 — Procedencia de las voces, escritura asistida y el rediseño del escenario
 
 <!-- cierre -->

@@ -60,7 +60,12 @@ por Qwen3-TTS, y el test del `Origin` está en verde.
 más rápido aquí que en ComfyUI?
 **Entregables**
 - La superficie de generación en su estructura elegida.
-- Progreso real desde el websocket de ComfyUI, nunca una ruedita indeterminada.
+- Estado real del motor, nunca una ruedita indeterminada ni un porcentaje
+  inventado. *(Corregido el 2026-08-24: esta línea decía «progreso real desde el
+  websocket de ComfyUI». No hay websocket — el cliente consulta
+  `/api/status/:promptId` cada 700 ms y el motor solo reporta posición en la
+  cola o ejecución, que es justamente por lo que `StatusLine` no pinta barras.
+  Ver ADR-007.)*
 - Reproducción con forma de onda y descarga del archivo.
 - Historial persistente: cada generación queda guardada y se puede volver a ella.
 - Manejo honesto de fallos: ComfyUI caído, VRAM insuficiente, cola ocupada.

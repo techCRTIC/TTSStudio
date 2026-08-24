@@ -37,3 +37,7 @@
 - [[medir-un-alto-no-incluye-los-margenes]] — el alto de una caja excluye sus
   márgenes, así que animar un contenedor hasta el alto medido de su contenido lo
   deja corto y el recorte se come el final. *(gotcha)*
+- [[especialistas-en-paralelo-se-pisan-las-dependencias]] — varios
+  especialistas a la vez sobre el mismo árbol: el que necesita una pieza que
+  otro aún no escribió la imita, y al limpiar su imitación borra el original.
+  Declarar los archivos de cada uno no basta. *(gotcha)*

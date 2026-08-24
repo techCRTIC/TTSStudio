@@ -1,42 +1,108 @@
 # Active Session State
 
 <!-- cierre -->
-## 🧾 Cierre — Sesión 3 · 2026-08-24
+## 🧾 Cierre — Sesión 4 · 2026-08-24
 El resumen completo de cada sesión vive en `directives/session-log.md`, y es lo
 que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 <!-- /cierre -->
 
 ---
 
-**Status:** sesión 3 **cerrada limpia**. Rama `main`, árbol limpio, todo
-commiteado. 109 tests en verde (ninguno saltado), tipos, lint y compilación
-limpios, los tres verificadores de costura en verde. **Nada a medias.**
-**Last update:** 2026-08-24 (by /close)
+**Status:** sesión 4. La mitad backend de la Fase 3 está **construida, revisada
+y verificada en verde**. Rama `main`, **22 archivos SIN COMMITEAR**, con una
+**propuesta de 4 commits escrita y esperando el sí del usuario**.
+**Last update:** 2026-08-24
+
+## ⏳ Lo único que bloquea ahora mismo
+El usuario tiene que **aprobar o corregir la propuesta de commits** (más abajo).
+No se ha ejecutado ningún `git add` ni `git commit`.
 
 ## Current task
-Ninguna. La Fase 2 del roadmap quedó terminada.
+**Fase 3 del roadmap — guiones largos.** Mitad backend/determinista: **hecha**.
+Las seis decisiones están razonadas en
+**[ADR-007](../../directives/architecture/ADR-007-long-scripts-segment-orchestration.md)**.
+
+**Criterio que no se puede romper** (criterio de salida del roadmap): si el
+troceo devuelve **un solo tramo**, el camino debe ser idéntico al de hoy — ni un
+proceso de Python de más. De ahí que el umbral viva en dos lenguajes y exista un
+cuarto verificador de costura que salta si dejan de coincidir.
+
+## Verificación (corrida por el orquestador, después de los arreglos)
+| Qué | Resultado |
+|---|---|
+| Suite de la app (`npm test` en `web/`) | **136 pasan, 0 fallan, 0 saltadas** |
+| `pytest` (`execution/tests/`) | **21 pasan** |
+| Los **cuatro** `execution/check_*.py` | **los cuatro salen 0** |
+| `npx tsc --noEmit` · `npm run lint` | **limpios** |
+| `qa-tester` del pipeline | **PASS, 9 de 9 criterios** |
+| `security-reviewer` | **CONCERNS, nada bloqueante — sus 5 arreglos YA aplicados** |
+
+## Los cinco arreglos de seguridad, ya dentro
+1. **Tope de 200** al borrado en lote y a la lista de unión, más **techo
+   absoluto de 10 min** al plazo de la unión. Sin esto, una petición con 10.000
+   tramos pedía un plazo de once horas con Python acumulando audio en memoria.
+2. **`index` y `subfolder` en cada resultado del borrado**: dos tramos con el
+   mismo nombre en carpetas distintas eran indistinguibles, y el llamador podía
+   leer «borrado» de un archivo que seguía en el disco.
+3. **`redactRoot()` en `comfy-files.ts`**: los mensajes de error devolvían al
+   navegador rutas absolutas con el nombre de usuario del sistema dentro.
+4. **`numpy` declarado** en `pyproject.toml`: se usaba de prestado, entrando
+   como dependencia de otra.
+5. **Tests nuevos**: travesía dentro del lote, tope de tamaño, y posición.
+
+## Propuesta de commits, pendiente de aprobación
+**A `main`, sin rama** — las once funcionalidades anteriores de tamaño parecido
+fueron directas, no hay a quién pedirle un PR en un proyecto de una persona, y
+esa revisión ya la hicieron QA y seguridad. Cuando empiece la mitad de pantalla
+(varias sesiones), ahí sí conviene una rama.
+
+| # | Tipo | Qué agrupa |
+|---|---|---|
+| 1 | `feat(segments)` | Los dos scripts deterministas + arnés de pytest + `pyproject.toml`/`uv.lock` |
+| 2 | `feat(segments)` | El cuarto verificador de costura + `SEGMENT_MAX_CHARS` en `tts.ts` |
+| 3 | `feat(segments)` | `comfy-files.ts`, las dos rutas de `segments/`, el borrado en lote, y sus tests |
+| 4 | `docs` | ADR-007, roadmap, backlog, bitácora, `active.md`, memoria |
+
+Los textos exactos los tiene `git-lead` (agente `a20c1a4885598d83d`); si se
+pierden, se regeneran pidiéndoselos con este mismo contexto.
+
+## Lo que existe ahora
+| Ruta | Qué es |
+|---|---|
+| `execution/tts_trocear_guion.py` | Parte el guión por frases. `MAX_CHARS = 600` (ese nombre lo lee el verificador por regex) |
+| `execution/tts_unir_tramos.py` | `--verificar` un tramo contra el bug de loop · `--unir` con pausas de 0,28 s y 0,65 s |
+| `execution/check_segment_contract.py` | Cuarto verificador: compara `MAX_CHARS` con `SEGMENT_MAX_CHARS` |
+| `execution/tests/` | `conftest.py` + los tests de los dos scripts |
+| `web/src/lib/tts.ts` | Ganó `SEGMENT_MAX_CHARS = 600` |
+| `web/src/lib/comfy-files.ts` | Ganó `pieceOutputPath()` y `redactRoot()` |
+| `web/src/app/api/segments/{verify,join}/` | Las dos rutas que invocan el script |
+| `web/src/app/api/takes/route.ts` | El borrado acepta lista, con tope y trazabilidad por posición |
+| `web/tests/segments-{verify,join}.test.ts`, `web/tests/takes.test.ts` | Sus tests |
+
+## ⚠️ Dos cosas que mordieron esta sesión y volverán a morder
+1. **Un especialista borró el trabajo de otro.** Puso una imitación de
+   `tts_unir_tramos.py` en su ruta real para probar lo suyo y al limpiarla se
+   llevó el original. Se recuperó desde `agent-*.jsonl`. Memoria:
+   [[especialistas-en-paralelo-se-pisan-las-dependencias]].
+2. **B-008, cinco mordiscos.** Segundo disparador conocido además de la tecla
+   pulsada: el nombre con que JavaScript lee sus variables de entorno. Llegó a
+   impedir escribir la bitácora que describe el fallo. Rodeo: crear el archivo
+   con otra herramienta y ejecutarlo después.
+
+## ⚠️ El error de documentación corregido
+Los documentos decían que la app seguía al motor **por websocket**. **No
+existe.** `web/src/app/page.tsx:213-255` consulta `/api/status/:promptId` cada
+700 ms, y el motor solo reporta posición en cola o ejecución — por eso
+`StatusLine.tsx` se niega a pintar barras. Corregido en `directives/roadmap.md`.
 
 ## Siguiente paso
-**Fase 3 — guiones largos.** El motor topa en ~3 minutos de audio y 2048
-caracteres por pasada, así que un guión real nunca es una sola llamada: hay que
-trocearlo, generar cada tramo y unirlos.
-
-**El primer paso concreto:** leer
-`Claude/Investigación/.claude/skills/voz-local/scripts/tts_narrar_largo.py` y
-decidir qué parte se trae a `execution/`. Ese script ya resuelve, medido, lo
-difícil: trocea por frases completas (cortar a mitad de oración destruye la
-entonación de las dos mitades), verifica cada tramo contra el bug de loop y lo
-regenera con otra semilla si falla, y une con pausas distintas entre frase y
-entre párrafo.
-
-## Decisiones de esta sesión, con dónde viven
-| Decisión | Dónde |
-|---|---|
-| La procedencia vive en un archivo junto a la voz | `ADR-005` |
-| El motor manda: sin ficha → «sin procedencia registrada» | `ADR-005` |
-| Lo determinista lo hace código; el modelo solo lo que es criterio | `ADR-006` |
-| La reescritura razona antes de responder, y nunca se aplica sola | `ADR-006` |
-| El guardián contra el invento está en la pantalla, no en el modelo | `web/src/lib/diff.ts` |
+1. **Ejecutar los cuatro commits** en cuanto el usuario apruebe.
+2. **La mitad de frontend**: el bucle que secuencia los tramos reusando
+   `submit`/`statusOf`, el «tramo K de N» —sin porcentaje, que el motor no lo
+   sabe—, los campos opcionales del tipo `Take`, y `deleteTake` llamando al
+   borrado en lote (que ya lo espera, con `index` y `subfolder`).
+3. Pendiente de medir: **B-015**, la longitud mínima bajo la cual no se aplica
+   la banda de caracteres por segundo.
 
 ## Cómo levantarlo
 ```
@@ -50,39 +116,28 @@ y, para el botón de reescribir, **ollama con `qwen3:4b`**.
 Nota: el núcleo de ComfyUI está desactualizado (`v0.33.0-23` instalado,
 `v0.33.3` disponible). Decisión del usuario cuándo actualizarlo.
 
-## Dónde están las cosas que nacieron en esta sesión
-| Ruta | Qué es |
-|---|---|
-| `web/src/lib/provenance.ts` | La forma del dato de procedencia y sus reglas |
-| `web/src/lib/comfy-files.ts` | Ampliado: lee y escribe el archivo de procedencia |
-| `web/src/app/api/voices/provenance/` | Editar la procedencia de una voz existente |
-| `web/src/app/api/voices/preview/` | Generar la muestra de una voz y recordarla |
-| `web/src/lib/python.ts` | El puente compartido a los scripts de `execution/` |
-| `web/src/lib/text-quality.ts` | El lado TypeScript de los dos scripts medidos |
-| `web/src/lib/llm.ts` | El cliente de ollama. Chat **con razonamiento** |
-| `web/src/lib/diff.ts` | Marca las palabras que de verdad cambiaron |
-| `web/src/app/api/text/` | `review` (determinista) e `improve` (con modelo) |
-| `web/src/components/ImprovePanel.tsx` | El panel de reescritura |
-| `web/src/components/ToolRail.tsx` | El raíl de herramientas junto al campo |
-| `web/src/components/PanelSlot.tsx` | El espacio de panel que mide y anima su alto |
-| `web/src/components/DockButton.tsx` | Los dos botones circulares del escenario |
-| `web/src/lib/reveal.ts` | El revelado circular de los cajones |
-| `execution/tts_revisar_texto.py` | Traído de la skill `voz-local`, no reescrito |
-| `execution/tts_normalizar_texto.py` | Ídem. Números y fechas a forma hablada |
-| `execution/check_voice_sidecar.py` | Tercer verificador de costura |
-| `execution/migrate_voice_provenance.py` | Trajo la procedencia del legado `voces.json` |
-
 ## Abierto / sin verificar
+- **La mitad de frontend de la Fase 3**, entera.
+- **Nada de esto se ha probado contra el motor real** — los tests usan audio
+  sintético y fixtures, no una generación de verdad.
 - **Ventanas angostas:** sin verificar desde la sesión 1.
-- **B-008:** el hook de secretos bloquea código JavaScript legítimo. Mordió tres
-  veces esta sesión. Sin tocar: `.claude/hooks/` exige permiso fresco.
-- **B-009:** ¿una semilla transfiere carácter entre textos distintos? Sin medir.
-- **B-010:** el normalizador dice «un veintiuno por ciento» donde va «veintiún».
-  No se toca aquí para no separar la copia del original de la skill.
-- **B-011:** unir las tomas marcadas como buenas con la reescritura.
-- **B-012:** la app no instala ollama ni el modelo; degrada con honestidad.
-- **B-007:** revisión de acabado y `DESIGN.md` del spinoff, sin hacer.
-- **PII:** el nombre de una persona real aparece en ADRs, bitácora y código
-  desde sesiones anteriores. Privado hoy; si el repo se publicara, es exposición.
-- **`voces.json`** sigue en el directorio del motor con el `ref_text` dentro. Es
-  del usuario; la migración no lo tocó.
+- **B-008** (cinco mordiscos), **B-009**, **B-010**, **B-011**, **B-012**,
+  **B-013**, **B-014**, **B-015**, **B-007**.
+- **PII:** el nombre de una persona real aparece en ADRs y bitácora de sesiones
+  anteriores. `security-reviewer` confirmó que **no aparece en nada de lo no
+  commiteado** de esta sesión. Privado hoy; exposición si el repo se publicara.
+- **`voces.json`** sigue en el directorio del motor con el `ref_text` dentro.
+- **Riesgo latente anotado por seguridad:** `tts_unir_tramos.py --salida` es una
+  primitiva de escritura arbitraria por diseño (recibe la ruta y obedece). Hoy
+  **no es alcanzable desde el navegador**, porque la ruta siempre la calcula
+  `pieceOutputPath()`. Cualquier llamador futuro debe respetar eso.
+- **Aviso para frontend-lead:** `tts_trocear_guion.py --archivo` lee cualquier
+  archivo. Cuando se conecte la pantalla, el texto debe viajar por argumento o
+  por entrada estándar, **nunca como nombre de archivo desde el cliente**.
+
+## Decisiones, con dónde viven
+| Decisión | Dónde |
+|---|---|
+| La procedencia vive en un archivo junto a la voz | `ADR-005` |
+| Lo determinista lo hace código; el modelo solo lo que es criterio | `ADR-006` |
+| Dónde vive la orquestación de tramos y quién escribe la pieza unida | `ADR-007` |
