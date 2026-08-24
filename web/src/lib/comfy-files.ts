@@ -165,6 +165,37 @@ export function voiceSidecarPath(voiceId: string): string {
 }
 
 /**
+ * The absolute path of a joined narration piece — where
+ * `execution/tts_unir_tramos.py`'s `--unir` mode is told to write, Fase 3
+ * (guiones largos). Amends ADR-004; the amendment itself is ADR-007 § D3.
+ * The segments themselves are written by the existing
+ * `submit()`/`statusOf()` path through ComfyUI, same as any other take —
+ * only the JOINED piece is new, and Python writes it.
+ *
+ * WHY THE SERVER STILL PICKS THE PATH, NOT THE SCRIPT
+ *   ADR-004's real invariant was never "no script writes a file" — it was
+ *   that exactly ONE module decides which paths are legal, so a path can be
+ *   proven safe in one place. A script that invented its own output location
+ *   would be a second such module. Here the join route computes this path
+ *   BEFORE ever invoking Python and passes it in as a plain argument; the
+ *   script is a transformer that writes where it is told and nowhere it
+ *   picked itself. The invariant survives; only who needs a *write* target
+ *   changes.
+ *
+ * ⚠️ The caller does NOT get to name this file — same trust rule as
+ * `voiceSidecarPath`. `id` is generated on the SERVER (the join route uses
+ * `crypto.randomUUID()`); a browser only ever supplies the segment list that
+ * produces a piece, and every one of those paths is validated by
+ * `outputFilePath` before this function is ever reached.
+ */
+export function pieceOutputPath(id: string): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+    throw new UnsafePathError("Identificador de pieza inválido.");
+  }
+  return resolveInside(OUTPUT_DIR, `ttsstudio_pieza_${id}.flac`);
+}
+
+/**
  * Read a sidecar. Absent, unreadable or malformed all mean the same thing:
  * `null`.
  *
@@ -208,3 +239,25 @@ export async function writeSidecar(absolutePath: string, data: unknown): Promise
 
 /** For diagnostics and the delete routes' error messages. */
 export const DIRECTORIES = { COMFY_ROOT, OUTPUT_DIR, PROMPTS_DIR, INPUT_DIR } as const;
+
+/**
+ * Strip the engine root out of a message before it reaches the browser.
+ *
+ * WHY: the Python scripts name the file they failed on, absolute path and
+ * all, and `runScriptJson` relays that text verbatim into a 502 body. That
+ * turns a missing-file error into a disclosure of the OS username and the
+ * disk layout (`C:\Users\<someone>\comfy\output\...`). The diagnostic is
+ * worth keeping; the prefix is not, because the only reader who needs it is
+ * on this machine and can read the server log.
+ *
+ * Case-insensitive because Windows paths compare that way, and the separator
+ * is normalised first so a message carrying forward slashes is still caught.
+ */
+export function redactRoot(message: string): string {
+  const normalised = message.replace(/\//g, path.sep);
+  const root = COMFY_ROOT.replace(/\//g, path.sep);
+  return normalised.replaceAll(
+    new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"),
+    "<motor>",
+  );
+}
