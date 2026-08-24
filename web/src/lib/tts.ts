@@ -122,6 +122,27 @@ export const TOKEN_PRESETS = [
 
 export const TOKENS_DEFAULT = 3776;
 
+/**
+ * The length, in characters, past which the client segments a script instead
+ * of sending it as one generation. Fase 3 (guiones largos).
+ *
+ * ⚠️ This number is duplicated on purpose in `execution/tts_trocear_guion.py`
+ * as `MAX_CHARS`, and `execution/check_segment_contract.py` reads both sides
+ * by regex and fails the build if they disagree — the same seam pattern as
+ * `execution/check_trim_contract.py`.
+ *
+ * It cannot live in one place instead, because the two places decide
+ * different things. The Python side decides how a script actually gets cut —
+ * on full sentences, remembering paragraph breaks. This constant decides
+ * something earlier and cheaper: whether a script needs cutting AT ALL, and
+ * that has to be answered by counting characters right here, never by asking
+ * the trocheador. Spawning Python just to learn "how many segments would this
+ * be" would itself be the extra process the product rule forbids — a script
+ * that comes out as ONE segment must cost exactly what a single generation
+ * costs today, not one Python process more.
+ */
+export const SEGMENT_MAX_CHARS = 600;
+
 /** The node's own list, in its own order, with Auto first. */
 export const LANGUAGES = [
   "Auto",
