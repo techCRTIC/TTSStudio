@@ -69,6 +69,87 @@ export const MODEL = process.env.OLLAMA_MODEL ?? "qwen3:4b";
 
 export class ModelUnavailableError extends Error {}
 
+/**
+ * The context window we ASK ollama for, in tokens.
+ *
+ * ⚠️ THIS USED TO BE UNSET, AND UNSET IS NOT "the model's own limit".
+ * `qwen3:4b` declares a 262 144-token context, but ollama does not use a
+ * model's declared length unless it is told to: absent `num_ctx`, absent an
+ * `OLLAMA_CONTEXT_LENGTH` in the environment, and absent a `num_ctx` in the
+ * model's own parameters — all three verified absent on this machine
+ * 2026-08-24 — it falls back to a server default in the low thousands. So the
+ * rewrite ran in a window a fraction of what the model can hold.
+ *
+ * The failure that causes is silent, and that is what makes it serious: when a
+ * prompt exceeds the window ollama DROPS THE BEGINNING of it. No error, no
+ * flag. The model rewrites whatever survived, and the answer looks like a
+ * normal answer.
+ *
+ * 16 384 rather than the full 262 144 because the window is paid for in VRAM
+ * (KV cache) beside the voice engine, and this feature's job is one script,
+ * not a corpus. See MAX_REWRITE_CHARS for what that buys.
+ */
+const DEFAULT_CONTEXT_TOKENS = 16_384;
+
+/**
+ * Read the override without letting a bad value silently disarm the ceiling.
+ *
+ * EXPORTED FOR ITS TEST, and the test is the point. `Number("abc")` is `NaN`,
+ * and NaN poisons everything downstream WITHOUT throwing: `MAX_REWRITE_CHARS`
+ * becomes NaN, `length > NaN` is false for every input, and the guard against
+ * over-long scripts stops existing — while looking exactly like it did. That
+ * is the same silent failure this whole module was changed to remove, so it
+ * would be absurd to reintroduce it here.
+ *
+ * A floor of 2048 because below it even a short script plus the system prompt
+ * cannot fit, and a window that small is never what someone meant to ask for.
+ */
+export function parseContextTokens(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === "") return DEFAULT_CONTEXT_TOKENS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 2_048) {
+    return DEFAULT_CONTEXT_TOKENS;
+  }
+  return parsed;
+}
+
+export const CONTEXT_TOKENS = parseContextTokens(process.env.OLLAMA_CONTEXT_TOKENS);
+
+/**
+ * Rough characters-per-token for Spanish prose under Qwen's tokenizer.
+ *
+ * ⚠️ NOT MEASURED — deliberately LOW, which is the safe direction: a low
+ * figure over-estimates how many tokens a text costs, so the ceiling below
+ * lands early rather than late. Wrong optimistically means truncation; wrong
+ * pessimistically means refusing a script that would have fitted, and saying
+ * so out loud. Only one of those two failures is silent.
+ */
+const CHARS_PER_TOKEN = 3;
+
+/** Tokens the instruction itself costs, sized against REWRITE_SYSTEM. */
+const SYSTEM_TOKENS = 700;
+
+/**
+ * Room set aside for the model's deliberation, which arrives in its own
+ * `thinking` field but is generated INSIDE the same window. Reasoning is on
+ * deliberately (see the module header), so this is a real cost, not padding.
+ */
+const THINKING_TOKENS = 2_000;
+
+/**
+ * The longest script the rewrite accepts, in characters.
+ *
+ * DERIVED, never written by hand: the script is paid for TWICE — once going in
+ * and once coming back out as the rewrite — so the budget divides by two.
+ * Deriving it means raising CONTEXT_TOKENS raises this by itself, and the two
+ * can never drift apart the way a hand-written twin would.
+ */
+export const MAX_REWRITE_CHARS =
+  Math.floor((CONTEXT_TOKENS - SYSTEM_TOKENS - THINKING_TOKENS) / 2) * CHARS_PER_TOKEN;
+
+/** The script is longer than the model can hold. Distinct from a dead model. */
+export class TextTooLongError extends Error {}
+
 type AskOptions = {
   system: string;
   temperature: number;
@@ -95,7 +176,9 @@ async function ask(prompt: string, options: AskOptions): Promise<string> {
         // INTO the answer, in English. See the module header.
         think: true,
         stream: false,
-        options: { temperature: options.temperature },
+        // Load-bearing: without num_ctx, ollama silently truncates the
+        // FRONT of a long prompt. See CONTEXT_TOKENS.
+        options: { temperature: options.temperature, num_ctx: CONTEXT_TOKENS },
       }),
     });
   } catch (cause) {
@@ -186,6 +269,17 @@ export async function proposeRewrite(text: string): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed) return "";
 
+  // Refuse rather than let ollama drop the front of the script. A rewrite of
+  // the second half, presented as a rewrite of the whole, is worse than no
+  // rewrite at all: it looks right, and what is missing is invisible.
+  if (trimmed.length > MAX_REWRITE_CHARS) {
+    throw new TextTooLongError(
+      `El texto tiene ${trimmed.length.toLocaleString("es")} caracteres y la reescritura ` +
+        `admite ${MAX_REWRITE_CHARS.toLocaleString("es")}. Reescribe por partes, o genera ` +
+        `sin reescribir.`,
+    );
+  }
+
   return ask(trimmed, {
     system: REWRITE_SYSTEM,
     temperature: 0.3,
@@ -208,4 +302,35 @@ export async function modelStatus(): Promise<{ ready: boolean; detail: string }>
   } catch {
     return { ready: false, detail: "ollama no responde. ¿Está corriendo?" };
   }
+}
+
+/**
+ * Below this, a rewrite is short because the script is short, not because
+ * anything went wrong, and the proportion below would be pure noise.
+ */
+const SHORT_ENOUGH_TO_TRUST = 200;
+
+/**
+ * The fraction of the original a rewrite must keep to be offered at all.
+ *
+ * ⚠️ NOT MEASURED. The reasoning is directional and worth stating: writing FOR
+ * A VOICE adds ellipses and repeats phrases for weight, so a faithful rewrite
+ * normally comes back the same length or longer. Losing more than this much is
+ * the signature of a model that stopped early — the exact failure a truncated
+ * context window produces — not of a more concise style.
+ */
+const MUST_KEEP = 0.6;
+
+/**
+ * Whether a rewrite is worth showing.
+ *
+ * This used to be `length >= min(8, original.length)`, which only caught an
+ * empty answer. A rewrite that dropped HALF the script sailed through it and
+ * reached the screen looking complete — and half a script that looks whole is
+ * worse than no proposal, because nothing on screen says what is missing.
+ */
+export function acceptableRewrite(rewritten: string, original: string): boolean {
+  if (rewritten.length === 0) return false;
+  if (original.length <= SHORT_ENOUGH_TO_TRUST) return rewritten.length >= Math.min(8, original.length);
+  return rewritten.length >= original.length * MUST_KEEP;
 }

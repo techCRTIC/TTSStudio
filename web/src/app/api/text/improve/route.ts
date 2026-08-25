@@ -25,7 +25,12 @@
  */
 
 import { normalizeText, reviewText, type Finding } from "@/lib/text-quality";
-import { ModelUnavailableError, proposeRewrite } from "@/lib/llm";
+import {
+  acceptableRewrite,
+  ModelUnavailableError,
+  proposeRewrite,
+  TextTooLongError,
+} from "@/lib/llm";
 
 export const dynamic = "force-dynamic";
 
@@ -63,15 +68,20 @@ export async function POST(request: Request) {
 
     try {
       const rewritten = await proposeRewrite(normalized.text);
-      // An empty or absurdly short answer is not a proposal. Better to say the
-      // model gave nothing than to offer the user a truncated script.
-      proposal = rewritten.length >= Math.min(8, normalized.text.length) ? rewritten : null;
-      if (!proposal) modelError = "El modelo no devolvió una reescritura utilizable.";
+      proposal = acceptableRewrite(rewritten, normalized.text) ? rewritten : null;
+      if (!proposal) {
+        modelError =
+          rewritten.length > 0
+            ? "El modelo devolvió una reescritura mucho más corta que el original. " +
+              "Suele significar que se quedó a medias, así que no se ofrece."
+            : "El modelo no devolvió una reescritura utilizable.";
+      }
     } catch (cause) {
-      // The deterministic half is still worth returning. A missing model must
-      // not turn "here is what is wrong with your text" into an error page.
+      // The deterministic half is still worth returning. A missing model — or
+      // a script too long for it — must not turn "here is what is wrong with
+      // your text" into an error page.
       modelError =
-        cause instanceof ModelUnavailableError
+        cause instanceof ModelUnavailableError || cause instanceof TextTooLongError
           ? cause.message
           : `El modelo falló: ${cause instanceof Error ? cause.message : String(cause)}`;
       // Normalization alone is already an improvement when it changed anything.
