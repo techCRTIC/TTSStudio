@@ -161,6 +161,91 @@ def verificar(ruta_audio: str, caracteres: int) -> dict:
 # Unión de tramos
 # ---------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------
+# Nivelado entre tramos (2026-08-24)
+#
+# POR QUÉ: el motor no tiene objetivo de sonoridad. Cada tramo se genera por
+# separado y sale con el nivel que le toque, así que una pieza unida de varios
+# tramos sube y baja de volumen de tramo en tramo. Reportado escuchando una
+# corrida de 28 tramos: "muy consistente el tono, no así el volumen".
+#
+# CÓMO: se mide el RMS de cada tramo SOLO sobre sus muestras activas (las que
+# pasan un umbral relativo a su propio pico), porque un tramo con mucho
+# silencio tiene un RMS global bajo que no describe lo fuerte que se le oye.
+# Todos se llevan a la MEDIANA de esos RMS —mediana y no media, para que un
+# tramo defectuoso no arrastre a los demás— y la ganancia se limita a ±6 dB
+# para que un tramo roto no se amplifique hasta el ruido.
+#
+# NO ES un normalizador de sonoridad perceptual (eso sería LUFS/ITU-R BS.1770
+# y necesitaría otra dependencia). El RMS activo es una aproximación que
+# resuelve el caso real —tramos de la misma voz diciendo prosa— y no pretende
+# más.
+UMBRAL_ACTIVIDAD = 0.05   # fracción del pico del tramo: por debajo es silencio
+# ±12 dB. Empezó en 2.0 (±6 dB) y el primer test lo encontró corto: un tramo a
+# la quinta parte del nivel de sus vecinos se quedaba a medio corregir, que es
+# justo el caso que hay que resolver. Por encima de ±12 dB entre tramos de la
+# MISMA voz diciendo prosa, lo que hay no es un tramo bajo sino un tramo roto,
+# y amplificarlo solo sube su ruido.
+# ⚠️ NO ESTÁ MEDIDO cuánto varía de verdad el nivel entre tramos de este motor.
+# Es un tope defendible, no un número observado — igual que MAX_CHARS en
+# tts_trocear_guion.py y MIN_CHARS_PARA_VEREDICTO más arriba.
+GANANCIA_MAXIMA = 4.0
+TECHO_DE_PICO = 0.99      # tras nivelar, nada puede pasar de aquí
+
+
+def _rms_activo(audio: np.ndarray) -> float:
+    """RMS de las muestras que llevan señal. 0.0 si el tramo es todo silencio."""
+    pico = float(np.max(np.abs(audio))) if audio.size else 0.0
+    if pico <= 0.0:
+        return 0.0
+    activas = audio[np.abs(audio) > pico * UMBRAL_ACTIVIDAD]
+    if activas.size == 0:
+        return 0.0
+    return float(np.sqrt(np.mean(np.square(activas))))
+
+
+def nivelar(trozos: list[np.ndarray]) -> tuple[list[np.ndarray], list[float]]:
+    """Lleva cada tramo a la sonoridad mediana del conjunto.
+
+    Devuelve `(trozos_nivelados, ganancias)`. Las ganancias se devuelven para
+    que quien llame pueda registrarlas: una ganancia pegada al tope es la
+    señal de que un tramo salió realmente mal, no solo bajo.
+
+    Con un solo tramo no hay nada que nivelar y se devuelve tal cual: no hay
+    referencia contra la que comparar, e inventarse una sería cambiar el
+    volumen de una toma normal sin que nadie lo haya pedido.
+    """
+    if len(trozos) < 2:
+        return trozos, [1.0] * len(trozos)
+
+    niveles = [_rms_activo(t) for t in trozos]
+    con_senal = [n for n in niveles if n > 0.0]
+    if not con_senal:
+        return trozos, [1.0] * len(trozos)
+
+    objetivo = float(np.median(con_senal))
+    nivelados: list[np.ndarray] = []
+    ganancias: list[float] = []
+    for trozo, nivel in zip(trozos, niveles):
+        if nivel <= 0.0:
+            ganancia = 1.0
+        else:
+            ganancia = min(max(objetivo / nivel, 1.0 / GANANCIA_MAXIMA), GANANCIA_MAXIMA)
+        ganancias.append(ganancia)
+        nivelados.append(trozo if ganancia == 1.0 else trozo * ganancia)
+
+    # Techo de pico sobre el conjunto: si nivelar sacó algo por encima del
+    # techo, baja TODO por igual. Bajar solo el tramo que se pasó volvería a
+    # desnivelar justo lo que se acaba de nivelar.
+    pico = max((float(np.max(np.abs(t))) for t in nivelados if t.size), default=0.0)
+    if pico > TECHO_DE_PICO:
+        recorte = TECHO_DE_PICO / pico
+        nivelados = [t * recorte for t in nivelados]
+        ganancias = [g * recorte for g in ganancias]
+
+    return nivelados, ganancias
+
+
 # Mismo vocabulario de frontera que saca `tts_trocear_guion.py`. La pausa se
 # inserta DESPUÉS del tramo que tiene esa frontera, antes del siguiente.
 SILENCIO_TRAS_FRONTERA = {
@@ -169,7 +254,7 @@ SILENCIO_TRAS_FRONTERA = {
 }
 
 
-def unir(segmentos: list[dict], ruta_salida: str) -> dict:
+def unir(segmentos: list[dict], ruta_salida: str, nivelar_volumen: bool = True) -> dict:
     """Concatena una lista ORDENADA de tramos en un solo archivo de audio.
 
     Cada elemento de `segmentos` es un dict con `path` (ruta absoluta del
@@ -207,26 +292,39 @@ def unir(segmentos: list[dict], ruta_salida: str) -> dict:
         rutas.append(ruta)
         fronteras.append(frontera)
 
-    datos_primero, frecuencia = sf.read(str(rutas[0]), dtype="float32", always_2d=True)
-    trozos: list[np.ndarray] = [datos_primero]
-    canales = datos_primero.shape[1]
+    # Se leen TODOS los tramos antes de intercalar las pausas, porque nivelar
+    # necesita ver el conjunto: el objetivo es la mediana de todos, y eso no
+    # se puede calcular tramo a tramo sobre la marcha.
+    audios: list[np.ndarray] = []
+    frecuencia: int | None = None
+    canales = 1
+    for i, ruta in enumerate(rutas):
+        datos, frecuencia_i = sf.read(str(ruta), dtype="float32", always_2d=True)
+        if frecuencia is None:
+            frecuencia = frecuencia_i
+            canales = datos.shape[1]
+        elif frecuencia_i != frecuencia:
+            raise FrecuenciasDistintasError(
+                f"El tramo {i} ({ruta}) tiene frecuencia de muestreo "
+                f"{frecuencia_i} Hz, distinta de los {frecuencia} Hz del primer "
+                f"tramo ({rutas[0]}). No se puede unir sin acelerar o "
+                "ralentizar el audio."
+            )
+        audios.append(datos)
 
-    for i in range(1, len(rutas)):
+    if nivelar_volumen:
+        audios, ganancias = nivelar(audios)
+    else:
+        ganancias = [1.0] * len(audios)
+
+    trozos: list[np.ndarray] = [audios[0]]
+    for i in range(1, len(audios)):
         # La pausa se inserta según la frontera del tramo ANTERIOR (i - 1),
         # que es la frontera que separa ese tramo del actual.
         pausa_segundos = SILENCIO_TRAS_FRONTERA[fronteras[i - 1]]
         n_muestras_pausa = round(pausa_segundos * frecuencia)
         trozos.append(np.zeros((n_muestras_pausa, canales), dtype="float32"))
-
-        datos_i, frecuencia_i = sf.read(str(rutas[i]), dtype="float32", always_2d=True)
-        if frecuencia_i != frecuencia:
-            raise FrecuenciasDistintasError(
-                f"El tramo {i} ({rutas[i]}) tiene frecuencia de muestreo "
-                f"{frecuencia_i} Hz, distinta de los {frecuencia} Hz del primer "
-                f"tramo ({rutas[0]}). No se puede unir sin acelerar o "
-                "ralentizar el audio."
-            )
-        trozos.append(datos_i)
+        trozos.append(audios[i])
 
     audio_unido = np.concatenate(trozos, axis=0)
     sf.write(str(ruta_salida_validada), audio_unido, frecuencia)
@@ -237,6 +335,10 @@ def unir(segmentos: list[dict], ruta_salida: str) -> dict:
         "seconds": round(duracion, 6),
         "samplerate": frecuencia,
         "segments_joined": len(rutas),
+        "leveled": bool(nivelar_volumen),
+        # Una ganancia pegada al tope (ver GANANCIA_MAXIMA) señala un tramo que
+        # salió realmente mal, no solo bajo. Se devuelve para que se pueda ver.
+        "gains": [round(g, 4) for g in ganancias],
     }
 
 
@@ -268,6 +370,13 @@ def main() -> int:
         help='[--unir] JSON: lista de {"path": "...", "frontera": "sentence"|"paragraph"}.',
     )
     ap.add_argument("--salida", help="[--unir] Ruta absoluta del archivo unido de salida.")
+    ap.add_argument(
+        "--sin-nivelar", action="store_true",
+        help="[--unir] No igualar el volumen entre tramos. Por defecto SI se "
+             "iguala: el motor no tiene objetivo de sonoridad y cada tramo sale "
+             "con el nivel que le toca. Esta bandera existe para poder comparar "
+             "una pieza nivelada contra la cruda.",
+    )
     a = ap.parse_args()
 
     try:
@@ -284,7 +393,7 @@ def main() -> int:
                 raise ValueError(f"--segmentos no es JSON válido: {cause}") from cause
             if not isinstance(segmentos, list):
                 raise ValueError("--segmentos debe ser una lista JSON de objetos.")
-            resultado = unir(segmentos, a.salida)
+            resultado = unir(segmentos, a.salida, nivelar_volumen=not a.sin_nivelar)
     except (
         RutaInvalidaError,
         FrecuenciasDistintasError,

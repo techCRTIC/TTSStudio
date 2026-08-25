@@ -215,3 +215,105 @@ def test_unir_frontera_desconocida(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         m.unir(segmentos, str(salida))
+
+
+# ---------------------------------------------------------------------------
+# Nivelado de volumen entre tramos (2026-08-24)
+#
+# Reportado escuchando una corrida real de 28 tramos: "muy consistente el tono,
+# no asi el volumen". El motor no tiene objetivo de sonoridad, asi que cada
+# tramo sale con el nivel que le toca y la pieza unida sube y baja.
+# ---------------------------------------------------------------------------
+
+
+def _tono(duracion_s: float, amplitud: float, samplerate: int = 8000) -> np.ndarray:
+    """Un tono de amplitud conocida. A diferencia de `_audio`, esto TIENE senal:
+    el nivelado mide RMS y el silencio no se puede nivelar contra nada."""
+    n = round(duracion_s * samplerate)
+    t = np.arange(n, dtype="float32") / samplerate
+    onda = np.sin(2 * np.pi * 220.0 * t) * amplitud
+    return onda.reshape(-1, 1).astype("float32")
+
+
+def test_nivelar_iguala_tramos_de_volumen_distinto() -> None:
+    # 2x de diferencia: dentro del tope de ganancia, asi que la correccion
+    # puede completarse. El caso que SE PASA del tope tiene su propio test.
+    flojo = _tono(0.5, amplitud=0.25)
+    fuerte = _tono(0.5, amplitud=0.50)
+    otro_fuerte = _tono(0.5, amplitud=0.50)
+
+    nivelados, ganancias = m.nivelar([flojo, fuerte, otro_fuerte])
+
+    rms = [m._rms_activo(t) for t in nivelados]
+    # Todos quedan a la mediana: los dos fuertes no se mueven, el flojo sube.
+    assert rms[0] == pytest.approx(rms[1], rel=0.02)
+    assert rms[1] == pytest.approx(rms[2], rel=0.02)
+    assert ganancias[0] > 1.0, "el tramo flojo tiene que subir"
+    assert ganancias[1] == pytest.approx(1.0, rel=0.02)
+
+
+def test_nivelar_no_amplifica_mas_alla_del_tope() -> None:
+    # Un tramo practicamente mudo no debe amplificarse hasta el ruido.
+    casi_mudo = _tono(0.5, amplitud=0.001)
+    normales = [_tono(0.5, amplitud=0.5) for _ in range(3)]
+
+    _, ganancias = m.nivelar([casi_mudo, *normales])
+
+    assert ganancias[0] <= m.GANANCIA_MAXIMA + 1e-6, ganancias[0]
+
+
+def test_nivelar_respeta_el_techo_de_pico() -> None:
+    # Dos tramos ya altos: subir el mas bajo hacia la mediana no puede sacar
+    # nada por encima del techo.
+    altos = [_tono(0.5, amplitud=0.95), _tono(0.5, amplitud=0.95), _tono(0.5, amplitud=0.60)]
+
+    nivelados, _ = m.nivelar(altos)
+
+    pico = max(float(np.max(np.abs(t))) for t in nivelados)
+    assert pico <= m.TECHO_DE_PICO + 1e-6, pico
+
+
+def test_nivelar_un_solo_tramo_no_lo_toca() -> None:
+    # No hay referencia contra la que comparar: cambiar el volumen de una toma
+    # normal sin que nadie lo pida seria peor que no hacer nada.
+    solo = _tono(0.5, amplitud=0.2)
+
+    nivelados, ganancias = m.nivelar([solo])
+
+    assert ganancias == [1.0]
+    assert np.array_equal(nivelados[0], solo)
+
+
+def test_nivelar_todo_silencio_no_divide_por_cero() -> None:
+    mudos = [np.zeros((100, 1), dtype="float32") for _ in range(3)]
+
+    nivelados, ganancias = m.nivelar(mudos)
+
+    assert ganancias == [1.0, 1.0, 1.0]
+    assert all(float(np.max(np.abs(t))) == 0.0 for t in nivelados)
+
+
+def test_unir_nivela_por_defecto_y_lo_declara(tmp_path: Path) -> None:
+    samplerate = 8000
+    rutas = []
+    for i, amplitud in enumerate((0.1, 0.5, 0.5)):
+        ruta = tmp_path / f"{i:02d}.wav"
+        sf.write(str(ruta), _tono(0.4, amplitud, samplerate), samplerate)
+        rutas.append(ruta)
+
+    salida = tmp_path / "unido.wav"
+    segmentos = [{"path": str(r), "frontera": "sentence"} for r in rutas]
+
+    r = m.unir(segmentos, str(salida))
+
+    assert r["leveled"] is True
+    assert len(r["gains"]) == 3
+    assert r["gains"][0] > 1.0, "el tramo flojo tiene que haber subido"
+
+    crudo = tmp_path / "crudo.wav"
+    r2 = m.unir(segmentos, str(crudo), nivelar_volumen=False)
+    assert r2["leveled"] is False
+    assert r2["gains"] == [1.0, 1.0, 1.0]
+
+    # La duracion no cambia por nivelar: solo cambia la amplitud.
+    assert r["seconds"] == pytest.approx(r2["seconds"], abs=1 / samplerate)
