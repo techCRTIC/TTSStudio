@@ -31,7 +31,7 @@ import sys
 
 def use_utf8() -> None:
     """
-    Force stdout and stderr to UTF-8.
+    Force stdin, stdout and stderr to UTF-8.
 
     `reconfigure` exists on Python 3.7+ and is the supported way to change an
     already-open text stream. It is guarded anyway: a caller may have replaced
@@ -42,8 +42,16 @@ def use_utf8() -> None:
     `errors="replace"` on stderr only: diagnostics must never be the reason a
     tool dies. stdout is left strict, because stdout is the machine-readable
     result and silently mangling it is exactly the failure being fixed here.
+
+    STDIN IS THE SAME BUG, MIRRORED, and it was added the moment a script first
+    read a script body from a pipe (`tts_trocear_guion.py --stdin`). Node writes
+    UTF-8; Python would decode it as the console code page and turn every accent
+    into a different character — the same corruption as above, in the other
+    direction, on the very text the voice is about to say. Strict for the same
+    reason stdout is: a script body that did not survive the pipe must fail
+    loudly, not be spoken wrong.
     """
-    for stream, errors in ((sys.stdout, "strict"), (sys.stderr, "replace")):
+    for stream, errors in ((sys.stdin, "strict"), (sys.stdout, "strict"), (sys.stderr, "replace")):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is None:
             continue
