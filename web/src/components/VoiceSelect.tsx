@@ -14,7 +14,7 @@ import { Select } from "./Select";
  * below it would open off-screen.
  */
 
-export type Voice = { id: string; label: string };
+export type Voice = { id: string; label: string; kind?: "cloned" | "preset" };
 
 export function VoiceSelect({
   voices,
@@ -29,7 +29,18 @@ export function VoiceSelect({
 }) {
   return (
     <Select
-      options={voices.map((voice) => ({ value: voice.id, label: voice.label }))}
+      options={voices.map((voice) => ({
+        value: voice.id,
+        label: voice.label,
+        // The model's own speakers read in the accent and sit under their own
+        // heading. The tint is the fast signal; the heading is the one that
+        // survives colour blindness and a screen reader. It is printed once
+        // rather than on every row because the panel is only as wide as its
+        // trigger, and a badge beside each name did not fit.
+        ...(voice.kind === "preset"
+          ? { tone: "accent" as const, group: "Del modelo" }
+          : { group: "Tus voces" }),
+      }))}
       value={value}
       onChange={onChange}
       label="Voces"

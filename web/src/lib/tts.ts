@@ -9,7 +9,21 @@
 
 import { comfyFetch, comfyUrl } from "./comfy.ts";
 
-export type Voice = { id: string; label: string };
+/**
+ * Where a voice comes from, and therefore which node says it.
+ *
+ * "cloned" — a `.safetensors` prompt computed from someone's recording, said by
+ * `Qwen3VoiceClone`. It belongs to a real, identifiable person, which is why
+ * provenance exists (ADR-005).
+ *
+ * "preset" — one of the nine speakers baked into the model's own weights
+ * (`talker_config.spk_id`), said by `Qwen3CustomVoice`. Nothing to install and
+ * nobody to credit: if the model is there, they are there. They also accept an
+ * `instruct` line, which the clone path has no equivalent for.
+ */
+export type VoiceKind = "cloned" | "preset";
+
+export type Voice = { id: string; label: string; kind: VoiceKind };
 
 export type GenerationStatus =
   | { state: "queued"; position: number | null }
@@ -44,22 +58,46 @@ function labelFor(file: string): string {
  * models/Qwen3-TTS/prompts/. One source of truth, and it cannot drift.
  */
 export async function listVoices(): Promise<Voice[]> {
+  const [cloned, preset] = await Promise.all([listClonedVoices(), listPresetVoices()]);
+  // Cloned first: they are the reason this app exists, and a preset is the
+  // fallback you reach for, not the default you scroll past yours to avoid.
+  return [...cloned, ...preset];
+}
+
+async function listClonedVoices(): Promise<Voice[]> {
   const res = await comfyFetch(comfyUrl(["object_info", "Qwen3LoadPrompt"]));
   if (!res.ok) throw new Error(`object_info devolvió ${res.status}`);
   const info = await res.json();
   const combo = info?.Qwen3LoadPrompt?.input?.required?.prompt_file?.[0];
   if (!Array.isArray(combo)) return [];
-  return combo.map((id: string) => ({ id, label: labelFor(id) }));
+  return combo.map((id: string) => ({ id, label: labelFor(id), kind: "cloned" as const }));
 }
 
 /**
- * Everything Qwen3VoiceClone actually exposes, and nothing more.
+ * The model's own speakers, read from the node rather than typed out here.
  *
- * Read off the node's own INPUT_TYPES (nodes.py:702-719), not from memory:
- * `seed`, `language` and `max_new_tokens` are the only knobs on the cached
- * path. There is no temperature, no speed, no emotion and no pitch — the
- * product rule is that the interface never offers a control the engine lacks.
+ * Hardcoding the nine names would create a seam — a copy of the pack's list
+ * frozen at today — of exactly the kind `check_engine_options.py` exists to
+ * catch. Asking `object_info` means the pack can add, rename or drop a speaker
+ * and this list simply follows, with nothing to keep in sync and no checker to
+ * write.
+ *
+ * A missing node is NOT an error: an older pack without `Qwen3CustomVoice`
+ * should give you your cloned voices and no presets, not an empty library.
  */
+async function listPresetVoices(): Promise<Voice[]> {
+  try {
+    const res = await comfyFetch(comfyUrl(["object_info", "Qwen3CustomVoice"]));
+    if (!res.ok) return [];
+    const info = await res.json();
+    const combo = info?.Qwen3CustomVoice?.input?.required?.speaker?.[0];
+    if (!Array.isArray(combo)) return [];
+    return combo.map((id: string) => ({ id, label: labelFor(id), kind: "preset" as const }));
+  } catch {
+    return [];
+  }
+}
+
 export const SEED_MIN = 1;
 /**
  * The node accepts up to 2^64-1, which JavaScript cannot represent exactly as
@@ -139,9 +177,29 @@ export const TOKENS_DEFAULT = 3776;
  * the trocheador. Spawning Python just to learn "how many segments would this
  * be" would itself be the extra process the product rule forbids — a script
  * that comes out as ONE segment must cost exactly what a single generation
- * costs today, not one Python process more.
+ * costs today, not one Python process more. *
+ * WHY 1600, AND WHY IT IS NOT A MEASUREMENT (revised 2026-08-24)
+ *   It was 600, carried over verbatim from the `voz-local` skill's script,
+ *   whose comment read "well below the 2048 ceiling". Testing against the real
+ *   engine showed the cost: a ~1700-character text — which FITS in one pass —
+ *   came back cut into three, with two seams that were never needed.
+ *
+ *   The original reasoning was that a looped segment should be cheap to redo.
+ *   That argument carries much less weight here: this app detects the loop and
+ *   regenerates it BY ITSELF, per segment. On the other side sits a product
+ *   risk — every cut is a seam, and this phase's exit criterion is that the
+ *   seams be inaudible. Larger segments also land more of their cuts on
+ *   paragraph breaks, which is where a long pause belongs anyway.
+ *
+ *   1600 leaves 22% of headroom under the engine's 2048-character input limit.
+ *
+ *   ⚠️ THIS IS AN INFORMED BET, NOT A MEASURED NUMBER. Nobody has measured the
+ *   length at which the loop bug actually starts appearing; 600 and 2048 are
+ *   the known ends and the middle is unexplored. Said out loud rather than
+ *   letting the number look settled — same treatment as ADR-006's rate, which
+ *   was assumed at 12 and measured at 12.56.
  */
-export const SEGMENT_MAX_CHARS = 600;
+export const SEGMENT_MAX_CHARS = 1600;
 
 /** The node's own list, in its own order, with Auto first. */
 export const LANGUAGES = [
@@ -197,6 +255,16 @@ export function randomSeed(): number {
 export type GenerationOptions = {
   language?: Language;
   maxNewTokens?: number;
+  /**
+   * A line of intent for the delivery — "calm and slow", "excited".
+   *
+   * PRESET VOICES ONLY. `Qwen3CustomVoice` declares it; `Qwen3VoiceClone` has
+   * no equivalent, and PRODUCT.md's second principle is that the interface
+   * never promises what the engine cannot do. Sent on the clone path it would
+   * simply be ignored, which is worse than absent: the user would think it did
+   * something. `buildWorkflow` therefore only ever puts it in the preset graph.
+   */
+  instruct?: string;
 };
 
 export function buildWorkflow(
@@ -204,17 +272,74 @@ export function buildWorkflow(
   voiceId: string,
   seed: number,
   options: GenerationOptions = {},
+  kind: VoiceKind = "cloned",
 ) {
-  return {
+  /**
+   * The two paths need DIFFERENT CHECKPOINTS, and this is not a detail.
+   *
+   * Found against the real engine on 2026-08-24, from its own words:
+   *   "Qwen3CustomVoice: Model Type Error: You are trying to use 'Custom
+   *    Voice' with an incompatible model. Please load a 'CustomVoice' model."
+   *
+   * `Qwen3VoiceClone` wants `-Base`; `Qwen3CustomVoice` wants `-CustomVoice`.
+   * The nine preset speakers live inside THAT checkpoint's weights, not the
+   * one cloning uses — so they are a second multi-gigabyte download, not
+   * something that arrives with the app. `/api/voices` refuses to list them
+   * until it is on disk, so this branch only ever runs when it is there.
+   */
+  const repoId =
+    kind === "preset"
+      ? "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+      : "Qwen/Qwen3-TTS-12Hz-1.7B-Base";
+
+  const loader = {
     "1": {
       class_type: "Qwen3Loader",
       inputs: {
-        repo_id: "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        repo_id: repoId,
         source: "HuggingFace",
         precision: "bf16",
         attention: "sdpa",
       },
     },
+  };
+
+  // Spanish stays the default rather than "Auto" on BOTH paths: this user
+  // writes in Spanish, and letting the model guess on a short line is a coin
+  // flip nobody asked for.
+  const language = options.language ?? "Spanish";
+  const maxNewTokens = normalizeTokens(options.maxNewTokens ?? TOKENS_DEFAULT);
+  const save = (from: string) => ({
+    "4": { class_type: "SaveAudio", inputs: { audio: [from, 0], filename_prefix: "ttsstudio" } },
+  });
+
+  if (kind === "preset") {
+    // The model's own speaker. No prompt file to load, so there is no node "2"
+    // here — the speaker is a plain string the node looks up in its own weights.
+    const instruct = options.instruct?.trim();
+    return {
+      ...loader,
+      "3": {
+        class_type: "Qwen3CustomVoice",
+        inputs: {
+          model: ["1", 0],
+          text,
+          seed: normalizeSeed(seed),
+          speaker: voiceId,
+          language,
+          max_new_tokens: maxNewTokens,
+          // Omitted rather than sent empty: the node treats "" as absent
+          // anyway, and a key that is always present but usually meaningless
+          // makes the graph harder to read against the node's own declaration.
+          ...(instruct ? { instruct } : {}),
+        },
+      },
+      ...save("3"),
+    };
+  }
+
+  return {
+    ...loader,
     "2": {
       class_type: "Qwen3LoadPrompt",
       inputs: { prompt_file: voiceId },
@@ -226,31 +351,25 @@ export function buildWorkflow(
         prompt: ["2", 0],
         text,
         seed: normalizeSeed(seed),
-        // Spanish stays the default rather than "Auto": this user writes in
-        // Spanish, and letting the model guess on a short line is a coin flip
-        // nobody asked for.
-        language: options.language ?? "Spanish",
-        max_new_tokens: normalizeTokens(options.maxNewTokens ?? TOKENS_DEFAULT),
+        language,
+        max_new_tokens: maxNewTokens,
       },
     },
-    "4": {
-      class_type: "SaveAudio",
-      inputs: { audio: ["3", 0], filename_prefix: "ttsstudio" },
-    },
+    ...save("3"),
   };
 }
 
-/** Submit a graph and return ComfyUI's prompt id. */
 export async function submit(
   text: string,
   voiceId: string,
   seed: number,
   options: GenerationOptions = {},
+  kind: VoiceKind = "cloned",
 ): Promise<string> {
   const res = await comfyFetch(comfyUrl(["prompt"]), {
     method: "POST",
     headers: new Headers({ "content-type": "application/json" }),
-    body: JSON.stringify({ prompt: buildWorkflow(text, voiceId, seed, options) }),
+    body: JSON.stringify({ prompt: buildWorkflow(text, voiceId, seed, options, kind) }),
   });
 
   const payload = await res.json().catch(() => null);

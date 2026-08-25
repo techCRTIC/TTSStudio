@@ -26,12 +26,19 @@ export type AdvancedState = {
   seed: number | null;
   language: Language;
   maxNewTokens: number;
+  /**
+   * A line of intent for the delivery. PRESET VOICES ONLY — the model's own
+   * speakers accept it; a cloned voice has no equivalent and the server
+   * rejects it there rather than pretending.
+   */
+  instruct: string;
 };
 
 export const ADVANCED_DEFAULTS: AdvancedState = {
   seed: null,
   language: "Spanish",
   maxNewTokens: TOKENS_DEFAULT,
+  instruct: "",
 };
 
 /** True when anything differs from the defaults — what earns the dot. */
@@ -39,7 +46,8 @@ export function isModified(state: AdvancedState): boolean {
   return (
     state.seed !== null ||
     state.language !== ADVANCED_DEFAULTS.language ||
-    state.maxNewTokens !== ADVANCED_DEFAULTS.maxNewTokens
+    state.maxNewTokens !== ADVANCED_DEFAULTS.maxNewTokens ||
+    state.instruct.trim() !== ADVANCED_DEFAULTS.instruct
   );
 }
 
@@ -118,10 +126,17 @@ export function AdvancedPanel({
   lastSeed,
   lastText,
   lastVoiceLabel,
+  voiceKind = "cloned",
   chromeless = false,
 }: {
   state: AdvancedState;
   onChange: (next: AdvancedState) => void;
+  /**
+   * Which kind of voice is selected right now. It decides whether the intent
+   * field exists at all — showing it for a cloned voice would offer a lever
+   * the engine cannot pull there.
+   */
+  voiceKind?: "cloned" | "preset";
   /** Render only the contents: no toggle, no fold. See `body` below. */
   chromeless?: boolean;
   /** The seed of the take on screen — what "save this one" refers to. */
@@ -281,6 +296,27 @@ export function AdvancedPanel({
                 placement="down"
               />
             </div>
+
+            {/* --- Intent (preset voices only) --------------------------- */}
+            {voiceKind === "preset" && (
+              <div>
+                <label htmlFor="instruct" className="eyebrow mb-2 block">
+                  Intención
+                </label>
+                <input
+                  id="instruct"
+                  type="text"
+                  value={state.instruct}
+                  onChange={(e) => onChange({ ...state, instruct: e.target.value })}
+                  placeholder="tranquilo y pausado"
+                  className="field w-full px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
+                />
+                <p className="mt-2 text-xs text-muted">
+                  Solo existe en las voces del modelo. Una voz clonada no la tiene, y por eso
+                  este campo desaparece al elegir una.
+                </p>
+              </div>
+            )}
 
             {/* --- Length ceiling --------------------------------------- */}
             <div>

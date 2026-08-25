@@ -56,11 +56,12 @@ function Waiting({ startedAt }: { startedAt: number }) {
         <span className="font-mono text-[11px]">{seconds}s</span>
       </p>
       {/* Said up front, not as an apology after the fact: the wait IS the
-          feature. The fast way of asking produced text that changed the meaning
-          of sentences, so it was dropped. */}
+          feature. (The fast way of asking was dropped because it produced text
+          that changed the meaning of sentences — a reason the code keeps, but
+          one the screen no longer spends a sentence on.) */}
       <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-ink-muted">
         Tarda entre veinte y treinta segundos porque razona la respuesta antes
-        de darla. Pedírsela rápido salía mal: cambiaba el sentido de las frases.
+        de darla.
       </p>
       {seconds >= LONG_WAIT_SECONDS && (
         <p className="status-in mt-2 max-w-prose text-[13px] leading-relaxed text-ink-muted">

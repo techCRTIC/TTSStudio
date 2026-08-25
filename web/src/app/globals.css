@@ -52,6 +52,13 @@
   --accent-text: var(--orange-400);
   --accent-hover: var(--orange-600);
   --accent-ink: var(--graphite-900);  /* what sits ON the accent */
+  /* Hover for a control filled with --surface and outlined in the accent.
+     Mixed over --surface, NOT --surface-raised: the focal card is already
+     --surface-raised, so a control filled with it would have no visible fill
+     at all — only its border would read, making the primary action identical
+     to the outline secondary. Measured: accent text holds 5.07:1 on this mix;
+     the lighter step (--graphite-600) fell to 4.46:1 and failed AA. */
+  --accent-soft: color-mix(in srgb, var(--accent) 8%, var(--surface));
 
   /* --- Elevation: light, not shadow ----------------------------------- */
   --rim: inset 0 1px 0 rgb(255 255 255 / 0.06);
@@ -85,6 +92,7 @@
   --color-accent-text: var(--accent-text);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

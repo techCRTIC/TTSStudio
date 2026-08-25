@@ -34,6 +34,12 @@ import {
 export type Voice = {
   id: string;
   label: string;
+  /**
+   * "cloned" is somebody's voice, computed from their recording. "preset" is
+   * one of the speakers inside the model's own weights — nothing was recorded
+   * and nobody has to consent to it, which is why it carries no provenance.
+   */
+  kind: "cloned" | "preset";
   provenance: Provenance | null;
   sampleUrl: string | null;
 };
@@ -807,7 +813,7 @@ export function VoiceLibrary({
         // is clipped to nothing until it opens, then the clip grows from the
         // handle's exact position. See lib/reveal and .panel-reveal.
         style={{ clipPath: clipFor(open, revealAt) }}
-        className="panel-reveal fixed left-0 top-0 z-30 h-dvh w-[400px] max-w-[88vw] border-r border-hairline bg-surface"
+        className="panel-reveal fixed left-0 top-0 z-30 h-dvh w-[380px] max-w-[86vw] border-r border-hairline bg-surface"
       >
         {/* The contents arrive after the panel. See .drawer-reveal. */}
         <div

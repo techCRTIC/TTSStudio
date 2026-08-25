@@ -30,6 +30,7 @@
 
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
+import { statSync } from "node:fs";
 import path from "node:path";
 
 /**
@@ -236,6 +237,35 @@ export async function writeSidecar(absolutePath: string, data: unknown): Promise
     throw cause;
   }
 }
+
+/** Where the engine keeps its Qwen3-TTS checkpoints. */
+const MODELS_DIR = path.join(COMFY_ROOT, "models", "Qwen3-TTS");
+
+/**
+ * Is a given engine checkpoint actually on disk?
+ *
+ * WHY IT EXISTS: the pack's loader lists every checkpoint it KNOWS ABOUT,
+ * downloaded or not, so `object_info` cannot answer this. The nine preset
+ * speakers need `Qwen3-TTS-12Hz-1.7B-CustomVoice`, a different (and separately
+ * downloaded) model from the `-Base` one cloning uses. Offering those voices
+ * without it produced the engine's own "incompatible model" error at
+ * generation time — a promise the interface could not keep, which is exactly
+ * what PRODUCT.md's second principle forbids.
+ *
+ * A directory check, not a deep validation: it answers "has this been
+ * downloaded", not "is it intact". A half-downloaded model would pass here and
+ * fail later, and that gap is stated rather than papered over.
+ */
+export function hasEngineModel(folderName: string): boolean {
+  try {
+    return statSync(resolveInside(MODELS_DIR, folderName)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** The checkpoint the nine preset speakers live inside. */
+export const CUSTOM_VOICE_MODEL_DIR = "Qwen3-TTS-12Hz-1.7B-CustomVoice";
 
 /** For diagnostics and the delete routes' error messages. */
 export const DIRECTORIES = { COMFY_ROOT, OUTPUT_DIR, PROMPTS_DIR, INPUT_DIR } as const;

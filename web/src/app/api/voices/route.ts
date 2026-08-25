@@ -1,7 +1,9 @@
-import { listVoices } from "@/lib/tts";
+import { listVoices, type VoiceKind } from "@/lib/tts";
 import { registerVoice, voiceSlug } from "@/lib/voices";
 import {
+  CUSTOM_VOICE_MODEL_DIR,
   deleteFile,
+  hasEngineModel,
   outputFilePath,
   readSidecar,
   UnsafePathError,
@@ -17,6 +19,8 @@ export const dynamic = "force-dynamic";
 export type VoiceWithProvenance = {
   id: string;
   label: string;
+  /** "cloned" belongs to a person; "preset" is one of the model's own. */
+  kind: VoiceKind;
   provenance: Provenance | null;
   /** Where the cached preview can be played from, if one was ever generated. */
   sampleUrl: string | null;
@@ -41,10 +45,34 @@ function sampleUrlFor(filename: string): string {
  */
 export async function GET() {
   try {
-    const voices = await listVoices();
+    const all = await listVoices();
+
+    /**
+     * The nine preset speakers live inside a checkpoint of their own
+     * (`-CustomVoice`), separate from the `-Base` one cloning uses, and it is
+     * a separate multi-gigabyte download. Listing them without it produced the
+     * engine's own "incompatible model" error at generation time — the
+     * interface promising something it could not deliver, which PRODUCT.md's
+     * second principle forbids.
+     *
+     * So they are simply not offered until the model is there. Offering them
+     * greyed out, with what to download and how big it is, is the job of the
+     * installer surface in the backlog, not of this route.
+     */
+    const presetsReady = hasEngineModel(CUSTOM_VOICE_MODEL_DIR);
+    const voices = presetsReady ? all : all.filter((voice) => voice.kind !== "preset");
 
     const withProvenance: VoiceWithProvenance[] = await Promise.all(
       voices.map(async (voice) => {
+        // A preset has no sidecar and never will: it is not a recording of
+        // anybody, it is a speaker inside the model's weights. Looking one up
+        // would be a guaranteed miss, and reporting it as "sin procedencia
+        // registrada" — the honest answer for a CLONE with no record — would
+        // read as an oversight about a person who does not exist.
+        if (voice.kind === "preset") {
+          return { id: voice.id, label: voice.label, kind: voice.kind, provenance: null, sampleUrl: null };
+        }
+
         // A malformed sidecar costs a decoration and nothing else — readSidecar
         // and parseProvenance both degrade to null rather than throwing, so one
         // hand-edited file cannot take down the library.
@@ -58,6 +86,7 @@ export async function GET() {
         return {
           id: voice.id,
           label: provenance?.displayName || voice.label,
+          kind: voice.kind,
           provenance,
           sampleUrl: provenance?.sampleFilename
             ? sampleUrlFor(provenance.sampleFilename)
@@ -66,7 +95,9 @@ export async function GET() {
       }),
     );
 
-    return Response.json({ voices: withProvenance });
+    // Reported rather than silent: the client can say why nine voices the
+    // user may have seen mentioned are not in the list.
+    return Response.json({ voices: withProvenance, presetsReady });
   } catch (cause) {
     return Response.json(
       {

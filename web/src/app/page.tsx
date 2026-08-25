@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AdvancedPanel,
   ADVANCED_DEFAULTS,
@@ -23,6 +23,10 @@ import {
 import { PanelSlot } from "@/components/PanelSlot";
 import { ToolRail, type Tool } from "@/components/ToolRail";
 import { StatusLine, type Phase } from "@/components/StatusLine";
+import { SegmentStrip, type SegmentInfo } from "@/components/SegmentStrip";
+import { needsSegmentation, useLongScript } from "@/lib/long-script";
+import { segmentViews } from "@/lib/segment-view";
+import { randomSeed } from "@/lib/tts";
 import { VoiceLibrary, type Voice } from "@/components/VoiceLibrary";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
@@ -69,6 +73,20 @@ export default function Studio() {
   const [energy, setEnergy] = useState(0);
   const [engineDown, setEngineDown] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  /**
+   * The long-script path. It is a SECOND path, deliberately, and `generate()`
+   * below chooses between them by counting characters — never by asking the
+   * segmenter, which would be the extra Python process the roadmap's exit
+   * criterion forbids for a short line.
+   */
+  /** The chosen voice's kind decides which node says it — and whether the
+   *  intent field exists at all. Derived, never stored: a second copy could
+   *  disagree with the list after a refresh. */
+  const voiceKind = voices.find((v) => v.id === voiceId)?.kind ?? "cloned";
+
+  const long = useLongScript();
+  const [openSegment, setOpenSegment] = useState<number | null>(null);
   const pollRef = useRef<number | null>(null);
   const scriptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -138,7 +156,26 @@ export default function Studio() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [trayOpen]);
 
-  const busy = phase === "queued" || phase === "running";
+  /**
+   * The long run in flight, in the three phases where the engine is actually
+   * working. Only "generating" can still be stopped: once the run is joining,
+   * every segment is already paid for.
+   */
+  const longPhase = long.state.phase;
+  const canStop = longPhase === "generating";
+  const stopping = longPhase === "stopping";
+  const longBusy = canStop || stopping || longPhase === "splitting" || longPhase === "joining";
+
+  /**
+   * Anything the user must not change mid-flight.
+   *
+   * It used to read the short path's `phase` alone, which meant the tool rail
+   * locked during a twenty-second generation and stayed WIDE OPEN through a
+   * twenty-eight segment run — exactly backwards, since changing the seed or
+   * the language halfway through a long run corrupts the segments that have
+   * not been generated yet.
+   */
+  const busy = phase === "queued" || phase === "running" || longBusy;
 
   /**
    * Which of the field's tools is open — at most one, ever.
@@ -179,9 +216,139 @@ export default function Studio() {
     [improve, text],
   );
 
+  /**
+   * The long run, translated into what the screen already knows how to show.
+   *
+   * `tracks` is the sequencer's own record; `SegmentInfo` is what the strip
+   * takes. They are near-identical on purpose — the translation stays here so
+   * neither side has to know the other's vocabulary.
+   */
+  /**
+   * The strip always draws EVERY cut, whether or not it has been generated
+   * yet. Mapping over `tracks` instead made the total climb — "tramo 1 de 1",
+   * then "de 2" — because tracks appear one at a time. See `segmentViews`.
+   */
+  const segmentInfos: SegmentInfo[] = useMemo(
+    () => segmentViews(long.state.segments, long.state.tracks),
+    [long.state.segments, long.state.tracks],
+  );
+
+  /**
+   * Which tramo the engine is on, and what it says about it.
+   *
+   * The index comes from the tracks (exactly one is "generating", because the
+   * walk is strictly in order) and the report comes from the poll. Falling
+   * back to "running" when no report has landed yet is honest: the engine has
+   * been asked and has not answered, which is not the same as a queue position
+   * we could invent.
+   */
+  const activeSegment = useMemo(() => {
+    const generating = long.state.tracks.find((track) => track.status === "generating");
+    if (!generating) return null;
+    return { index: generating.index, status: long.state.engine ?? { kind: "running" as const } };
+  }, [long.state.tracks, long.state.engine]);
+
+  /**
+   * What the status line says while a long script runs.
+   *
+   * The line beside the field has told the truth about the engine since Fase 1
+   * and must not go quiet just because the work is now split in twelve. It
+   * borrows the short path's own vocabulary — queued/running — and adds the
+   * one thing a long run knows and a short one does not: which tramo.
+   *
+   * `null` means "no long run in progress", and the short path's own `phase`
+   * and `detail` are shown untouched.
+   */
+  const longStatus = useMemo((): { phase: Phase; detail: string } | null => {
+    const total = long.state.segments.length;
+    switch (long.state.phase) {
+      case "splitting":
+        return { phase: "queued", detail: "Partiendo el guión" };
+      case "confirming":
+        return { phase: "idle", detail: `Listo para decir ${total} tramos` };
+      case "generating": {
+        const at = long.state.tracks.find((t) => t.status === "generating");
+        const where = at ? `Tramo ${at.index + 1} de ${total}` : `Tramo · de ${total}`;
+        if (long.state.engine?.kind === "queued") {
+          const position = long.state.engine.position;
+          return { phase: "queued", detail: position ? `${where} · en cola, posición ${position}` : `${where} · en cola` };
+        }
+        return { phase: "running", detail: `${where} · generando` };
+      }
+      case "joining":
+        return { phase: "running", detail: "Uniendo los tramos" };
+      case "done":
+        return { phase: "done", detail: "Listo" };
+      case "failed":
+        return { phase: "failed", detail: long.state.error ?? "El guión se detuvo." };
+      default:
+        return null;
+    }
+  }, [long.state.phase, long.state.segments.length, long.state.tracks, long.state.engine, long.state.error]);
+
+  /**
+   * A finished long script becomes ONE take, exactly like a short one — the
+   * decision the user made when this was designed. Its segments ride along in
+   * the optional field so the piece can be deleted whole and one tramo redone
+   * later; the history list itself shows no difference.
+   *
+   * The ref guard is not decorative: this effect watches an object that a
+   * re-render can hand back unchanged, and adding the same take twice would
+   * put two rows in the history for one piece.
+   */
+  const savedPiece = useRef<string | null>(null);
+  useEffect(() => {
+    const result = long.state.result;
+    if (long.state.phase !== "done" || result?.kind !== "joined") return;
+    if (savedPiece.current === result.result.id) return;
+    savedPiece.current = result.result.id;
+
+    const voice = voices.find((v) => v.id === voiceId);
+    const hechos = long.state.tracks.filter((t) => t.filename !== null && t.seed !== null);
+
+    /*
+     * A stopped run produces a piece of only the segments that finished, so
+     * the take records THEIR text — not the whole script. Storing the full
+     * script here would file a partial piece under a text it does not say,
+     * and the history would look complete while the audio was not. The text
+     * is the honest description of what the file contains.
+     */
+    const take: Take = {
+      id: result.result.id,
+      text: long.state.partial ? hechos.map((t) => t.text).join("\n\n") : text,
+      voiceId,
+      voiceLabel: voice?.label ?? voiceId,
+      seed: long.state.tracks[0]?.seed ?? 0,
+      audioUrl: result.result.audioUrl,
+      filename: result.result.filename,
+      createdAt: Date.now(),
+      segments: hechos.map((track) => ({
+        index: track.index,
+        filename: track.filename as string,
+        boundary: track.boundary,
+        seed: track.seed as number,
+      })),
+    };
+    setCurrent(take);
+    addTake(take);
+  }, [long.state.phase, long.state.result, long.state.tracks, long.state.partial, text, voiceId, voices]);
+
   const generate = useCallback(async () => {
     const body = text.trim();
     if (!body || !voiceId || busy) return;
+
+    // The fork, and the only line that decides it. Everything below this block
+    // is the path that has run since Fase 1, byte for byte: a short line costs
+    // exactly what it cost yesterday.
+    if (needsSegmentation(body)) {
+      setCurrent(null);
+      setOpenSegment(null);
+      long.begin(body, voiceId, advanced.seed, {
+        language: advanced.language,
+        maxNewTokens: advanced.maxNewTokens,
+      });
+      return;
+    }
 
     setPhase("queued");
     setDetail("Enviando al motor");
@@ -193,11 +360,17 @@ export default function Studio() {
       body: JSON.stringify({
         text: body,
         voiceId,
+        kind: voiceKind,
         // A pinned seed is sent; null means "roll a fresh one", which the
         // server does rather than the client, so the take records what ran.
         seed: advanced.seed,
         language: advanced.language,
         maxNewTokens: advanced.maxNewTokens,
+        // Only ever sent for a preset: the server rejects it otherwise, on
+        // purpose, rather than accepting a lever it cannot pull.
+        ...(voiceKind === "preset" && advanced.instruct?.trim()
+          ? { instruct: advanced.instruct.trim() }
+          : {}),
       }),
     });
     const submitted = await res.json();
@@ -253,7 +426,7 @@ export default function Studio() {
         setDetail(s.message ?? "La generación falló.");
       }
     }, 700);
-  }, [text, voiceId, busy, voices, advanced]);
+  }, [text, voiceId, busy, voices, advanced, long, voiceKind]);
 
   /**
    * Delete a take: the audio file on disk AND the entry here. If the file
@@ -384,21 +557,36 @@ export default function Studio() {
             }}
           >
             <div className="overflow-hidden">
-              {/* Label and status share the row: what this field is on the left,
-                  what the engine is doing with it on the right. */}
-              <div className="mb-4 flex items-baseline justify-between gap-4">
-                <label htmlFor="script" className="eyebrow">
-                  El texto
-                </label>
-                <StatusLine phase={phase} detail={detail} />
-              </div>
+              {/*
+                * Header and field share ONE grid so they share ONE width.
+                *
+                * They used to be two siblings: a full-width header row, and
+                * below it a flex row where the field gave up the rail's width
+                * plus the gap. The header therefore ran ~50px wider than the
+                * field under it, and the status ("tramo 2 de 3") hung past the
+                * field's right edge — which reads as the text box being
+                * shoved off-centre, because a box is judged against whatever
+                * sits directly above it.
+                *
+                * A grid fixes it without a magic number: the header occupies
+                * column 1 only, so it is exactly as wide as the field, and the
+                * rail keeps its own column. Explicit row/column placement
+                * rather than source order, so no empty spacer cell exists just
+                * to hold a grid position.
+                *
+                * The rail still costs no vertical space — it stands in the
+                * margin the text never used — where the same two controls as
+                * rows underneath would cost the centred card a line each.
+                */}
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+                <div className="col-start-1 row-start-1 mb-4 flex items-baseline justify-between gap-4">
+                  <label htmlFor="script" className="eyebrow">
+                    El texto
+                  </label>
+                  <StatusLine phase={longStatus?.phase ?? phase} detail={longStatus?.detail ?? detail} />
+                </div>
 
-              {/* The field and its tools share one row. The rail costs no
-                  vertical space — it stands in the margin the text never used —
-                  where the same two controls as separate rows underneath cost
-                  the centred card a line each, open or not. */}
-              <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
+                <div className="col-start-1 row-start-2 min-w-0">
                   <ScriptField
                     id="script"
                     inputRef={scriptRef}
@@ -413,19 +601,21 @@ export default function Studio() {
                   />
                 </div>
 
-                <ToolRail
-                  open={tool}
-                  onOpen={openTool}
-                  advancedModified={isModified(advanced)}
-                  textMark={
-                    (verdict?.blocking ?? 0) > 0
-                      ? "attention"
-                      : (verdict?.total ?? 0) > 0
-                        ? "set"
-                        : "none"
-                  }
-                  disabled={busy}
-                />
+                <div className="col-start-2 row-start-2">
+                  <ToolRail
+                    open={tool}
+                    onOpen={openTool}
+                    advancedModified={isModified(advanced)}
+                    textMark={
+                      (verdict?.blocking ?? 0) > 0
+                        ? "attention"
+                        : (verdict?.total ?? 0) > 0
+                          ? "set"
+                          : "none"
+                    }
+                    disabled={busy}
+                  />
+                </div>
               </div>
 
               {/* One slot, one panel at a time. It measures its contents and
@@ -451,6 +641,7 @@ export default function Studio() {
                 {shownTool === "advanced" && (
                   <AdvancedPanel
                     chromeless
+                    voiceKind={voiceKind}
                     state={advanced}
                     onChange={setAdvanced}
                     lastSeed={current?.seed ?? null}
@@ -459,6 +650,63 @@ export default function Studio() {
                   />
                 )}
               </PanelSlot>
+
+              {/* The long-script strip. It lives BELOW the field and the field
+                  never moves for it — the stage keeps its centre, which is the
+                  whole point of the session-3 redesign. A short line never
+                  renders any of this, because `long.state.phase` stays "idle".
+                  See SegmentStrip and lib/long-script.ts. */}
+              {long.state.phase !== "idle" && (
+                <div className="mt-6">
+                  {long.state.phase === "confirming" && (
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-muted">
+                        Lo diré en{" "}
+                        <span className="tabular-nums font-medium text-ink">
+                          {long.state.segments.length}
+                        </span>{" "}
+                        tramos. Los cortes caen siempre al final de una frase.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => long.confirm(voiceId, advanced.seed ?? randomSeed(), {
+                          language: advanced.language,
+                          maxNewTokens: advanced.maxNewTokens,
+                        })}
+                        style={{ transitionTimingFunction: "var(--ease-ui)" }}
+                        className="rounded-full border border-accent bg-surface px-5 py-2 text-sm font-medium text-accent-text transition-[transform,background-color,border-color] duration-200 hover:bg-accent-soft hover:border-accent-text active:scale-[0.97]"
+                      >
+                        Generar los tramos
+                      </button>
+                    </div>
+                  )}
+
+                  <SegmentStrip
+                    segments={segmentInfos}
+                    active={activeSegment}
+                    openIndex={openSegment}
+                    onOpen={setOpenSegment}
+                    onListen={(index) => {
+                      const track = long.state.tracks.find((t) => t.index === index);
+                      if (track?.audioUrl) setCurrent((prev) => (prev ? { ...prev, audioUrl: track.audioUrl! } : prev));
+                    }}
+                    onRedo={(index) =>
+                      long.redo(index, voiceId, {
+                        language: advanced.language,
+                        maxNewTokens: advanced.maxNewTokens,
+                      })
+                    }
+                  />
+
+                  {long.state.phase === "failed" && long.state.error && (
+                    <p className="mt-3 text-sm text-danger">
+                      {long.state.failedIndex !== null
+                        ? `Se detuvo en el tramo ${long.state.failedIndex + 1}: ${long.state.error}`
+                        : long.state.error}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="mt-6 border-t border-hairline pt-6">
                 <Waveform src={current?.audioUrl ?? null} onEnergy={setEnergy} />
@@ -480,18 +728,26 @@ export default function Studio() {
                   )}
                 </div>
 
+                {/* The label used to stay put on purpose: renaming a button
+                    mid-action changes its width under the cursor for no
+                    information gained. That held while the action was a
+                    twenty-second generation with nothing to decide. A long run
+                    is minutes of work the user may want to cut short, so there
+                    IS a second action, and a button that hides it is the
+                    reason the run could not be stopped at all. The width is
+                    pinned instead, so nothing moves under the cursor. */}
                 <button
                   type="button"
-                  onClick={() => void generate()}
-                  disabled={!text.trim() || !voiceId || busy}
+                  onClick={() => (canStop ? long.stop() : void generate())}
+                  disabled={canStop ? false : stopping || !text.trim() || !voiceId || busy}
+                  aria-label={canStop ? "Detener el guión y unir los tramos ya hechos" : undefined}
                   style={{ transitionTimingFunction: "var(--ease-ui)" }}
-                  className="rounded-full bg-accent px-7 py-3 text-sm font-medium text-accent-ink transition-[transform,background-color] duration-200 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35"
+                  className="min-w-[9.5rem] rounded-full border border-accent bg-surface px-7 py-3 text-center text-sm font-medium text-accent-text transition-[transform,background-color,border-color] duration-200 hover:bg-accent-soft hover:border-accent-text active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-35"
                 >
-                  {/* The label stays put. The status line beside the field already
-                      says "Generando", and a button that renames itself mid-action
-                      changes width under the cursor for no information gained. */}
-                  Generar
-                  <span className="ml-2 font-mono text-[11px] opacity-60">Ctrl ↵</span>
+                  {stopping ? "Deteniendo…" : canStop ? "Detener" : "Generar"}
+                  {!canStop && !stopping && (
+                    <span className="ml-2 font-mono text-[11px] opacity-60">Ctrl ↵</span>
+                  )}
                 </button>
               </div>
 

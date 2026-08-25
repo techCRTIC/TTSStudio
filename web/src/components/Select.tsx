@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -27,7 +27,29 @@ import { createPortal } from "react-dom";
  *   rect, recomputed while open so scrolling does not leave it stranded.
  */
 
-export type Option = { value: string; label: string };
+export type Option = {
+  value: string;
+  label: string;
+  /**
+   * Tints the label, for options that are a different KIND of thing rather
+   * than a different value.
+   *
+   * Colour is never allowed to carry the meaning ALONE — this app's output
+   * cannot be heard by everyone and its own rule says so. The word that
+   * carries it lives in `group` below, printed once as a heading instead of
+   * repeated on every row: the panel is only as wide as its trigger, and a
+   * badge on each line did not fit beside the name.
+   */
+  tone?: "accent";
+  /**
+   * Groups adjacent options under a heading. Options must already be ordered
+   * by group; the heading is drawn wherever the group changes.
+   *
+   * A single group draws no heading at all — naming the only thing present
+   * tells the reader nothing.
+   */
+  group?: string;
+};
 
 /** Where the panel sits relative to its trigger, in viewport coordinates. */
 type Rect = { left: number; top: number; bottom: number; width: number };
@@ -105,6 +127,7 @@ export function Select({
     options.findIndex((o) => o.value === value),
   );
   const selected = options[selectedIndex];
+  const groupCount = new Set(options.map((o) => o.group ?? "")).size;
 
   const measure = (): Rect | null => {
     const box = buttonRef.current?.getBoundingClientRect();
@@ -248,7 +271,10 @@ export function Select({
         aria-controls={open ? listboxId : undefined}
         className={trigger}
       >
-        <span id={`${listboxId}-value`} className="truncate">
+        <span
+          id={`${listboxId}-value`}
+          className={`truncate ${selected?.tone === "accent" ? "text-accent" : ""}`}
+        >
           {selected?.label ?? emptyLabel}
         </span>
         <span className="text-ink-muted">
@@ -271,27 +297,53 @@ export function Select({
           >
             {options.map((option, index) => {
               const isSelected = option.value === value;
+              // Only where the group actually changes, and never for the sole
+              // group in the list.
+              const heading =
+                option.group && option.group !== options[index - 1]?.group && groupCount > 1
+                  ? option.group
+                  : null;
+
               return (
-                <div
-                  key={option.value}
-                  id={`${listboxId}-${index}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  onPointerEnter={() => setActive(index)}
-                  onClick={() => choose(index)}
-                  className={`flex cursor-default items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 ${
-                    index === active ? "bg-surface text-ink" : "text-ink-muted"
-                  }`}
-                >
-                  <span>{option.label}</span>
-                  {/* The accent marks the chosen one, once. */}
-                  <span
-                    aria-hidden="true"
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity duration-150 ${
-                      isSelected ? "opacity-100" : "opacity-0"
-                    }`}
-                  />
-                </div>
+                // A Fragment, not a wrapper div: a listbox's children have to
+                // be options, and slipping a plain element in between breaks
+                // how the list is announced.
+                <Fragment key={option.value}>
+                  {heading && (
+                    // Visual only. A sighted reader gets the heading; a screen
+                    // reader gets the same fact from each option's own name
+                    // below, which is what it needs — it never sees a heading
+                    // it has already scrolled past.
+                    <div
+                      aria-hidden="true"
+                      className="px-3 pb-1 pt-2 text-[10px] uppercase tracking-wide text-ink-muted"
+                    >
+                      {heading}
+                    </div>
+                  )}
+                  <div
+                    id={`${listboxId}-${index}`}
+                    role="option"
+                    aria-selected={isSelected}
+                    aria-label={
+                      option.group && groupCount > 1 ? `${option.label}, ${option.group}` : undefined
+                    }
+                    onPointerEnter={() => setActive(index)}
+                    onClick={() => choose(index)}
+                    className={`flex cursor-default items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 ${
+                      index === active ? "bg-surface" : ""
+                    } ${option.tone === "accent" ? "text-accent" : index === active ? "text-ink" : "text-ink-muted"}`}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {/* The accent marks the chosen one, once. */}
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity duration-150 ${
+                        isSelected ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
+                  </div>
+                </Fragment>
               );
             })}
           </div>,

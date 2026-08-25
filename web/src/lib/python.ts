@@ -74,7 +74,31 @@ export type PythonResult = {
 export function runScript(
   scriptName: string,
   args: string[],
-  { timeoutMs = 60_000 }: { timeoutMs?: number } = {},
+  {
+    timeoutMs = 60_000,
+    input,
+  }: {
+    timeoutMs?: number;
+    /**
+     * Text to write to the script's stdin, then close it.
+     *
+     * WHY THIS EXISTS AND WHEN TO REACH FOR IT: a command-line argument is
+     * capped at 32.767 characters on Windows, and a thirty-minute narration is
+     * around 27.000 — close enough that the segmenter would start failing on
+     * exactly the scripts it exists to handle. A pipe has no such ceiling.
+     *
+     * It is also the SAFE way to hand a script a body of text: the alternative
+     * is writing a temp file and passing its path, which means inventing a
+     * second writable location outside `comfy-files.ts` (ADR-004) and cleaning
+     * it up afterwards. Nothing to resolve, nothing to delete, no path at all.
+     *
+     * ⚠️ The receiving script must call `_console.use_utf8()`, which
+     * reconfigures stdin as well as stdout. Without it Python decodes this
+     * pipe as the console code page and every accent changes character — on
+     * the exact text a voice is about to say.
+     */
+    input?: string;
+  } = {},
 ): Promise<PythonResult> {
   const root = projectRoot();
   const python = pythonPath(root);
@@ -96,6 +120,13 @@ export function runScript(
       // not cosmetic: this text is what the voice says.
       env: { ...process.env, PYTHONIOENCODING: "utf-8" },
     });
+
+    if (input !== undefined) {
+      // `end()` is what makes `sys.stdin.read()` return instead of blocking
+      // forever, so the write and the close are one step, never two.
+      child.stdin.setDefaultEncoding("utf8");
+      child.stdin.end(input);
+    }
 
     let stdout = "";
     let stderr = "";
@@ -136,7 +167,7 @@ export function runScript(
 export async function runScriptJson<T>(
   scriptName: string,
   args: string[],
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; input?: string },
 ): Promise<{ data: T; code: number }> {
   const { stdout, stderr, code } = await runScript(scriptName, args, options);
 
