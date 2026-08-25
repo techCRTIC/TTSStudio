@@ -181,6 +181,86 @@ constante marcada en el código, en vez de escribir una cifra adivinada como si
 estuviera medida. Este proyecto ya publicó una vez unos «12 Hz» que al medirlos
 eran 12,56. Falta la sesión de medición.
 
+## B-016 — Modo extendido: el modelo local ayuda a escribir el guión
+**Status:** idea
+Pedido por el usuario el 2026-08-24, a raíz de la Fase 3. Hoy el modelo local
+solo reescribe lo que ya escribiste. La idea es que ayude también a **producir**
+el guión, como una tercera herramienta del raíl que ya existe junto al campo
+—donde hoy viven «mejorar» y «ajustes avanzados»—, no como un botón suelto por
+fuera: la app ya decidió dónde viven las herramientas del texto.
+
+**Dentro hay DOS ideas distintas y conviene no fundirlas:**
+- **Expandir** — le das notas, un esquema o cuatro puntos y devuelve un guión
+  narrable. El modelo trabaja *desde* algo tuyo.
+- **Generar** — le das un tema y escribe él.
+
+**Recomendación registrada: expandir sí, generar no.** El modelo instalado es de
+4B, y un modelo pequeño escribiendo desde cero produce relleno correcto y vacío;
+transformar un texto que ya lleva criterio dentro es justo donde rinde, y es lo
+que el botón de mejorar ya demuestra. Además choca con el principio de producto
+«el bucle es el producto»: si el modelo escribe, el juicio se va del único paso
+que solo puede dar una persona.
+
+**Traería puesta la regla de [[ADR-006-local-language-model-for-text]]:** lo que
+el modelo invente **se marca en pantalla**, porque pedirle a alguien que
+encuentre una frase inventada dentro de un párrafo entero no funciona. Y nunca
+debería poder ir directo a audio sin lectura humana.
+
+**Una pregunta sin medir que decide el techo de calidad:** quedó escrito que un
+modelo más grande «no cabe» (los dos que hay son de 18 GB y el motor de voz deja
+16 libres). Esa cuenta **asume que ambos están cargados a la vez**, y escribir y
+generar voz no ocurren al mismo tiempo. Si el modelo de escritura se carga, hace
+su trabajo y se descarga antes de que entre el de voz, la restricción podría no
+aplicar — a cambio de los segundos que cueste cargar 18 GB, que pueden hacerlo
+insoportable. **Hay que medirlo antes de dar por cerrada la elección de modelo.**
+
+Relacionado: [[B-017]] (el catálogo desde el que se instalaría ese modelo).
+
+## B-017 — Catálogo de modelos instalables desde la app, y qué se lleva el `.exe`
+**Status:** idea
+Pedido por el usuario el 2026-08-24. Dos peticiones que son la misma:
+
+1. **Que dentro de la app estén los modelos que hemos explorado**, con lo que se
+   sabe de cada uno, y que se instalen con un clic.
+2. **Que para el build final esté decidido qué viaja dentro del `.exe` y qué se
+   descarga desde dentro.**
+
+**El reparto es forzoso, no una preferencia:** el `.exe` lleva el **código**
+(decenas de megas) y los modelos se piden en tiempo de ejecución. Las cuentas
+que ya existen lo dejan claro — transcripción 2,9 GB, texto 2,5 GB, más el de
+voz. Nadie descarga un instalador de 20 GB, y cada modelo se actualiza a su
+ritmo.
+
+**El catálogo debe ser DATOS, no código:** una lista versionada con nombre, para
+qué sirve, peso, origen, licencia y lo medido de cada modelo. Así añadir uno es
+editar una lista, no recompilar.
+
+**Dos distinciones que hay que hacer desde el principio, o se pagan después:**
+- **Disco y memoria de vídeo son presupuestos DISTINTOS.** Un modelo puede estar
+  instalado y aun así no poder usarse a la vez que otro. Si la lista no dice las
+  dos cosas, el usuario instala tres y descubre luego que dos no conviven.
+- **Instalado ≠ elegido.** Tener algo en disco y que la app lo esté usando son
+  dos estados. Fundidos en un interruptor, desinstalar el modelo activo deja la
+  app rota sin avisar.
+
+**El elefante, y la pregunta que abre la fase:** los modelos son la parte fácil.
+Debajo no hay «un modelo que descargar», hay **un motor entero** — ComfyUI, con
+su Python, sus dependencias y su ciclo de vida — que hoy la app da por hecho.
+**¿El instalador se hace dueño de ComfyUI (lo trae, lo arranca, lo vigila) o
+sigue asumiendo que ya está y solo comprueba y guía?** La primera respuesta es
+un producto que se le puede dar a otra persona; la segunda es una herramienta
+personal, que es lo que hoy es. **No se decide de pasada**: es lo que fija el
+tamaño del proyecto.
+
+**Fallos que este trabajo tiene que manejar con honestidad**, porque son
+frecuentes y hoy no existen: descarga interrumpida, disco lleno, sin internet, y
+un modelo a medio bajar que no debe parecer instalado.
+
+Absorbe y da forma a: [[B-003]] (arranque y salud de ComfyUI), [[B-006]] (fase
+previa de instalación con portal de ingreso) y [[B-012]] (la app no instala
+ollama ni el modelo). Habilita [[B-005]] (convertirlo en app de escritorio) y
+[[B-016]] (el modo extendido, que necesita elegir modelo).
+
 ## Cerradas
 
 ## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`

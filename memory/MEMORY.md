@@ -41,3 +41,7 @@
   especialistas a la vez sobre el mismo árbol: el que necesita una pieza que
   otro aún no escribió la imita, y al limpiar su imitación borra el original.
   Declarar los archivos de cada uno no basta. *(gotcha)*
+- [[especialista-sin-shell-no-puede-verificar]] — los especialistas del
+  pipeline no siempre traen consola, asi que no pueden correr los tests que se
+  les piden; el veredicto sale FAIL por eso y hay que verificar desde fuera.
+  Trazar a mano no es ejecutar. *(constraint)*

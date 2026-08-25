@@ -81,9 +81,15 @@ match that.
   foreclose it.
 - **Cross-origin is refused by ComfyUI** (ADR-001). Every engine call is
   server-side.
-- Generation is not instant and its duration varies with text length. Progress
-  is available over ComfyUI's websocket, so waiting can be shown honestly rather
-  than with an indeterminate spinner.
+- Generation is not instant and its duration varies with text length. **What the
+  engine can actually report is queued-with-position and running — nothing
+  finer.** Corrected 2026-08-24 (session 4, ADR-007): this line used to claim
+  progress arrives over a websocket. There is no websocket. The client polls
+  `/api/status/:promptId` every 700 ms, and `StatusLine` refuses to draw a
+  percentage bar precisely because the engine cannot support one. Waiting is
+  still shown honestly — with a real state, and for a long script with
+  "segment K of N" — never with an indeterminate spinner and never with an
+  invented percentage.
 
 **Explicitly undecided**
 - Whether the app starts and supervises ComfyUI itself (backlog B-003).
@@ -133,7 +139,8 @@ match that.
    dial, no fake precision. Where the engine is coarse, the interface is honest
    about it and surfaces the lever that does work.
 3. **Waiting is shown, not hidden.** Generation takes real time and the duration
-   varies. Real progress from the engine, never an indeterminate spinner.
+   varies. Show the state the engine really reports — never an indeterminate
+   spinner, and never a percentage it cannot know.
 4. **Long-form is the shape; short-form is the courtesy.** Design for the
    multi-minute script, but never make a single line pay for that capability.
 5. **The voices are real people.** They stay on this machine. Provenance and

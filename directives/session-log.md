@@ -6,131 +6,266 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
-## 2026-08-24 (tarde) — Fase 3: se abre el camino de los guiones largos
+## 2026-08-24 (noche) — La semilla de los tramos, y el guión con el que se va a escuchar
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 5 · 2026-08-24
+
+**En una frase:** se escuchó por primera vez un guión largo entero, y eso destapó
+—y dejó arreglados— los dos defectos que lo hacían sonar mal: la app lo partía
+en veintiocho trozos en vez de tres, y el volumen bailaba entre uno y otro.
+
+**Qué se hizo**
+- **Se confirmó que la voz no cambia entre trozos.** Todos se generan con la
+  misma semilla: se sortea **un solo número** al confirmar el corte y ese viaja
+  a todos. El usuario lo escuchó y lo confirmó: *"muy consistente el tono"*.
+  Esa era una duda anotada desde hacía dos sesiones.
+- **Se arregló el corte del guión, que era el defecto de fondo.** La app cerraba
+  un trozo al final de **cada párrafo**, aunque cupieran diez juntos, así que el
+  límite de tamaño no actuaba entre párrafos. Un guión que cabía en dos pasadas
+  salía en **veintiocho**. Y el disparador habitual era el propio botón de
+  reescritura de la app, que reformatea el texto en párrafos cortos: una función
+  de la app activaba el defecto de otra.
+- **Se igualó el volumen entre trozos.** El motor no tiene un objetivo de
+  volumen, así que cada trozo salía como salía. Ahora se mide cada uno y se
+  llevan todos al volumen del que está en medio, con un tope para que un trozo
+  roto no se amplifique hasta el ruido. Se puede desactivar para comparar.
+- **La app aprendió a detenerse.** Antes no había forma: el único botón vaciaba
+  la pantalla mientras el motor seguía trabajando. Ahora el botón de generar se
+  convierte en uno de detener, para en cuanto termine el trozo en curso, y
+  **une lo que ya estaba hecho** en una pieza.
+- **Se destapó que el modelo que reescribe corría con una ventana diminuta.**
+  Nadie le había dicho cuánto texto puede sostener, así que ollama aplicaba su
+  valor por defecto —unos pocos miles de tokens— mientras el modelo aguanta
+  262.144. Y lo grave es cómo fallaba: al pasarse, **ollama descarta el
+  principio del texto sin avisar**, y el modelo reescribe lo que quedó. La
+  respuesta parece normal. Ahora la ventana se pide explícitamente, un guión
+  demasiado largo se rechaza **antes** de gastar medio minuto, y una
+  reescritura que vuelva mucho más corta que el original ya no se ofrece.
+- **Y al revisar ese arreglo apareció el mismo error dentro de él.** El valor
+  que fija la ventana se leía sin comprobar: si alguien escribía algo que no
+  fuera un número, el resultado no era un error sino «no es un número» — y eso,
+  al compararlo con nada, siempre da que no, **así que el tope recién puesto
+  dejaba de existir sin cambiar de aspecto**. Corregido y cubierto con pruebas.
+- **Se enderezó la caja de texto.** El título y el estado de arriba ocupaban
+  todo el ancho, mientras la caja de abajo cedía sitio al raíl de herramientas
+  de su costado: la cabecera sobresalía unos 50 píxeles por la derecha y la
+  caja se leía torcida. Ahora cabecera y caja comparten una misma rejilla, así
+  que miden lo mismo por construcción y no por un número escrito a mano.
+- **Se corrigieron tres cosas más de la pantalla:** los dos cajones laterales tenían
+  anchos distintos y por eso la tarjeta se veía torcida con los dos abiertos;
+  las herramientas de al lado del texto quedaban desbloqueadas durante un guión
+  largo, que es justo cuando tocarlas lo estropea; y el botón principal bajó de
+  contraste, con relleno oscuro y borde naranja en vez de naranja macizo.
+
+**Qué se decidió y por qué**
+- **El tope de texto para reescribir se DERIVA de la ventana, no se escribe a
+  mano.** El guión se paga dos veces —entra y vuelve reescrito—, así que el
+  presupuesto se divide entre dos. Escribir el número suelto habría creado un
+  gemelo que se queda atrás en cuanto alguien cambie la ventana. Salen 20.526
+  caracteres, unos 23 minutos de locución.
+- **Se rechaza en vez de truncar.** Media reescritura presentada como entera es
+  peor que ninguna: parece correcta y lo que falta no se ve por ningún lado.
+- **No se añadió un aviso previo en pantalla.** Con un tope de 23 minutos de
+  locución, el caso es rarísimo, y el rechazo es instantáneo y dice qué hacer.
+  Un aviso permanente para eso sería ruido.
+- **Un trozo puede contener varios párrafos, y la pausa entre ellos la pone el
+  modelo al leer** en vez del programa que los une. Decisión del usuario: una
+  pausa hablada respira mejor que un silencio pegado.
+- **Detener conserva y une lo hecho**, en vez de tirarlo. Y para que el historial
+  no mienta, esa pieza se guarda **con el texto de los trozos que sí dice**, no
+  con el guión completo — si no, parecería entera.
+- **Se para entre trozos, no a mitad de uno.** Cortar la llamada en curso no
+  detendría al motor: el trabajo ya está en su cola y seguiría ocupando la
+  tarjeta gráfica. Se pagaría con la app diciendo "detenido" mientras no lo
+  está. El precio de la versión honesta es esperar un trozo.
+- **El relleno del botón es un tono más OSCURO que la tarjeta, no más claro.**
+  Se midió: el tono más claro dejaba el texto naranja en 4,46 de contraste y no
+  pasaba el mínimo de accesibilidad; el oscuro lo deja en 5,46. Y el color que
+  pidió el usuario resultó ser exactamente el de la tarjeta, así que el relleno
+  habría sido invisible.
+- **El tope de corrección de volumen subió de ±6 a ±12 decibelios** porque el
+  primer test lo encontró corto: un trozo a la quinta parte del volumen se
+  quedaba a medio corregir, que es justo el caso que había que resolver.
+
+**Estado al cerrar:** rama `main` · **diez commits** ·
+**árbol limpio por primera vez en tres sesiones** · **sin subir**, por decisión
+mantenida · **verificado después de commitear: 197 pruebas de la app, 32 de
+Python, los cuatro verificadores de costura, tipos, lint, compilación y el
+detector de diseño** — este último con un único aviso, preexistente y ya
+registrado como decisión (B-007) · **el guión de prueba pasó de 5 trozos a 3.**
+
+**B-008 volvió a morder, por sexta vez.** El guardián de secretos bloqueó un
+comando legítimo porque el nombre con que JavaScript lee sus variables de
+entorno contiene, como subcadena, el nombre del archivo de secretos. Se rodeó
+como está documentado: crear el archivo con otra herramienta y ejecutarlo
+después.
+
+**Confirmado en pantalla por el usuario:** el guión que salía en 28 trozos
+**ahora sale en 3**.
+
+**Siguiente paso concreto:** **escuchar la pieza unida de esos 3 trozos** y
+juzgar el volumen. Es lo único de todo lo arreglado hoy que ningún test puede
+comprobar, y lo único que cierra la fase de guiones largos.
+<!-- /cierre -->
+
+**Hora:** noche
+
+**Lo que pidió el usuario:** `/start`. Al elegir el siguiente paso: cerrar la
+Fase 3 escuchando, con un texto lo bastante largo como para que se trocee de
+verdad —el que había usado no llegaba al umbral—. Y una pregunta: ¿está fijada
+la semilla al generar tramos? Después, borrar una frase de la pantalla de
+reescritura.
+
+### Acciones
+
+- `/start` completo. Scaffold íntegro, sin action book, salud documental al día.
+  Las siete skills requeridas presentes; falta una recomendada
+  (`review-animations`) y hay deriva de skills nuevas sin mapear.
+- Se rastreó la semilla por las tres capas: la pantalla, el secuenciador y la
+  ruta de servidor. El sorteo ocurre una sola vez, en el clic de «Generar los
+  tramos», y el tipo de la función impide que llegue vacío por ese camino.
+- Se redactó el guión de prueba y se corrió contra `tts_trocear_guion.py` **tres
+  veces**, alargándolo hasta que un párrafo superó el umbral y el troceo produjo
+  la costura de frase que faltaba.
+- Se comprobó el piso de la revisión automática (20 caracteres) contra el tramo
+  más corto del guión (149) y se avisó al usuario de que ese tramo es
+  precisamente el territorio que nadie ha medido.
+- Se borró la frase de `ImprovePanel.tsx` y se comprobó que ningún test ni
+  documento la citaba.
+- Verificación tras el cambio: tipos limpios, 179 pruebas en verde.
+
+### Resultados
+
+- Guión de prueba listo y medido: 5 tramos, 639 / 1.527 / 149 / 585 / 450
+  caracteres, con una costura de frase y tres de párrafo.
+- Confirmado por lectura de código: los tramos comparten semilla.
+- Dos hallazgos nuevos sin registrar aún en la lista de pendientes (se ofreció
+  al usuario y quedó sin respuesta): la semilla que muestra el historial y el
+  test que falta.
+- Una frase menos en pantalla, su motivo conservado en el código.
+
+### Próximos pasos / preguntas abiertas
+
+- **Escuchar la pieza unida.** Nada más cierra la fase.
+- Sigue sin confirmarse: la unión, rehacer un tramo suelto y el borrado de una
+  toma compuesta.
+- Si el tramo de 149 caracteres falla tres veces seguidas, es casi seguro un
+  falso positivo de la revisión por duración (B-015) y hay que alargarlo.
+- Los 33 archivos siguen sin commitear, esperando a que la escucha salga bien.
+
+## 2026-08-24 (tarde) — Guiones largos, de punta a punta, y la primera prueba real
 
 <!-- cierre -->
 ## 🧾 Cierre — Sesión 4 · 2026-08-24
 
-**En una frase:** se construyó, se revisó y se dejó lista para commitear la
-mitad de dentro de los guiones largos —partir el texto, revisar cada trozo y
-unirlos—, y por el camino aparecieron dos errores que venían de antes: la app
-nunca tuvo el seguimiento del motor que sus propios documentos prometían, y el
-guardián de secretos vuelve a bloquear código perfectamente normal.
+**En una frase:** la app aprendió a decir guiones largos —los parte, los genera
+tramo a tramo, revisa cada uno y los une— y por primera vez se probó contra el
+motor de verdad, que es donde salieron los fallos que ningún test veía.
 
 **Qué se hizo**
-- **Se leyó entero el programa de la skill de voz del usuario** que ya resolvía
-  los guiones largos, y se decidió parte por parte qué se trae. Se trae la
-  mitad: partir el texto por frases y unir los trozos con silencios.
-- **No se trae su forma de hablarle al motor.** Ese programa llama al motor por
-  la línea de comandos y se queda quieto hasta cinco minutos sin decir nada; la
-  app ya tiene su propio camino, que además informa de en qué va.
-- **Quedó construido y probado**: el que parte el texto, el que revisa y une los
-  trozos, un cuarto verificador que vigila que un número clave no se
-  desincronice entre los dos lenguajes, y las piezas de servidor que lo conectan.
-- **La revisión de seguridad encontró cinco cosas y se arreglaron ANTES de
-  commitear**, no se anotaron como deuda. Las dos que importaban: no había
-  ningún tope al número de archivos por petición —una petición con diez mil
-  trozos pedía un plazo de once horas mientras un proceso acumulaba audio en
-  memoria—, y los mensajes de error devolvían al navegador **rutas completas
-  del disco, con el nombre de usuario dentro**.
-- **Salió a la luz un error que venía de antes:** los documentos decían que la
-  app seguía al motor por una conexión permanente. No existe. La app pregunta
-  cada 0,7 segundos y el motor solo sabe decir «estás en la cola, en tal
-  puesto» o «estoy trabajando». Corregido en el roadmap.
-- **Un especialista borró sin querer el trabajo de otro.** Necesitaba el
-  programa de unir para probar lo suyo, todavía no existía, puso una imitación
-  en su lugar y al terminar la borró — llevándose por delante el original, que
-  para entonces sí existía. Se recuperó entero desde el registro de la sesión.
-- **El guardián de secretos volvió a morder, dos veces más** (van cinco), y una
-  de ellas impidió escribir esta misma bitácora. Ya estaba anotado como B-008;
-  ahora se le conoce un segundo disparador.
+- **Se trajo la mitad útil del programa de la skill de voz** que ya resolvía
+  esto: partir por frases completas y unir con silencios. **No se trajo su
+  forma de hablarle al motor**, porque la app ya tiene la suya y dos caminos al
+  mismo motor se separan en silencio.
+- **Quedó todo el camino construido**: partir, generar tramo a tramo, detectar
+  cuando el motor se queda en bucle y rehacer ese trozo solo, unir, y guardarlo
+  como una sola toma. En pantalla: una tira que se llena, con confirmación del
+  corte antes de empezar.
+- **Se añadieron las nueve voces que trae el propio modelo**, marcadas aparte de
+  las clonadas.
+- **Se probó de verdad y salieron tres fallos**, los tres corregidos: el
+  contador de tramos contaba mal, el troceo partía textos que cabían enteros, y
+  las voces del modelo pedían un modelo que no está instalado.
+- **Aparecieron dos errores de documentación que venían de antes**: los papeles
+  decían que la app sigue al motor por una conexión permanente —no existe— y eso
+  estaba escrito en tres archivos distintos.
 
 **Qué se decidió y por qué**
-- **El número que decide «esto es largo» vive en dos lenguajes, a propósito.**
-  Preguntarle al programa que parte el texto cuántos trozos hay ya sería el
-  gasto extra que el usuario prohibió para las frases cortas. Esa duplicación se
-  paga en la misma sesión con un verificador que salta si dejan de coincidir.
-- **Quien escribe la pieza final es Python, pero no elige dónde.** Un solo
-  módulo de la app decide qué carpetas son legales; el programa recibe la ruta
-  ya decidida y se niega a inventarse ninguna.
-- **La frecuencia del audio se lee, nunca se supone.** Los 24000 Hz eran una
-  creencia, no una medición. Unir con la frecuencia equivocada produce una voz
-  acelerada y ningún aviso.
-- **Un número se dejó sin medir a conciencia.** Revisar un trozo comparando su
-  duración con la del texto da falsos avisos en trozos muy cortos, con cifras o
-  siglas, y cada falso aviso cuesta rehacer el trozo entero. Dónde está ese
-  límite quedó marcado en el código como pendiente de medir, porque este
-  proyecto ya dio por bueno una vez un «12» que medido era 12,56.
-- **Primero la mitad de dentro, después la pantalla.** La interfaz de «trozo 3
-  de 10» irá después, sobre cimientos ya verificados.
-- **Se commitea a `main` sin rama.** Las once funcionalidades anteriores de
-  tamaño parecido fueron directas, no hay a quién pedirle una revisión en un
-  proyecto de una sola persona, y esa revisión ya la hicieron las pruebas y la
-  seguridad. Cuando empiece la mitad de pantalla, que puede durar varias
-  sesiones, ahí sí conviene una rama.
+- **El número que decide «esto es largo» pasó de 600 a 1.600 caracteres.** El
+  600 venía heredado y partía en tres un texto que cabía entero en una llamada,
+  creando dos costuras inútiles. Se subió porque ahora el bucle se detecta y se
+  rehace solo, así que trocear pequeño ya no compra lo que compraba. Queda
+  dicho en el código que es una apuesta, no una medición.
+- **Las voces del modelo no se ofrecen si su modelo no está descargado.** Son
+  otros ~4 GB aparte. Enseñar nueve voces que fallan al generar es prometer lo
+  que no se puede cumplir; enseñarlas en gris con un botón de instalar es
+  trabajo del instalador, que está pendiente.
+- **La intención (enfado, calma) solo aparece con esas voces**, porque solo
+  ellas la aceptan. El servidor la rechaza en el otro camino en vez de
+  aceptarla y tragársela.
+- **Se commiteó a mitad de sesión, no al final**, para dejar un punto de retorno
+  antes de tocar la pantalla, que es lo único que ya funcionaba.
 
-**Estado al cerrar:** rama `main` · **árbol sucio: 22 archivos SIN COMMITEAR** ·
-**todo verificado y en verde: 136 pruebas de la app, 21 de Python, los cuatro
-verificadores de costura, tipos y lint** · la revisión automática dio PASS en
-sus 9 criterios y la de seguridad quedó sin nada bloqueante, con sus cinco
-arreglos ya aplicados y probados · **hay una propuesta de 4 commits escrita y
-esperando el sí del usuario** · falta entera la mitad de pantalla.
+**Estado al cerrar:** rama `main` · **cuatro commits** (hasta `750eed9`), **sin
+subir** · **29 archivos sin commitear por decisión**, esperando a que las
+pruebas contra el motor terminen de salir bien · **179 pruebas de la app, 24 de
+Python, los cuatro verificadores de costura, tipos, lint y compilación: todo en
+verde** · **confirmado funcionando contra el motor**: el troceo, la tira, el
+contador y la generación por tramos con una voz clonada · **SIN confirmar
+todavía**: la unión final, rehacer un tramo suelto, cómo suenan las costuras, y
+las nueve voces del modelo (falta su descarga).
 
-**Siguiente paso concreto:** el usuario aprueba (o corrige) la propuesta de los
-cuatro commits y se ejecutan. Después, la mitad de frontend: el bucle que
-recorre los trozos y el «trozo K de N» en pantalla.
+**Siguiente paso concreto:** generar un guión largo entero con `npm start` y
+**escuchar la pieza unida** — si las costuras suenan, ajustar las pausas de
+0,28 s y 0,65 s en `execution/tts_unir_tramos.py`. Es el criterio de salida de
+la fase y lo único que ningún test puede juzgar.
 <!-- /cierre -->
 
-**Hora:** 14:30–15:10 (aprox.)
+**Hora:** 14:30–19:00 (aprox.)
 
 **Lo que pidió el usuario:** `/start`, y al elegir el siguiente paso, abrir la
-Fase 3 del roadmap leyendo `tts_narrar_largo.py` de su skill `voz-local` y
-decidiendo qué parte se trae a `execution/`.
+Fase 3 del roadmap. Después: la ruta que faltaba y la pantalla; un guión de
+prueba; las voces preestablecidas en la lista, diferenciadas por color; y tres
+correcciones surgidas de probar contra el motor.
 
 ### Acciones
 
-- `/start` completo: andamiaje ya presente, sin action book, salud documental al
-  día (project-overview describía la sesión 3, cero desfase).
-- Se localizó y leyó entero
-  `Proyectos/Claude/Investigación/.claude/skills/voz-local/scripts/tts_narrar_largo.py`.
-- Se cruzó contra el código real: `web/src/lib/tts.ts`, `web/src/lib/python.ts`,
-  `web/src/app/api/generate/route.ts`, `web/src/lib/history.ts`,
-  `web/src/app/api/takes/route.ts`.
-- `uv add soundfile` (0.14.0) y `uv add --dev pytest` (9.1.1), ambos con permiso
-  explícito. Verificado que `soundfile` lee FLAC, que es lo que escribe el nodo
-  `SaveAudio` — comprobado, no supuesto.
-- Se montó el arnés de pruebas de Python: `execution/tests/conftest.py` y
-  `testpaths` en `pyproject.toml`, apuntando solo a `execution/tests` para no
-  recoger nunca los tests de Vitest.
-- Pipeline `/team-new-feature` en modo plan. El plan volvió con dos fallos que
-  se corrigieron antes de construir: (1) ninguna tarea añadía la constante de
-  TypeScript que el verificador de costura debía comparar; (2) el pipeline aísla
-  a cada especialista en su propio worktree, y aquí las tareas se leen entre sí.
-  Se trabajó sobre una copia del script con árbol compartido y con los archivos
-  de cada tarea declarados.
-- Se escribió `directives/architecture/ADR-007-...md`, se corrigió la línea del
-  websocket en `directives/roadmap.md`, y se abrieron B-013, B-014 y B-015.
-- Modo build lanzado; **no había terminado al cerrar la sesión**.
+- `/start` completo. Salud documental al día, sin action book.
+- Se leyó entero `tts_narrar_largo.py` de la skill `voz-local` y se cruzó contra
+  el código real antes de decidir qué se trae.
+- `uv add soundfile` (0.14.0), `uv add --dev pytest` (9.1.1), `uv add numpy`
+  (declarado explícitamente; entraba de prestado). Arnés de pytest montado en
+  `execution/tests/` con `testpaths` acotado.
+- Pipeline `/team-new-feature` en modo plan y en modo build, dos veces. Al plan
+  se le corrigieron dos fallos antes de construir: ninguna tarea añadía la
+  constante de TypeScript que el verificador debía comparar, y el aislamiento en
+  worktrees habría impedido que las tareas se leyeran entre sí.
+- `security-reviewer` sobre el cambio: **CONCERNS sin bloqueantes**, cinco
+  arreglos aplicados ANTES de commitear (topes de tamaño, techo de plazo,
+  trazabilidad por posición en el borrado, saneado de rutas absolutas en los
+  errores, `numpy` declarado).
+- `git-lead` propuso cuatro commits por capas; aprobados y ejecutados.
+- Suite de diseño obligatoria enganchada (`impeccable`, `emil-design-eng`,
+  `ui-ux-pro-max`) antes de tocar UI; guía destilada e inyectada en los
+  especialistas. Detector de diseño corrido al terminar: sin hallazgos.
 
 ### Decisiones
 
-Las seis (D1–D6) están razonadas en el ADR-007. Las que el usuario aprobó
-explícitamente: la enmienda a ADR-004 sobre quién calcula la ruta de la pieza,
-el ensanche del borrado para aceptar una lista, y añadir `pytest`.
+Las seis de la fase están en `ADR-007`. Las de esta sesión posteriores al ADR:
+el umbral a 1.600, las voces del modelo ocultas sin su checkpoint, y la
+intención expuesta solo en el camino que la soporta.
 
 ### Resultados
 
-- ADR-007 aceptado; roadmap corregido; tres entradas nuevas en el backlog.
-- Dos dependencias nuevas, ambas anotadas en `pyproject.toml` en el mismo
-  cambio que las introdujo.
-- Construcción incompleta y **sin verificar**. No se afirma nada sobre ella.
+- **Fase 3 completa en código.** Dos scripts deterministas nuevos, un cuarto
+  verificador de costura, cuatro rutas de servidor, el secuenciador, la tira y
+  el enganche en la pantalla.
+- **Nueve voces del modelo** disponibles cuando su checkpoint esté.
+- **Tres correcciones de documentación**: la conexión permanente inexistente en
+  el roadmap y en `PRODUCT.md`, y la creencia de que las voces del modelo
+  viajaban con el software.
+- **Cinco entradas nuevas en la lista de pendientes** (B-013 a B-017).
+- **Una memoria nueva**: especialistas en paralelo pisándose las dependencias.
 
 ### Próximos pasos / preguntas abiertas
 
-- Correr los cuatro verificadores, `pytest` y Vitest, y ver qué hay de verdad.
-- Terminar `execution/tts_trocear_guion.py` y sus tests si el build no los dejó.
-- Después: la mitad de frontend (el secuenciador y el «tramo K de N»), que
-  quedó fuera de esta pasada a propósito.
+- Escuchar la pieza unida. Es lo único que decide si la fase está terminada.
+- Descargar `Qwen3-TTS-12Hz-1.7B-CustomVoice` (~4 GB) si se quieren las nueve
+  voces. Decisión del usuario: no se descarga nada por sorpresa.
+- Sin medir: **B-015** (la longitud mínima bajo la que no se juzga un tramo) y
+  la pregunta de memoria de **B-016** (si un modelo grande cabe cargándose y
+  descargándose por turnos).
 
 ## 2026-08-24 — Procedencia de las voces, escritura asistida y el rediseño del escenario
 

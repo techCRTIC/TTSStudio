@@ -17,10 +17,10 @@ despliegue a terceros.
 Nace de una investigación previa (`comfy-mcp/`, cerrada el 2026-08-18) que
 validó la clonación de voz zero-shot con material real y dejó el stack montado.
 
-## Estado actual (sesión 3, 2026-08-24)
+## Estado actual (sesión 4, 2026-08-24)
 
-**La aplicación existe, se usa a diario, y ya no es solo un generador: revisa el
-texto antes de convertirlo en audio y sabe de quién es cada voz.**
+**La aplicación existe, se usa a diario, y ya dice guiones largos: los parte,
+los genera tramo a tramo, revisa cada uno y los une en una sola pieza.**
 
 - `web/` — Next.js 16.3.1 + React 19 + Tailwind 4 + Geist. Se levanta con
   `npm start` desde la raíz: un lanzador comprueba ComfyUI, libera el puerto,
@@ -30,30 +30,39 @@ texto antes de convertirlo en audio y sabe de quién es cada voz.**
   texto, un raíl de herramientas a su costado, y **dos botones circulares que se
   transforman en los cajones laterales** — voces a la izquierda, historial a la
   derecha.
-- **Biblioteca de voces (Fase 2, terminada).** Alta desde un audio de
-  referencia o grabando con el micrófono, transcripción propia que el usuario
-  corrige antes de calcular la voz, **procedencia visible** de cada una
-  (ADR-005), escucharla sin generar una toma, y borrado real del disco
-  (ADR-004).
+- **Guiones largos (Fase 3, terminada en código).** Por encima de 1.600
+  caracteres el texto se trocea por frases completas, la app enseña los cortes
+  para que se confirmen, genera tramo a tramo mostrando **«tramo K de N»** más
+  el estado real del motor, **detecta el bug de bucle** comparando duración con
+  caracteres y **rehace ese tramo con otra semilla**, y une todo con pausas
+  distintas entre frase y entre párrafo. El resultado es **una sola toma** en el
+  historial. Por debajo del umbral, el camino es idéntico al de siempre: ni un
+  proceso de más. Ver `ADR-007`.
+- **Biblioteca de voces (Fase 2, terminada).** Alta desde audio de referencia o
+  micrófono, transcripción propia corregible, **procedencia visible** (ADR-005),
+  escucha sin generar una toma, y borrado real del disco (ADR-004). Desde la
+  sesión 4 conviven con **las nueve voces preestablecidas del modelo**, marcadas
+  aparte — pero solo aparecen si su checkpoint (`-CustomVoice`, una descarga
+  distinta) está en disco.
 - **Escritura asistida.** Un botón revisa ortografía y ritmo con reglas
-  **medidas** —no opinadas— y propone una versión escrita para que la lea una
-  voz, marcando qué palabras cambiaron de verdad. Lo determinista lo hacen dos
-  scripts de `execution/`; el modelo local solo hace lo que es criterio
-  (ADR-006).
+  **medidas** y propone una versión escrita para que la lea una voz, marcando
+  qué palabras cambiaron. Lo determinista lo hacen scripts de `execution/`; el
+  modelo local solo hace lo que es criterio (ADR-006).
 - **El puente al motor** vive en `web/src/lib/comfy.ts` + las rutas bajo
-  `web/src/app/api/`. **109 tests en verde, ninguno saltado**, dos de ellos
-  contra el ComfyUI real.
-- **Salud verificada al cierre:** tipos, lint, compilación limpios; **tres
+  `web/src/app/api/`. **179 tests de la app y 24 de Python en verde**, ninguno
+  saltado. La mitad determinista tiene arnés propio (`pytest`) desde la sesión 4.
+- **Salud verificada al cierre:** tipos, lint y compilación limpios; **cuatro
   verificadores de costura** (`execution/check_*.py`) en verde; el detector de
-  diseño solo con excepciones documentadas en su propio archivo.
+  diseño sin hallazgos.
 
-**Fases 0, 1 y 2 del roadmap terminadas.** La siguiente es la **Fase 3 —
-guiones largos**: segmentar un texto de varios minutos, regenerar un tramo
-suelto y unir el resultado.
+**Fases 0, 1, 2 y 3 terminadas en código.** La 3 no está cerrada del todo: su
+criterio de salida es que **las costuras suenen inaudibles**, y eso solo se
+juzga escuchando una pieza unida de verdad, cosa que aún no se ha hecho.
 
 **Sin verificar:** el comportamiento en ventanas angostas, pendiente desde la
-sesión 1. Y sin medir: si una misma semilla conserva el carácter entre textos
-distintos (B-009).
+sesión 1. **Sin medir:** la longitud mínima bajo la cual no tiene sentido juzgar
+un tramo por su duración (B-015), y si una misma semilla conserva el carácter
+entre textos distintos (B-009).
 
 ## Visión
 Que clonar una voz y producir audio con ella deje de ser un experimento de
@@ -104,6 +113,13 @@ TTSStudio/
   emoción** (solo el modo `CustomVoice`, con voces preestablecidas, lo tiene).
   La puntuación del texto sí afecta la calidad percibida de las pausas. Esto
   acota qué controles puede ofrecer la interfaz.
+- **Los dos modos usan checkpoints DISTINTOS** (sesión 4, confirmado por el
+  error del propio motor): la clonación necesita `Qwen3-TTS-12Hz-1.7B-Base` y
+  las voces preestablecidas `…-CustomVoice`. Son dos descargas de ~4 GB cada
+  una, no una. La app no ofrece las voces del modelo si su checkpoint falta.
+- **El motor acepta 2.048 caracteres de entrada por pasada**, que es lo que
+  obliga a trocear un guión largo. El techo de audio (~8192 tokens, unos 11
+  minutos a los 12,56 tokens/s medidos) rara vez es el que ata.
 - El servidor MCP `comfy` necesita el `Scripts` del venv en el PATH de usuario:
   `comfy launch --background` se re-invoca a sí mismo por shell.
 - La carpeta heredada `comfy-mcp/` asume vivir dentro de un hub de
