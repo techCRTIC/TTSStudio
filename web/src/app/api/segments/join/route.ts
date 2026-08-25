@@ -22,7 +22,12 @@
  *   LAST segment's is carried for shape symmetry only, unused by the script.
  *
  *   On success, prints exactly:
- *     { "output": str, "seconds": float, "samplerate": int, "segments_joined": int }
+ *     { "output": str, "seconds": float, "samplerate": int, "segments_joined": int,
+ *       "leveled": bool, "gains": float[] }
+ *   `leveled`/`gains` were added 2026-08-24 with volume levelling between
+ *   segments. This route does not forward them: it reads the fields it needs
+ *   by name and ignores the rest, so the script can report more than the
+ *   screen consumes.
  *   The sample rate is READ from the first segment, never assumed — a later
  *   segment at a different rate raises `FrecuenciasDistintasError` rather
  *   than being concatenated into a sped-up or corrupt piece.
