@@ -189,20 +189,143 @@ function openBrowser(url) {
   else spawn("xdg-open", [url], { stdio: "ignore", detached: true }).unref();
 }
 
+// ------------------------------------------------------- salud continua ---
+
+/**
+ * How often the heartbeat asks the engine whether it is still there.
+ *
+ * A local HTTP call costs nothing, so this is set by how long an outage may go
+ * unnoticed rather than by cost. Fifteen seconds means the worst case is one
+ * generation attempt landing on a dead engine.
+ */
+const HEARTBEAT_MS = 15_000;
+
+/**
+ * How many times the heartbeat will bring ComfyUI back before it gives up.
+ *
+ * ⚠️ THE CAP IS THE POINT, NOT A DETAIL. If the engine was killed by memory
+ * pressure — the most likely cause on this machine, where image work and voice
+ * work share one card — then relaunching it feeds the problem instead of
+ * fixing it. Something that restarts forever turns one outage into a loop that
+ * degrades the whole machine, and does it silently.
+ *
+ * Three is enough to survive a one-off crash and few enough that a systemic
+ * problem stops being papered over. After the third, the app says so and stays
+ * out of the way, which is the honest outcome: the user needs to know the
+ * engine keeps dying, not to be shielded from it.
+ */
+const MAX_REVIVALS = 3;
+
+/**
+ * Uptime after which the revival budget is considered spent on old news.
+ *
+ * Without this, three crashes spread over a week would exhaust the budget and
+ * the fourth outage — hours after the machine had been healthy — would go
+ * unattended. The cap is meant to catch a CRASH LOOP, and a loop is defined by
+ * crashes close together.
+ */
+const STABLE_RESET_MS = 10 * 60 * 1000;
+
+/**
+ * Wait after noticing a death, before trying to bring it back.
+ *
+ * A process killed for memory has not necessarily finished releasing it, and
+ * relaunching into a machine still under pressure is how a single crash
+ * becomes two. This is the cheapest possible version of backing off.
+ */
+const REVIVE_DELAY_MS = 5_000;
+
+function watchComfy() {
+  let revivals = 0;
+  /** When the current healthy stretch began, or null while the engine is down. */
+  let healthySince = Date.now();
+  let reviving = false;
+  let warnedGaveUp = false;
+
+  const beat = async () => {
+    if (reviving) return;
+
+    if (await responds(`${COMFY_URL}/system_stats`, 3000)) {
+      if (healthySince === null) healthySince = Date.now();
+      // A long healthy stretch means whatever happened before was not a loop —
+      // including the case where the user brought the engine back by hand
+      // after this watcher gave up.
+      if (revivals > 0 && Date.now() - healthySince > STABLE_RESET_MS) {
+        revivals = 0;
+        warnedGaveUp = false;
+      }
+      return;
+    }
+
+    // Down: the stability clock does not run. Setting it to "now" here would
+    // be claiming a healthy stretch had just begun at the moment it ended.
+    healthySince = null;
+
+    if (revivals >= MAX_REVIVALS) {
+      if (!warnedGaveUp) {
+        warnedGaveUp = true;
+        warn(`! ComfyUI ha caído ${MAX_REVIVALS} veces seguidas. No lo levanto más.`);
+        warn("  Algo lo está matando — lo más probable, falta de memoria de vídeo");
+        warn("  compartida con otro trabajo. Míralo tú antes de seguir generando.");
+      }
+      return;
+    }
+
+    reviving = true;
+    revivals += 1;
+    warn(`! ComfyUI dejó de responder. Levantándolo (intento ${revivals} de ${MAX_REVIVALS})…`);
+
+    try {
+      await new Promise((r) => setTimeout(r, REVIVE_DELAY_MS));
+      const up = await ensureComfy();
+      if (up) healthySince = Date.now();
+      else warn("  No pude levantarlo. Lo reintentaré en el siguiente latido.");
+      // Note the budget is spent either way: a relaunch that does not come up
+      // is exactly as much evidence of a systemic problem as one that does.
+    } finally {
+      reviving = false;
+    }
+  };
+
+  const timer = setInterval(() => void beat(), HEARTBEAT_MS);
+  // Never hold the process open on the heartbeat's account: when the app exits,
+  // this must not be the reason Node stays alive.
+  timer.unref?.();
+  return timer;
+}
+
+/**
+ * Development mode skips the build and runs Next's dev server instead.
+ *
+ * It exists because `npm run dev` USED TO BYPASS THIS FILE ENTIRELY — it was
+ * `npm run dev --prefix web`, so it never checked the engine, never cleared a
+ * stale port, and never watched anything. Someone working in dev mode got a
+ * 502 from a dead engine with no warning at all, which is exactly how the
+ * 2026-08-25 outage went unnoticed for fifty minutes.
+ */
+const DEV = process.argv.includes("--dev");
+
 async function main() {
   log("");
-  log("\x1b[1mTTS Studio\x1b[0m");
+  log(`\x1b[1mTTS Studio\x1b[0m${DEV ? " \x1b[2m(desarrollo)\x1b[0m" : ""}`);
   log("");
 
   await ensureComfy();
   await clearPort();
-  buildApp();
+  if (!DEV) buildApp();
 
   log(`· Arrancando en ${APP_URL}…`);
-  const server = spawn(process.execPath, [NEXT_BIN, "start", "--port", String(PORT)], {
-    cwd: WEB,
-    stdio: "inherit",
-  });
+  const server = spawn(
+    process.execPath,
+    DEV
+      ? [NEXT_BIN, "dev", "--port", String(PORT)]
+      : [NEXT_BIN, "start", "--port", String(PORT)],
+    { cwd: WEB, stdio: "inherit" },
+  );
+
+  // From here on the engine is watched, not assumed. Started AFTER the server
+  // so a slow cold boot never competes with the app's own startup.
+  watchComfy();
 
   // Ctrl+C must take the server with it. Leaving an orphan holding the port is
   // exactly the mess clearPort() exists to clean up.

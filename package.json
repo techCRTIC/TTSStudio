@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/start.mjs",
-    "dev": "npm run dev --prefix web",
+    "dev": "node scripts/start.mjs --dev",
     "build": "npm run build --prefix web",
     "test": "npm test --prefix web",
     "lint": "npm run lint --prefix web"
