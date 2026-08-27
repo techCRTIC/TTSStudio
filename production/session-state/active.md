@@ -164,6 +164,26 @@ no tenía ninguna.
    ([[especialista-sin-shell-no-puede-verificar]]), y no des por bueno el disco
    sin mirarlo ([[especialistas-en-paralelo-se-pisan-las-dependencias]]).
 
+## 📓 Incidente del 2026-08-25: ComfyUI se cayó solo (evidencia para B-003)
+
+`/api/voices` empezó a devolver **502** y la app pareció rota. No lo estaba:
+**ComfyUI no estaba corriendo.** La ruta responde `comfy_unreachable`, que es lo
+correcto, y **los 11 ms de respuesta lo delatan** — es un rechazo de conexión
+inmediato, no una espera agotada. Si el motor estuviera vivo pero atascado, ese
+número sería de segundos. Sirve como regla de diagnóstico para la próxima vez.
+
+Lo que dice su registro (`C:/Users/tech/comfy/user/comfyui.log`): **termina en
+seco** tras un trabajo COMPLETADO, sin traceback y sin cierre ordenado — firma
+de un proceso terminado de golpe, no de uno que falló. Y lo que estaba haciendo
+**no era voz, eran imágenes**: `QwenImage` (19.582 MB) más su codificador
+(7.910 MB), unos 27 GB de modelos en una tarjeta de 23,9 GB, sostenidos con
+carga dinámica. **No se puede afirmar que muriera por memoria** — el sistema no
+siempre deja rastro en el log de la aplicación cuando mata un proceso.
+
+**Por qué importa:** es el caso real de **B-003** («Arranque y salud de ComfyUI
+desde la app»). Con imágenes y voz compitiendo por la misma tarjeta, va a
+repetirse. Hoy la app solo avisa en la barra superior.
+
 ## Cómo levantarlo
 ```
 npm start        # desde la RAÍZ. Compila al arrancar: un cambio de código no
