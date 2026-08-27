@@ -8,11 +8,16 @@ que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 
 ---
 
-**Status:** sesión 5. **Árbol LIMPIO por primera vez en tres sesiones.** Rama
-`main`, **diez commits**, **sin subir** — sigue siendo
+**Status:** sesión 5. **Árbol limpio.** Rama
+`main`, **catorce commits**, **sin subir** — sigue siendo
 decisión del usuario. Verificado después de commitear: **197 pruebas de la app,
 32 de Python, los cuatro verificadores de costura: todo en verde.**
 **Last update:** 2026-08-25 (sesión 5)
+
+📌 **Si la suite dice «195 pasan, 2 saltados» en vez de 197, NO es una
+regresión:** los dos saltados son los de integración `against a live ComfyUI`,
+que se saltan solos cuando el motor no está corriendo. Con ComfyUI encendido
+son 197.
 
 ## Current task
 **Fase 3 — guiones largos.** Se escuchó por primera vez una pieza larga y
@@ -163,6 +168,28 @@ no tenía ninguna.
 5. **Corre tú los tests después de una tanda del pipeline**
    ([[especialista-sin-shell-no-puede-verificar]]), y no des por bueno el disco
    sin mirarlo ([[especialistas-en-paralelo-se-pisan-las-dependencias]]).
+
+## 🩺 El latido de salud de ComfyUI (hecho el 2026-08-25) — SIN EJERCITAR
+
+`scripts/start.mjs` gana `watchComfy()`: consulta `/system_stats` cada 15 s y
+relanza el motor si se cayó. **Tope de 3 relanzamientos**, porque revivir en
+bucle algo que el sistema mata por falta de memoria empeora el problema en vez
+de arreglarlo. El cupo se restablece tras 10 minutos sanos (el tope busca cazar
+un BUCLE de caídas, y un bucle son caídas juntas), espera 5 s antes de revivir
+(un proceso matado por memoria no ha terminado de soltarla), y **un intento
+fallido gasta cupo igual** que uno exitoso.
+
+**Y `npm run dev` ya no se salta la comprobación.** Era `npm run dev --prefix
+web` a secas: ni motor, ni puerto, ni vigilancia. Ahora pasa por el lanzador
+con `--dev`, que se salta la compilación y levanta el servidor de desarrollo.
+
+⚠️ **NADIE HA VISTO ESTO FUNCIONAR CONTRA UNA CAÍDA REAL.** Verificado:
+sintaxis (`node --check`) y la lógica revisada a mano. NO verificado: que
+detecte y reviva de verdad. **Prueba concreta para la próxima sesión:** levantar
+la app, matar ComfyUI a mano, y mirar la consola del lanzador.
+
+**Lo que el latido NO resuelve:** si el motor cae a mitad de un guión largo,
+relanzarlo no devuelve los tramos que murieron en su cola. Eso es **B-014**.
 
 ## 📓 Incidente del 2026-08-25: ComfyUI se cayó solo (evidencia para B-003)
 

@@ -88,7 +88,7 @@ en veintiocho trozos en vez de tres, y el volumen bailaba entre uno y otro.
   primer test lo encontró corto: un trozo a la quinta parte del volumen se
   quedaba a medio corregir, que es justo el caso que había que resolver.
 
-**Estado al cerrar:** rama `main` · **diez commits** ·
+**Estado al cerrar:** rama `main` · **catorce commits** ·
 **árbol limpio por primera vez en tres sesiones** · **sin subir**, por decisión
 mantenida · **verificado después de commitear: 197 pruebas de la app, 32 de
 Python, los cuatro verificadores de costura, tipos, lint, compilación y el
@@ -103,6 +103,18 @@ después.
 
 **Confirmado en pantalla por el usuario:** el guión que salía en 28 trozos
 **ahora sale en 3**.
+
+**Después de commitear, la sesión siguió y pasaron tres cosas más:**
+- **El motor se cayó solo** y la app pareció rota. No lo estaba: devolvía un
+  aviso honesto. Quedó anotado cómo distinguirlo de un motor atascado — un
+  error en 11 milésimas de segundo es que no hay nadie al otro lado.
+- **Ahora la app vigila el motor mientras corre**, y lo vuelve a levantar si se
+  cae, hasta tres veces. Se para ahí a propósito: si algo lo está matando por
+  falta de memoria, revivirlo sin fin empeora el problema. Y el arranque en
+  modo desarrollo, que antes no comprobaba nada, ahora pasa por el mismo sitio.
+- **Se repasó la lista de pendientes contra el código**, y dos entradas estaban
+  mal: una pedía algo que ya estaba hecho desde hacía sesiones, y otra ya tenía
+  respuesta. Se cerró la respondida y se reescribió la otra.
 
 **Siguiente paso concreto:** **escuchar la pieza unida de esos 3 trozos** y
 juzgar el volumen. Es lo único de todo lo arreglado hoy que ningún test puede
