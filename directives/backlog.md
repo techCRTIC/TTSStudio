@@ -23,12 +23,34 @@ Al cerrar un ítem: cambia su `**Status:**` a `✅ hecho` (o `❌ sin objeto`), 
 
 ## Abiertas
 
-## B-003 — Arranque y salud de ComfyUI desde la app
-**Status:** idea
-La app necesita que ComfyUI esté corriendo. Decidir si lo arranca ella
-(`comfy launch --background`, con el gotcha del PATH del venv documentado), si
-asume que ya corre, o si detecta y guía al usuario. Afecta directamente el
-manejo de errores de la Fase 1.
+## B-003 — Salud de ComfyUI MIENTRAS la app corre
+**Status:** idea — **reescrito el 2026-08-25 tras verificarlo contra el código**
+
+⚠️ **La mitad de esta entrada ya estaba hecha y la entrada no se había enterado.**
+Decía «decidir si la app arranca ComfyUI», y esa decisión está tomada e
+implementada desde que existe el lanzador: `scripts/start.mjs` → `ensureComfy()`
+busca el ejecutable en el PATH y en el venv de `comfy-mcp-venv`, lanza
+`comfy launch --background` desacoplado, y espera hasta dos minutos porque un
+arranque en frío que carga nodos personalizados tarda de verdad. Si no lo
+encuentra, avisa y abre la app igual diciendo que no podrá generar.
+
+**Lo que SIGUE ABIERTO es otra cosa: el motor solo se comprueba AL ARRANCAR.**
+Una vez levantada la app, nadie vuelve a mirar. El 2026-08-25 ComfyUI se cayó
+cincuenta minutos después de arrancar y la app se quedó devolviendo 502 sin que
+nada lo notara (ver el incidente en `active.md`).
+
+**Y hay un segundo hueco, más simple:** `npm run dev` **no pasa por el
+lanzador** — es `npm run dev --prefix web` a secas, así que no comprueba ni
+arranca nada. Solo `npm start` protege.
+
+**Riesgo que hay que decidir a propósito, no de pasada:** relanzar
+automáticamente un proceso que el sistema acaba de matar por falta de memoria
+puede empeorar el problema en vez de arreglarlo. Un reintento automático
+necesita un tope y necesita saber rendirse.
+
+**Lo que NO resuelve un latido:** si el motor se cae a mitad de un guión largo,
+relanzarlo no salva nada — tarda uno o dos minutos en cargar el modelo y los
+tramos en su cola murieron con el proceso. Eso es [[B-014]].
 
 ## B-005 — Convertirlo en app de escritorio
 **Status:** idea
@@ -73,7 +95,10 @@ Las dos excepciones de animación de maquetación (`transition: height` en
 como decisiones, no como deuda.
 
 ## B-008 — El guardián de secretos bloquea código JavaScript legítimo
-**Status:** idea
+**Status:** idea — **sexta mordida el 2026-08-25**, y con un disparador nuevo
+confirmado: **`process.env.` contiene `.env` como subcadena**, así que cualquier
+comando que escriba código JavaScript que lea una variable de entorno queda
+bloqueado. Verificado contra el hook: sigue buscando por subcadena.
 Detectado el 2026-08-21. El hook `validate-commit.sh` impide que un comando lea
 archivos de secretos, y hace bien. Pero busca la subcadena de la extensión de un
 archivo de clave **en cualquier parte del comando**, y en JavaScript la propiedad
@@ -99,22 +124,6 @@ bitácora**, porque el texto describía el propio fallo. El rodeo fue crear los
 archivos con otra herramienta y ejecutarlos después. El arreglo propuesto —exigir
 que la coincidencia sea un nombre de archivo y no una subcadena pegada a un
 identificador— resuelve los dos disparadores de una vez.
-
-## B-009 — ¿Una semilla transfiere carácter entre textos distintos?
-**Status:** idea
-Abierto en la sesión 2 al construir las semillas guardables. Está medido que la
-misma semilla con el **mismo** texto reproduce la misma toma. Lo que **no** está
-medido es si la misma semilla con textos **distintos** conserva algo reconocible
-—un tono, una energía, una manera de respirar—. La respuesta cambia cuánto valen
-las semillas guardadas: si transfiere, guardar «la seria» es oro; si no, sirven
-solo para repetir una frase concreta.
-
-La interfaz hoy **no afirma** ninguna de las dos cosas, a propósito (está escrito
-así en `lib/favorites.ts`). Solo se puede responder escuchando: generar dos
-textos distintos con la misma semilla y compararlos contra los mismos textos con
-semillas diferentes. Ver [[ADR-003]] para el precedente de medir antes de
-afirmar.
-
 
 ## B-010 — «veintiún» apocopado en el normalizador de texto
 **Status:** idea
@@ -169,6 +178,16 @@ disco, pero la app no sabe volver a ellos. Se aceptó a conciencia para la Fase 
 —la alternativa era un registro de trabajos en el servidor, que reescribe justo
 el camino corto que no se puede tocar—. Si el uso real demuestra que duele,
 aquí está el pendiente.
+
+**Dejó de ser teórico el 2026-08-25, por dos motivos.** Primero, **ya se puede
+detener a propósito** (`8243720`): existe el botón, existe la pieza parcial, y
+lo único que falta para cerrar el círculo es poder retomar. Segundo, **el motor
+se cae solo** — pasó ese mismo día (ver [[B-003]]), y con imágenes y voz
+compitiendo por la misma tarjeta va a repetirse. Un guión de veinte minutos que
+muere en el tramo doce y no se puede retomar cuesta veinte minutos de máquina.
+
+Nótese que **el latido de salud de [[B-003]] NO resuelve esto**: relanzar el
+motor no devuelve los tramos que murieron en su cola.
 
 ## B-015 — Medir la longitud mínima antes de aplicar la banda de c/s
 **Status:** idea
@@ -261,6 +280,49 @@ previa de instalación con portal de ingreso) y [[B-012]] (la app no instala
 ollama ni el modelo). Habilita [[B-005]] (convertirlo en app de escritorio) y
 [[B-016]] (el modo extendido, que necesita elegir modelo).
 
+## B-018 — La toma unida guarda la semilla del PRIMER tramo, y puede mentir
+**Status:** idea
+Encontrado el 2026-08-25 al verificar cómo viaja la semilla por los tramos.
+`page.tsx` guarda la toma unida con `long.state.tracks[0]?.seed`. Normalmente
+es correcto, porque todos los tramos comparten la semilla base. Pero **si es
+justo el primer tramo el que se rehace** —por fallar la verificación, o a
+mano—, ese número es el del reintento, no el de la corrida, y **no reproduce
+la pieza**.
+
+El dato bueno no se pierde: cada tramo guarda la suya en `segments`. Lo que
+engaña es el número visible, que es precisamente el que alguien copiaría para
+repetir una entrega.
+
+Relacionado: [[B-009]] (por qué las semillas importan).
+
+## B-019 — Ningún test afirma que los tramos comparten la semilla base
+**Status:** idea
+Encontrado el 2026-08-25. La suite cubre lo de al lado con detalle —que un
+reintento usa semilla DISTINTA, que rehacer un tramo no toca la de sus
+vecinos— pero **ninguno afirma el invariante central**: que los N tramos de una
+corrida entran con la misma semilla en su primer intento.
+
+Es el invariante del que depende que la voz no cambie entre tramos ([[B-009]]),
+y es exactamente el hueco por donde se cuela una regresión que **nadie oye
+hasta que escucha una pieza entera** — que es cara de producir y no ocurre en
+cada sesión.
+
+## B-020 — Dos lenguajes para la misma jerarquía: los botones primarios
+**Status:** idea
+Abierto el 2026-08-25. Los dos botones primarios del escenario pasaron a
+relleno oscuro con borde y letra en el acento (`ff1ec5b`). **Quedaron cuatro
+con el naranja macizo anterior** en `VoiceLibrary`, `VoiceRecorder` e
+`ImprovePanel`.
+
+**No se unificaron a propósito, y el motivo es técnico, no de tiempo:** el
+relleno nuevo es `--surface`, que es exactamente el color de fondo de los
+cajones donde viven esos cuatro. Aplicarles el mismo token los dejaría **sin
+relleno visible**, indistinguibles del botón secundario que ya existe. Hace
+falta **un token relativo a la superficie que los contiene**, no el mismo valor
+absoluto — que es una decisión de sistema de diseño, no un buscar-y-reemplazar.
+
+Encaja dentro de [[B-007]] (cerrar formalmente el trabajo de diseño), donde ese
+tipo de regla es justo lo que debería quedar escrito.
 ## Cerradas
 
 ## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`
@@ -289,3 +351,36 @@ para la voz» revisa el texto con las reglas medidas en la investigación
 `comfy-mcp` (ortografía +15 a +29 %, puntuación 3,5× más que un fine-tune),
 normaliza números y fechas, y propone una reescritura. La app sigue sin
 prometer controles que el motor no da.
+
+## ✅ B-009 — [CERRADO] ¿Una semilla transfiere carácter entre textos distintos?
+**Status:** ✅ hecho — **RESPONDIDO ESCUCHANDO el 2026-08-25. Sí transfiere.**
+
+El usuario generó un guión largo entero —**28 tramos, todos con textos
+distintos y todos con la misma semilla**, porque el secuenciador sortea un solo
+número al confirmar el corte y ese viaja a todos— y lo escuchó completo. Su
+veredicto textual: ***"muy consistente el tono"***.
+
+Eso es exactamente el experimento que esta entrada pedía, y salió por el lado
+bueno: **guardar «la seria» vale la pena**, las semillas guardadas sirven para
+algo más que repetir una frase concreta.
+
+**Lo que la misma escucha destapó, y NO era la semilla:** el volumen sí variaba
+entre tramos. Causa distinta —el unificador concatenaba sin igualar niveles— y
+ya arreglada en `4d2dd26`. Conviene no confundir las dos cosas: el carácter de
+la voz se transfiere, la sonoridad no la fijaba nadie.
+
+**Sigue sin afirmarse en la interfaz**, y está bien así: una escucha es
+evidencia suficiente para decidir, no para escribir una promesa en pantalla.
+
+Abierto en la sesión 2 al construir las semillas guardables. Está medido que la
+misma semilla con el **mismo** texto reproduce la misma toma. Lo que **no** está
+medido es si la misma semilla con textos **distintos** conserva algo reconocible
+—un tono, una energía, una manera de respirar—. La respuesta cambia cuánto valen
+las semillas guardadas: si transfiere, guardar «la seria» es oro; si no, sirven
+solo para repetir una frase concreta.
+
+La interfaz hoy **no afirma** ninguna de las dos cosas, a propósito (está escrito
+así en `lib/favorites.ts`). Solo se puede responder escuchando: generar dos
+textos distintos con la misma semilla y compararlos contra los mismos textos con
+semillas diferentes. Ver [[ADR-003]] para el precedente de medir antes de
+afirmar.
