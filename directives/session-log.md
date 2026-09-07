@@ -50,6 +50,14 @@ voz — así que se limpia eso antes de subirlo.
     pregunta al motor devuelve «no lo sé» cuando no puede preguntar, y el código
     lo estaba leyendo como «no está» — justo la mentira contra la que se había
     inventado el tercer estado. Habría mandado a reinstalar un pack correcto.
+13. **El panel salía por detrás de la app, y ya no.** No era el `z-index`: la
+    cabecera crea su propio contexto de apilamiento, así que el número del panel
+    solo competía ahí dentro. Subirlo no habría servido de nada. Ahora se pinta
+    fuera del árbol.
+14. **Y de paso se le puso lo que le faltaba para ser un diálogo de verdad:**
+    velo que oscurece y desenfoca, botón de cerrar siempre visible, entrada y
+    salida animadas —más rápida al salir, porque el usuario ya decidió—, foco
+    atrapado que vuelve al engranaje, Escape, y el fondo que deja de moverse.
 
 **Qué se decidió y por qué**
 - **El repositorio va a ser público**, decisión del usuario tomada con el

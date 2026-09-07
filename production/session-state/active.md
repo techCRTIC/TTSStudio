@@ -12,7 +12,7 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 ---
 
 **Status:** ✅ **PUBLICADO** — https://github.com/techCRTIC/TTSStudio
-Público · rama `main` · **71 commits** · árbol limpio · licencia **MIT**.
+Público · rama `main` · **73 commits** · árbol limpio · licencia **MIT**.
 **Last update:** 2026-09-07 (sesión 7)
 
 **Verificado ejecutándolo esta sesión:** tipos · lint · build · **210 pruebas de
@@ -106,10 +106,10 @@ corrigió durante la construcción.
 | `web/src/lib/setup.ts` | Tipos + estrechamiento. **PURO** — lo importa el navegador. |
 | `web/src/app/api/setup/audit/route.ts` | Corre el auditor. Responde siempre, aunque no pueda auditar. |
 | `web/src/app/api/setup/install/route.ts` | Streaming NDJSON · lista blanca de ids · mata el proceso si se aborta. |
-| `web/src/components/SetupPortal.tsx` | La pantalla. |
+| `web/src/components/SetupPortal.tsx` | La pantalla. Diálogo completo: se pinta con `createPortal` en `document.body`, velo con desenfoque, botón de cerrar, foco atrapado y devuelto, Escape, scroll del fondo bloqueado. |
 | `web/src/components/SetupGate.tsx` | **El engranaje de la cabecera** + decide si el panel se abre solo. Montado en la cabecera de `page.tsx`, al lado de `EngineHealth`. |
 
-**Cinco reglas que no son cosméticas:**
+**Siete reglas que no son cosméticas:**
 
 1. **No se cree al instalador.** Una dependencia se marca resuelta **solo cuando
    una re-auditoría la observa**. Un instalador puede salir 0 sin instalar nada.
@@ -125,6 +125,16 @@ corrigió durante la construcción.
 5. **Abrirlo a mano y que se abra solo NO son lo mismo.** El automático no se
    puede cerrar (detrás no funciona nada); el que pide el usuario siempre sí,
    aunque falte algo. Abrirlo a mano **vuelve a auditar** antes de pintar.
+6. **El diálogo se pinta con `createPortal` en `document.body`, y NO es una
+   preferencia.** La cabecera es `relative z-10`, o sea un contexto de
+   apilamiento propio: dentro de ella un `z-50` solo compite contra sus
+   hermanos, y el contenido principal —otro `z-10`, posterior en el DOM— se
+   pintaba encima. **Subir el número no arregla esto.** `Select.tsx` ya lo
+   resolvía igual.
+7. **La salida espera a `transitionend`, no a un número.** La primera versión
+   repetía en el JS los mismos 180 ms del CSS: dos sitios con un valor y nada
+   que obligue a cambiarlos juntos. El plazo de seguridad de 600 ms solo cubre
+   el caso en que ninguna transición llegue a correr.
 
 **Dos cosas que el portal NO hace, a propósito:** no instala ComfyUI ni
 comfy-cli (solo guía), y **no reinicia el motor** — instala las dependencias del
@@ -179,6 +189,32 @@ incremental. Por eso la ruta de instalación hace `spawn` por su cuenta.
   sin mirarlo ([[especialistas-en-paralelo-se-pisan-las-dependencias]]).
 
 ---
+
+## 💿 El `.exe` — decidido, sin empezar
+
+**Electron**, y el `.exe` lleva **solo la app**: ComfyUI, Python y los modelos
+los instala el portal en el primer arranque. Objetivo del usuario: llegar a un
+usuario base y **publicarlo como release en GitHub**. Es **B-005**, y toca
+B-017. `ADR-009` se estaba escribiendo al cerrar la sesión.
+
+**Hechos verificados en esta máquina, no los redescubras:**
+- **Rust y cargo NO están instalados.** Tauri los exige, más MSVC: >1 GB de
+  prerrequisitos.
+- **Las 16 rutas de `web/src/app/api/` no pueden volverse estáticas.** Lanzan
+  Python, leen disco, y quitan la cabecera `Origin` que exige el ADR-001. Por
+  tanto **el paquete lleva un servidor Node dentro, con cualquier empaquetador**.
+- `web/next.config.ts` está vacío: **falta `output: "standalone"`**.
+
+⚠️ **Se eligió Tauri primero y se cambió a Electron el mismo día**, porque la
+estimación de tamaño con la que se decidió (10-20 MB) **era errónea**: valía
+para un frontend estático, y este no puede serlo. Teniendo que empaquetar Node
+igual, la ventaja de Tauri casi desaparecía. **Ningún tamaño está medido**
+(~90-150 MB Tauri vs ~150 Electron son estimaciones).
+
+📌 **La línea de licencias que no hay que cruzar sin darse cuenta:** hoy la app
+**no distribuye** ComfyUI ni comfy-cli (GPL-3.0), solo los invoca. Un `.exe` que
+lleve **solo la app** mantiene eso. El día que empaquete ComfyUI dentro, pasa a
+distribuir GPL con la obligación de entregar el código correspondiente.
 
 ## Siguiente paso
 
