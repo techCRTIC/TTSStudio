@@ -21,10 +21,20 @@
 - Guiones largos: segmentar, regenerar un tramo suelto, unir el resultado.
 - Motor de voz local: Qwen3-TTS 1.7B sobre ComfyUI.
 - Mejora de calidad por fine-tune, medida contra el benchmark existente.
+- **Preparación del entorno en la máquina que ya tiene el repositorio**: auditar
+  qué dependencias faltan, descargarlas, e instalar lo que se pueda automatizar
+  con seguridad. *(Añadido el 2026-09-07 — ver `ADR-008` D0.)*
 
 **Fuera de alcance**
 - Multiusuario, autenticación, cuentas, permisos.
-- Despliegue a terceros, instaladores públicos, distribución.
+- **Instaladores públicos, despliegue a terceros y distribución.** El `.exe`
+  empaquetado sigue fuera (`B-017`).
+  *(Enmendado el 2026-09-07: esta línea decía «Despliegue a terceros,
+  instaladores públicos, distribución» y fundía dos cosas distintas. Preparar el
+  entorno en una máquina que **ya clonó el repositorio** no es distribuir, y
+  dejarlas juntas bloqueaba el portal de instalación sin que nadie lo hubiera
+  decidido. Separadas en `ADR-008` D0. Lo que sigue fuera es **empaquetar y
+  enviar el producto a alguien que no lo tiene**.)*
 - APIs de voz de pago.
 - Generación de imagen (pertenece a la adopción de Comfy a nivel de estudio).
 - Traducción, doblaje o sincronía labial.

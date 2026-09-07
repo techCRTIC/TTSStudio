@@ -6,6 +6,226 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-09-07 — Rumbo a GitHub: se commiteó todo, y la revisión encontró por qué no se puede publicar todavía
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 7 · 2026-09-07
+
+**En una frase:** se guardó todo lo que estaba suelto y se preparó el proyecto
+para publicarlo, pero al revisar qué se iba a publicar apareció que el nombre de
+una persona real está por todas partes junto con el hecho de que se clonó su
+voz — así que se limpia eso antes de subirlo.
+
+**Lo esencial, en simple** (el detalle técnico va más abajo)
+1. **Lo que estaba sin guardar, ya está guardado.** Tres commits.
+2. **El proyecto nunca se había subido a ninguna parte.** No existía el
+   repositorio; subirlo significaba crearlo desde cero.
+3. **Publicarlo hoy expondría a una persona.** Su nombre está en 50 sitios y el
+   proyecto cuenta con qué audio se clonó su voz. El usuario decidió que el
+   repositorio sea **público igual**, así que la salida es **limpiar el nombre
+   primero**, no dejar de publicar.
+4. **El README se rehizo entero**: el anterior describía la app de hacía seis
+   sesiones.
+5. **El portal de instalación se construyó entero.** Al arrancar, la app mira
+   qué le falta y, si falta algo imprescindible, abre una pantalla que lo
+   explica en idioma humano y instala lo que se puede instalar sin riesgo.
+6. **Se limpió el nombre de la persona real del repositorio**: 86 apariciones
+   en 26 archivos, sustituidas por una persona inventada. Ninguna era código
+   de verdad — todas eran comentarios, textos de ejemplo y datos de prueba.
+7. **Falta un permiso para terminar.** El nombre sigue en tres mensajes de
+   commit antiguos, y borrarlo exige reescribir la historia. El sistema pidió
+   permiso explícito para eso y no se forzó.
+
+**Qué se hizo**
+- **Se commiteó todo lo que estaba suelto.** Las dos habilidades (`voz-local`,
+  que llevaba sesiones existiendo en disco sin estar versionada, y `comfy-local`
+  entera) más la bitácora de la sesión 6. Tres commits, agrupados por capa.
+  Árbol limpio, 61 commits en total.
+- **Se descubrió que el proyecto NUNCA se ha subido.** No hay ningún remoto
+  configurado. «Pushear» no era empujar a un repositorio existente: era crearlo.
+  Eso cambió la conversación entera, porque publicar expone los 61 commits con
+  toda su historia, no el estado de hoy.
+- **Se hizo una revisión de seguridad antes de publicar, y salió bloqueante para
+  público.** El nombre y apellido de una persona real se usa como identificador
+  en **50 sitios repartidos en 21 archivos** — y no solo en documentación:
+  también en código de producción, en tests y en dos scripts de Python. Peor:
+  está en **tres mensajes de commit**, y uno de ellos lo describe explícitamente
+  como el nombre del hablante. Un mensaje de commit no se arregla con un commit
+  nuevo; hay que reescribir la historia.
+- **Y lo que de verdad pesa no es el nombre, es lo que el nombre revela.** Los
+  ADR-003 y ADR-005 publican los archivos de audio de origen, sus duraciones y
+  el pasaje exacto de la entrevista del que se sacó la voz. Publicar eso es
+  divulgar que existe un clon de voz de una persona identificable, con su
+  procedencia — y el consentimiento no consta en ninguna parte del repositorio,
+  pese a que el propio ADR-005 dice que el campo de procedencia es «donde vive
+  el consentimiento».
+- **Lo que la revisión descartó, comprobándolo:** cero archivos de audio en toda
+  la historia (nunca se commiteó un `.wav` ni un `.mp3`, así que no hay dato
+  biométrico real, solo metadatos), cero claves o contraseñas en los 61 commits,
+  y las rutas absolutas solo revelan el nombre de usuario del computador.
+- **Se reescribió el README de arriba abajo.** El anterior describía la app de
+  la primera sesión: decía «7 tests» cuando son 197 más 32, llamaba pendiente a
+  la biblioteca de voces que está terminada desde la sesión 2, y no mencionaba
+  guiones largos, procedencia, escritura asistida ni el latido del motor.
+- **Se planificó el portal de instalación, y el plan se negó a construirse.** El
+  pipeline devolvió el encuadre, dieciséis criterios de aceptación y un
+  esqueleto de ADR — y el lead paró en seco, correctamente: dos decisiones eran
+  del usuario, no suyas, y escribir código antes de que existieran habría sido
+  actuar antes del punto de decisión.
+- **El plan destapó cuatro cosas que nadie había mirado.** Que el roadmap
+  declaraba «instaladores públicos, distribución» fuera de alcance, y lo pedido
+  apuntaba justo ahí. Que esto **enmienda el ADR-007**, que había rechazado
+  explícitamente un almacén de trabajos en el servidor. Que `runScript` tiene un
+  tope de **60 segundos**, por donde una descarga de 4 GB no cabe *(esto último
+  resultó ser inexacto — ver más abajo: el tope es solo un valor por defecto, y
+  el bloqueo real es otro)*. Y que el
+  latido gasta cupo de sus tres reintentos aunque el relanzamiento falle, así
+  que un reinicio pedido por el portal se leería como una caída.
+- **Se contestaron las dos decisiones y se enmendó el roadmap** en la misma
+  sesión, marcada en el sitio, siguiendo el precedente del ADR-007.
+- **Se escribió y aceptó el `ADR-008`** (309 líneas, doce decisiones). Y al
+  escribirlo se le pidió expresamente que contradijera el plan donde el código
+  no lo respaldara, cosa que hizo: **tres de los hechos del plan resultaron
+  inexactos**. El más importante — el problema de `runScript` **no es** su tope
+  de 60 segundos, que es solo un valor por defecto que cualquier llamador
+  sobrescribe; el bloqueo real es que **acumula toda la salida en memoria y solo
+  responde al terminar el proceso**, así que no hay manera de recibir avances.
+  La conclusión aguanta (una descarga de 4 GB no cabe por ahí), el mecanismo era
+  otro.
+- **Y apareció un riesgo peor del que se creía en el vigilante del motor:** no
+  existe ningún gancho para avisarle de un reinicio pedido por la app, así que
+  un latido que caiga en la ventana de apagado llama a `ensureComfy()` por su
+  cuenta. El daño no es gastar un reintento: son **dos relanzamientos peleándose
+  por el mismo puerto**.
+- **Se contestó una duda de licencias leyendo los archivos, no de memoria.** La
+  pregunta era si usar el CLI de Comfy obliga a publicar bajo AGPL. **No.**
+  ComfyUI y comfy-cli son **GPL-3.0**, no AGPL; la app los usa como procesos
+  separados —uno por línea de comandos, el otro por HTTP—, que es agregación y
+  no obra derivada; y las obligaciones se activan al **distribuir**, cosa que
+  hoy no ocurre porque el repositorio no los contiene.
+
+**Qué se decidió y por qué**
+- **El repositorio va a ser público**, decisión del usuario tomada con el
+  informe delante. Eso convierte la limpieza del nombre en obligatoria en vez de
+  opcional: con el nombre fuera, la exposición desaparece y la pregunta del
+  consentimiento deja de bloquear.
+- **El push va al final, no al principio.** Orden fijado por el usuario:
+  primero la funcionalidad de ayuda a la instalación, después dejar el
+  repositorio presentable, y recién entonces publicar. Se descartó publicar
+  ahora y arreglar después, porque GitHub cachea e indexa: pasar de privado a
+  público es un clic, lo inverso no existe.
+- **El README se escribió contra la realidad verificada, no contra la
+  documentación.** Se corrieron las dos suites para tener los números buenos, en
+  vez de copiar los que decía `project-overview.md` —que estaban desfasados—.
+- **Se le añadieron tres cosas que un repositorio público necesita** y que el
+  anterior no tenía: qué hay que instalar a mano hoy (con el detalle de que las
+  dependencias del pack de nodos no se instalan solas), una sección que dice que
+  pedir permiso para clonar la voz de alguien es responsabilidad de quien usa la
+  herramienta, y una nota de que los modelos tienen su propia licencia.
+- **El portal será «v1: audita, guía, e instala lo seguro»**, no dueño de
+  ComfyUI. Automatiza lo acotado —descargas de modelos, el `pip install` con el
+  intérprete propio de ComfyUI más reinicio y re-auditoría, y `ollama pull`— y
+  **guía sin instalar** comfy-cli y ComfyUI mismo. Se descartó que fuera dueño:
+  convertiría la app en gestor de paquetes de un proyecto ajeno que no versiona,
+  sin borde claro y hostil en Windows. «Ser dueño» queda diferido a un ADR
+  futuro, escrito, en vez de colarse por deriva.
+- **Preparar el entorno NO es distribuir, y el roadmap ya lo dice.** La línea
+  fundía dos cosas: dejar lista una máquina que **ya clonó el repositorio**
+  (ahora dentro de alcance) y **empaquetar y enviar el producto a alguien que no
+  lo tiene** (sigue fuera, con el `.exe` nombrado). Se descartó borrar la línea
+  entera: eso abría un proyecto de distribución, que es otro producto.
+
+- **El portal se recortó a la mitad antes de escribir una línea**, por pedido
+  expreso del usuario. Cayeron: el sistema que mantenía las descargas vivas
+  en el servidor —era la pieza más grande, y ya no hace falta—, un verificador
+  nuevo, y dos de los cuatro estados por dependencia. **Se decidió a propósito
+  NO recortar** que la app compruebe que algo quedó instalado en vez de
+  creerle al instalador: un instalador puede terminar bien sin haber
+  instalado nada, y sin esa comprobación la pantalla diría «listo» y la app
+  fallaría igual. Las tres reversiones quedaron **marcadas dentro del propio
+  ADR**, no borradas — un documento que esconde sus vueltas atrás vale menos
+  que uno que las enseña.
+- **Y como consecuencia, el `ADR-007` deja de estar enmendado.** El portal ya
+  no necesita el almacén de trabajos en el servidor que aquel ADR había
+  rechazado, así que su rechazo vuelve a valer entero.
+
+**Estado al cerrar:** rama `main`, **61 commits**, **sin subir** (no hay remoto).
+**Sin commitear:** `README.md`, el roadmap enmendado, el `ADR-008` nuevo y los
+dos documentos de sesión. La suite verificada esta sesión: **197 pruebas de la app** (195 pasan, 2
+se saltan solas porque el motor está apagado, 0 fallos), **32 de Python**, y los
+**cuatro verificadores de costura** en verde. **`ADR-008` está ACEPTADO**, así que el
+portal ya se puede construir — pero **no se escribió ni una línea de él** en
+esta sesión.
+
+**Siguiente paso concreto:** construir el portal siguiendo el `ADR-008`,
+empezando por mudar el auditor a `execution/` (D2) y extender el manifiesto
+con su verificador de costura (D3). Antes de publicar siguen pendientes la
+limpieza del nombre —21 archivos más tres mensajes de commit con
+`git filter-repo`— y **elegir una licencia: el repositorio no tiene NINGUNA**
+y va a ser público.
+<!-- /cierre -->
+
+**Hora:** mañana
+
+**Lo que pidió el usuario:** commitear lo que faltaba y subirlo a GitHub.
+Después, al conocer el estado: que el push quede al final, detrás de la
+funcionalidad de ayuda a la instalación y de dejar el repositorio bien
+preparado. Y rehacer el README.
+
+### Acciones
+
+- Se verificó el estado antes de tocar nada: árbol con dos archivos modificados
+  y dos carpetas de habilidades sin rastrear, **sin ningún remoto configurado**.
+- Se comprobó que no hay secretos ni claves en lo que iba a commitearse, y que
+  `.gitignore` cubre lo que debe. Ninguno de los 281 archivos rastreados
+  coincide con los patrones sensibles.
+- Se compilaron los ocho scripts de Python de las dos habilidades (sintaxis
+  correcta) y se corrieron los cuatro verificadores de costura (verde).
+- **Tres commits:** `6a1944f` (`voz-local` versionada), `e401d30` (`comfy-local`
+  entera: auditoría, instalador, ocho grafos, referencias) y `7c63b7f` (la
+  bitácora y el estado de la sesión 6).
+- Se lanzó `security-reviewer` para decidir la publicación, y se **verificaron a
+  mano sus tres hallazgos principales** en vez de darlos por buenos: las 50
+  ocurrencias en 21 archivos, los tres mensajes de commit, y las ubicaciones en
+  código de producción.
+- Se reescribió `README.md` (202 líneas) y se comprobó que queda sin nombre
+  real, sin rutas de esta máquina, y con los seis enlaces internos resolviendo.
+- Se lanzó el pipeline `team-new-feature` en modo plan para el portal de
+  instalación (B-017 + B-006 + B-012 fusionados).
+
+### Hallazgos que conviene no perder
+
+- **El README está limpio pero enlaza a `ADR-005`, que contiene el nombre cuatro
+  veces** — y lo enlaza precisamente desde la sección sobre consentimiento.
+  Limpiar el README no basta; hay que limpiar lo que apunta.
+- **`B-008` volvió a morder, séptima vez.** El guardián de secretos bloqueó dos
+  comandos legítimos de inspección porque el patrón de búsqueda contenía, como
+  subcadena, los nombres de los archivos de secretos. Se rodeó usando las
+  herramientas de búsqueda en vez del shell.
+- **Dos scripts de `voz-local` comparten nombre con los de `execution/` y han
+  divergido** (~500 líneas de diferencia). Es la misma decisión ya tomada con
+  los grafos —la habilidad se lleva su copia para ser portable— pero ahora hay
+  dos parejas de gemelos que pueden separarse más. Candidato a backlog.
+- **`auditar_host.py` y `manifiesto.json`, recién commiteados, ya son el motor
+  de detección que el portal de instalación necesita.** El manifiesto declara
+  ocho modelos con carpeta destino y peso, el pack de nodos con su gotcha, y qué
+  exige cada capacidad. **Hueco:** no cubre ollama con `qwen3:4b` ni el
+  checkpoint `-CustomVoice`, que son justo dos de las dependencias de la app.
+
+### Próximos pasos / preguntas abiertas
+
+1. Revisar el plan del portal de instalación y construirlo.
+2. Limpieza previa a publicar: renombrar el identificador en 21 archivos,
+   reescribir los tres mensajes de commit, verificar que quede en cero.
+3. Revisar `.gitignore` (aparecieron `__pycache__` dentro de la habilidad) y
+   crear el repositorio público.
+4. **Sin resolver:** el consentimiento de la persona cuya voz se clonó. La
+   limpieza lo vuelve no bloqueante para publicar, pero la pregunta real sigue
+   ahí para el uso de esa voz.
+5. **Sigue pendiente de la sesión 5:** escuchar una pieza larga unida y juzgar
+   el volumen nivelado. Es lo único que cierra la Fase 3, y ninguna sesión desde
+   entonces lo ha hecho.
+
 ## 2026-08-28 — Una habilidad que se lleva el stack de ComfyUI a otro computador
 
 <!-- cierre -->
@@ -400,7 +620,7 @@ texto se revisa y se reescribe antes de convertirse en audio.
   dice una frase corta y queda guardada; medido, 2,1 segundos.
 - **Apareció un registro de procedencia que llevaba desde la primera sesión en
   el disco** y que la app nunca había leído, con el detalle de de qué entrevista
-  salió la voz de Andrés. Se trajo sin pisar nada.
+  salió la voz de Martín. Se trajo sin pisar nada.
 - **La app aprendió a escribir para la voz.** Un botón revisa ortografía y ritmo
   y propone una versión mejor, **marcando qué palabras cambiaron de verdad**.
 - **Se puede marcar una toma como buena**, que es lo único que la app no puede
@@ -489,7 +709,7 @@ faltaban para darla por terminada: que se vea **de quién es** cada voz
   Descartado generarla al dar de alta: alarga el alta justo cuando el usuario
   espera, y paga una generación por voz aunque nunca se escuche.
 - **Hay que poder editar la procedencia de una voz que ya existe**, no solo
-  capturarla al registrar. Sin esto, `andres_bobe.safetensors` —la única voz
+  capturarla al registrar. Sin esto, `martin_vega.safetensors` —la única voz
   real del proyecto, anterior a todo esto— se quedaría sin procedencia para
   siempre y la funcionalidad sería invisible justo donde importa.
 - **No se guarda la transcripción del clip.** No hace falta para acreditar
@@ -509,7 +729,7 @@ faltaban para darla por terminada: que se vea **de quién es** cada voz
   Se barrió el resto de sitios donde la app escribe un valor visible sin que lo
   teclee el usuario: no había más casos.
 - Al inspeccionar el directorio del motor apareció **`voces.json`**, del
-  2026-08-19, con la procedencia de Andrés (la entrevista, el pasaje
+  2026-08-19, con la procedencia de Martín (la entrevista, el pasaje
   5.02–15.66 s, la duración) que la app nunca había leído. Se escribió
   `execution/migrate_voice_provenance.py` para traerla.
 - Se corrigió el ADR-005, que afirmaba que no existía dónde guardar la
@@ -524,7 +744,7 @@ faltaban para darla por terminada: que se vea **de quién es** cada voz
   todas; también se le corrigió una afirmación no ganada cuando el pack no está
   instalado.
 - La app, corriendo, devuelve ya los nombres correctos y la procedencia real de
-  Andrés.
+  Martín.
 - Nada commiteado.
 
 ### Acciones (tercera parte: escritura asistida)
@@ -723,7 +943,7 @@ persona queda disponible como voz para siempre.
   Corre en el procesador, sin robarle la tarjeta gráfica al motor de voz.
 - Se escribió todo el lado servidor del alta: subir el audio, transcribirlo,
   dejar que el usuario corrija el texto, y crear la voz.
-- Se probó con los audios reales de Andrés y se comparó contra el texto que
+- Se probó con los audios reales de Martín y se comparó contra el texto que
   produjo la voz que ya se usa a diario. Es la comparación más exigente
   disponible.
 - Se añadió un verificador automático para un error que ningún test podría ver.
@@ -758,8 +978,8 @@ persona queda disponible como voz para siempre.
   cargaría en la misma tarjeta gráfica donde vive la voz, y porque son
   proyectos ajenos con mantenimiento incierto. Queda como ADR-003.
 - **El usuario corrige el texto antes de crear la voz, y esto no es opcional.**
-  La prueba lo demostró: en el clip corto, el programa escribió *"Andrea"* donde
-  el audio decía *"Andrés"* — el nombre del propio hablante. Sin ese paso de
+  La prueba lo demostró: en el clip corto, el programa escribió *"Martina"* donde
+  el audio decía *"Martín"* — el nombre del propio hablante. Sin ese paso de
   corrección, la voz se habría fabricado contra un texto que nombra a otra
   persona. Con un clip más largo acertó, así que más contexto ayuda; pero no
   garantiza.
@@ -832,7 +1052,7 @@ el proyecto se podría portar a Tauri más adelante.
 - Se consultaron los docs de Next 16 incluidos en `node_modules` antes de dar
   por buena la forma de los route handlers.
 - Se midió la transcripción contra dos clips reales, comparando con el
-  `ref_text` guardado en la metadata de la voz `andres_bobe.safetensors`.
+  `ref_text` guardado en la metadata de la voz `martin_vega.safetensors`.
 
 ### Decisions
 - **ADR-003 — la transcripción vive en la app.** Razones y alternativas
@@ -994,7 +1214,7 @@ El usuario probó la grabación («funciona impecable») y encontró dos cosas.
   - **No era cosmético.** Ese texto es contra el que se calcula la huella de la
     voz, así que una transcripción corrupta da una voz peor, en silencio y con
     todos los tests en verde.
-  - Se comprobó si había contaminado alguna voz existente: **no.** `andres_bobe`
+  - Se comprobó si había contaminado alguna voz existente: **no.** `martin_vega`
     se creó a mano en la sesión 1 y está limpia; la voz de prueba ya la había
     borrado el usuario.
   - Se arregló **la clase entera**, no el caso: los cuatro scripts de
@@ -1081,7 +1301,7 @@ en la sesión para probarlo.
 añadir una ruta en `web/src/app/api/voices/` que acepte un audio de referencia,
 lo escriba en la carpeta `input` de ComfyUI y calcule el prompt de voz con el
 nodo `Qwen3PromptMaker` (ya está instalado en el motor, verificado). Hoy solo
-existe *Andres Bobe* porque estaba calculada en disco.
+existe *Martin Vega* porque estaba calculada en disco.
 <!-- /cierre -->
 
 **Time:** sesión larga, un solo tramo.
