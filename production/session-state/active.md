@@ -8,6 +8,76 @@ que la próxima sesión lee primero. Este archivo es el detalle recuperable.
 
 ---
 
+## 🔧 Sesión 6 (2026-08-28) — la habilidad `comfy-local`
+
+⚠️ **Esta sesión NO tocó la app.** Vivió entera dentro de `.claude/skills/`, y
+hubo **otra sesión en marcha en paralelo**: todo lo que dice más abajo sobre la
+app, los tramos y el volumen sigue siendo el estado de la sesión 5, sin
+modificar. Si algo de eso cambió, lo cambió la otra sesión, no ésta.
+
+**Qué se creó:** `.claude/skills/comfy-local/` — 13 archivos, 180 KB. Es la
+hermana de `voz-local`: ésta sabe **si la máquina puede** y cómo dejarla lista;
+`voz-local` sigue sabiendo **locutar bien**, y no se tocó.
+
+| Archivo | Para qué |
+|---|---|
+| `SKILL.md` | El procedimiento: auditar → instalar lo que falte → elegir flujo → correr |
+| `scripts/auditar_host.py` | La auditoría del computador, en cuatro capas |
+| `scripts/instalar_stack.py` | El plan de instalación. **Por defecto imprime y no ejecuta nada** |
+| `workflows/manifiesto.json` | Las 7 capacidades × sus nodos, modelos, tamaños y campos editables |
+| `workflows/*.json` (7) | Los grafos, rescatados de `C:\Users\tech\comfy-workflows` |
+| `referencias/comfy-cli-y-mcp.md` | El conocimiento del CLI y del servidor MCP |
+| `referencias/flujos.md` | Los siete flujos, uno por uno |
+
+**Verificado ejecutándolo**, no razonándolo:
+- Corre en este computador y **encuentra los 6 modelos de imagen en disco** — o
+  sea, el inventario escrito calza con la máquina real.
+- `--exigir <capacidad>` devuelve 0 con una válida y 1 con una inventada;
+  `--json` produce el informe completo.
+- Se **simuló un computador virgen** (carpeta de usuario vacía, sin `comfy` en
+  el PATH, ComfyUI inalcanzable) y el instalador emitió los 7 pasos correctos,
+  incluidos los 49,5 GB de modelos con su carpeta destino.
+
+**Los cuatro defectos que esa simulación destapó, ya corregidos:**
+1. La lista de modelos **desaparecía justo en el computador virgen** —donde más
+   falta hace— porque los nombres se recuperaban parseando frases en castellano.
+   Ahora la auditoría los entrega como lista estructurada.
+2. Una nota salía duplicada («Reiniciar ComfyUI después. Reiniciar ComfyUI
+   después.»).
+3. Las rutas impresas mezclaban `\` y `/` en el mismo comando.
+4. **El peor:** un comando impreso decía `pip install comfy-cli>=1.14.0` sin
+   comillas. Pegado en una consola no instala nada y crea un archivo llamado
+   `=1.14.0`. Ahora hay una función que entrecomilla lo que un humano va a pegar.
+
+### ⚠️ El hueco de verificación que queda abierto
+La rama que comprueba **cada clase de nodo contra el ComfyUI encendido**
+(consultando `/object_info`) **nunca se ejecutó**, porque el motor estaba
+apagado. Es exactamente lo que separa un `[?] probable` de un `[OK] lista`, así
+que hoy la auditoría reporta **7 probables y 0 listas**. No se levantó ComfyUI a
+propósito: había otra sesión en marcha y el motor comparte la tarjeta gráfica.
+**Se cierra encendiendo ComfyUI y volviendo a auditar.**
+
+**Tampoco se corrió ningún grafo.** Los cuatro de imagen vienen validados por su
+README anterior, con tiempos medidos, y así está escrito en la habilidad — no se
+presentan como probados en esta sesión.
+
+**Decisiones que conviene conocer antes de tocarla:**
+- **Dos habilidades separadas**, no una grande. Se descartó absorber `voz-local`.
+- **Se invirtió a propósito una decisión anterior:** los grafos vivían fuera de
+  todo repositorio para ser «universales», y lo eran solo dentro de este
+  computador. El precio es que ahora existen en dos sitios; **manda la copia de
+  la habilidad**, y la auditoría es lo que impide que se vuelva ficción.
+- **No se inventan enlaces de descarga.** Se entrega nombre, carpeta y tamaño, y
+  la consulta que resuelve el origen contra el catálogo real.
+- **Ninguna ruta de este computador escrita a mano en `scripts/`.** Se descubren.
+  Las que hay en el manifiesto y las referencias son procedencia, no rutas de uso.
+- El `SKILL.md` va **en español**, como `voz-local`, aunque la norma pida inglés
+  para el harness. Mandó la consistencia con la habilidad hermana.
+
+**Sin commitear:** `comfy-local` y `voz-local` siguen sin trackear.
+
+---
+
 **Status:** sesión 5. **Árbol limpio.** Rama
 `main`, **catorce commits**, **sin subir** — sigue siendo
 decisión del usuario. Verificado después de commitear: **197 pruebas de la app,

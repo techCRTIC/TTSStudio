@@ -6,6 +6,109 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-08-28 — Una habilidad que se lleva el stack de ComfyUI a otro computador
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 6 · 2026-08-28
+
+**En una frase:** todo lo que este computador sabe sobre ComfyUI —cómo se
+instala, qué es capaz de hacer y los siete grafos que ya funcionan— quedó
+empaquetado en una habilidad que se copia a otro proyecto o a otra máquina.
+
+**Qué se hizo**
+- **Se creó `comfy-local`**, una habilidad hermana de `voz-local`. La vieja
+  sigue sabiendo *locutar bien*; la nueva sabe *si la máquina puede* y cómo
+  dejarla lista. `voz-local` no se tocó.
+- **Se escribió una auditoría del computador** que responde por capacidad, no
+  por archivo: en vez de una lista de cosas que faltan, dice «no puedes editar
+  personajes porque falta un archivo de 810 MB en tal carpeta». Mira cuatro
+  cosas: la tarjeta gráfica y el disco, las herramientas instaladas, ComfyUI, y
+  qué flujos salen de todo eso.
+- **Se rescataron siete grafos que vivían sueltos** en una carpeta del disco
+  (`C:\Users\tech\comfy-workflows`), fuera de todo repositorio: cuatro de
+  imagen y tres de voz. Ahora viajan versionados, con una ficha de qué necesita
+  cada uno y qué hay que tocar para usarlo.
+- **Se portó el conocimiento del CLI y del servidor MCP**, que hasta hoy solo
+  existía repartido entre otro repositorio y la memoria de otras sesiones: los
+  gotchas que cuestan horas, cómo se pide una descarga, y por qué el motor a
+  veces no arranca aunque todo parezca bien puesto.
+- **Se escribió un instalador que por defecto no instala nada:** imprime el plan
+  exacto y se calla. Solo con una orden explícita toca el tramo barato y
+  reversible. Los GB y el código de terceros se quedan siempre fuera.
+
+**Qué se decidió y por qué**
+- **Dos habilidades separadas en vez de una grande.** Saber instalar y saber
+  usar bien son trabajos distintos; juntarlos daba un documento que hace dos
+  cosas a medias. Se descartó absorber `voz-local`.
+- **Se invirtió una decisión anterior a propósito.** Los grafos vivían fuera de
+  todo repositorio para ser «universales». Lo eran *dentro de este computador*,
+  y no viajaban a ninguno otro. El precio de meterlos en la habilidad es que
+  ahora existen en dos sitios; la copia de la habilidad manda.
+- **La habilidad no inventa enlaces de descarga.** Un enlace recordado de
+  memoria que no existe cuesta más que no darlo: entrega el nombre exacto, la
+  carpeta y el tamaño, y deja que el catálogo real resuelva de dónde sale.
+- **Nada de rutas de este computador escritas a mano en el código.** Se
+  descubren. Si estuvieran escritas, la habilidad no portearía nada.
+
+**Estado al cerrar:** rama `main`, árbol sucio (la habilidad nueva y `voz-local`
+siguen sin commitear). La auditoría y el instalador se probaron ejecutándolos
+—aquí y contra un computador virgen simulado— y esa prueba destapó cuatro
+defectos, los cuatro corregidos. **Queda un hueco:** la parte que comprueba los
+nodos contra el ComfyUI encendido nunca se ejecutó, porque el motor estaba
+apagado; por eso la auditoría reporta hoy «7 probables» y no «7 listas».
+
+**Siguiente paso concreto:** encender ComfyUI y volver a correr la auditoría,
+para ver si los siete pasan de «probable» a «lista» — es lo único que falta para
+que la habilidad esté verificada de punta a punta.
+<!-- /cierre -->
+
+**Hora:** 15:20–15:55 (aprox.)
+
+**Lo que pidió el usuario:** tomar la habilidad `voz-local` y transformarla en
+una que instale el MCP de ComfyUI con todos los flujos de este computador y sus
+pruebas, para portear ese conocimiento a cualquier proyecto o máquina. Aclaró
+después que «pruebas» significaba **auditar el computador anfitrión** —ver si
+corre lo que el usuario quiera hacer— más portar lo investigado sobre el CLI y
+el MCP.
+
+### Acciones
+
+- **Sondeo del terreno.** Se levantó qué hay realmente instalado: ComfyUI 0.33.0
+  en `C:\Users\tech\comfy`, comfy-cli 1.16.0 y comfy-mcp 0.10.0 en un entorno
+  propio, el servidor MCP registrado a nivel de usuario, un solo pack de nodos
+  (el de voz), dos voces guardadas, y los siete grafos sueltos con su README.
+- **Se leyeron las fuentes del conocimiento a portar:** el escaneo del
+  repositorio `comfy-mcp`, tres memorias del repositorio «Investigación» y el
+  README de la carpeta de grafos.
+- **Se escribieron 13 archivos** en `.claude/skills/comfy-local/`.
+- **Se ejecutó todo lo escrito**, dos veces: contra este computador y contra uno
+  simulado sin nada instalado.
+
+### Decisiones
+
+Las cuatro del bloque de cierre. Además: el `SKILL.md` va **en español**, como
+`voz-local`, aunque la norma del proyecto pide inglés para el harness — mandó la
+consistencia con la habilidad hermana, y se avisó antes de escribirlo.
+
+### Resultados
+
+- La auditoría encuentra **los 6 modelos de imagen en disco**: el inventario que
+  se escribió calza con la máquina real, no es una lista decorativa.
+- La simulación del computador virgen destapó cuatro defectos, ya corregidos:
+  la lista de modelos desaparecía justo donde más falta hace; una nota salía
+  duplicada; las rutas mezclaban las dos barras; y un comando impreso llevaba un
+  `>` sin comillas que, pegado en una consola, no instala nada y crea un archivo
+  basura.
+- Ningún grafo se corrió. Los cuatro de imagen vienen validados por su README
+  anterior, y así queda dicho en la habilidad en vez de presentarlos como
+  probados aquí.
+
+### Próximos pasos / preguntas abiertas
+
+- **Encender ComfyUI y reauditar** (el hueco de verificación descrito arriba).
+- **Commitear** la habilidad nueva y `voz-local`, que sigue sin trackear.
+- No se tocó nada de la app: esta sesión vivió entera dentro de `.claude/`.
+
 ## 2026-08-24 (noche) — La semilla de los tramos, y el guión con el que se va a escuchar
 
 <!-- cierre -->
