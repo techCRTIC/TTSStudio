@@ -24,6 +24,7 @@ import { PanelSlot } from "@/components/PanelSlot";
 import { ToolRail, type Tool } from "@/components/ToolRail";
 import { StatusLine, type Phase } from "@/components/StatusLine";
 import { SegmentStrip, type SegmentInfo } from "@/components/SegmentStrip";
+import SetupGate from "@/components/SetupGate";
 import { needsSegmentation, useLongScript } from "@/lib/long-script";
 import { segmentViews } from "@/lib/segment-view";
 import { randomSeed } from "@/lib/tts";
@@ -472,7 +473,10 @@ export default function Studio() {
           </h1>
           <span className="eyebrow">Qwen3 · local</span>
         </div>
-        <EngineHealth down={engineDown} />
+        <div className="flex items-center gap-3">
+          <EngineHealth down={engineDown} />
+          <SetupGate />
+        </div>
       </header>
 
       <div className="relative z-10 flex min-h-[calc(100dvh-160px)] items-center justify-center px-8 pb-12">

@@ -647,8 +647,17 @@ def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict) -> list
                 estado, detalle = "falta", "La carpeta del pack no esta en custom_nodes"
             elif comfyui.get("corriendo"):
                 # D6: se comprueba de verdad, contra los nodos que el motor expone.
-                estado = "instalada" if _nodo_existe("Qwen3VoiceClone", {}) else "falta"
-                if estado == "falta":
+                # `_nodo_existe` devuelve None cuando NO PUDO preguntar, y eso no
+                # es un "no": tratarlo como falta mandaria a reinstalar un pack
+                # que esta perfectamente puesto. Los tres casos, por separado.
+                visto = _nodo_existe("Qwen3VoiceClone", {})
+                if visto is None:
+                    detalle = ("La carpeta esta, pero el motor no contesto a la consulta "
+                               "de sus nodos, asi que no se pudo confirmar")
+                elif visto:
+                    estado = "instalada"
+                else:
+                    estado = "falta"
                     detalle = ("La carpeta esta, pero el motor no expone sus nodos: casi "
                                "siempre son sus dependencias de Python sin instalar")
             else:
