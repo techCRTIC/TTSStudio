@@ -22,7 +22,7 @@
 
 import { spawn } from "node:child_process";
 
-import { projectRoot, pythonPath } from "@/lib/python";
+import { projectRoot, stdlibPython } from "@/lib/python";
 
 export const dynamic = "force-dynamic";
 
@@ -52,18 +52,18 @@ export async function POST(request: Request) {
   // y esa llamada estaba fuera de todo resguardo — en una maquina sin `.venv`,
   // que es justo el usuario nuevo al que sirve este portal, el boton devolvia
   // un 500 sin explicar nada. La ruta de auditoria si se protegia; esta no.
+  // El instalador es stdlib pura, así que NO exige el entorno del proyecto: en
+  // una instalación recién hecha no existe, y esa es justo la máquina para la
+  // que este portal existe (ADR-009 D6.2). Si no hay ningún Python, se dice.
   const root = projectRoot();
-  let interprete: string;
-  try {
-    interprete = pythonPath(root);
-  } catch (error) {
+  const interprete = stdlibPython(root);
+  if (interprete === null) {
     return Response.json(
       {
         error: "sin_python",
         mensaje:
-          error instanceof Error
-            ? error.message
-            : "No se encontro el entorno de Python del proyecto.",
+          "No se encontró ningún Python en esta máquina. Instálalo desde " +
+          "python.org y vuelve a abrir la app.",
       },
       { status: 503 },
     );

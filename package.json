@@ -9,6 +9,54 @@
     "dev": "node scripts/start.mjs --dev",
     "build": "npm run build --prefix web",
     "test": "npm test --prefix web",
-    "lint": "npm run lint --prefix web"
+    "lint": "npm run lint --prefix web",
+    "desktop:prepare": "npm run build && node scripts/prepare-desktop.mjs",
+    "desktop": "npm run desktop:prepare && electron .",
+    "desktop:dist": "npm run desktop:prepare && electron-builder --win --publish never"
+  },
+  "main": "desktop/main.mjs",
+  "build": {
+    "appId": "cl.crtic.ttsstudio",
+    "productName": "TTS Studio",
+    "copyright": "Copyright (c) 2026 CRTIC",
+    "directories": {
+      "output": "dist",
+      "buildResources": "desktop/recursos"
+    },
+    "files": [
+      "desktop/main.mjs",
+      "scripts/engine.mjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop/build/app",
+        "to": "app",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
   }
 }

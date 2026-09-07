@@ -65,7 +65,22 @@ voz — así que se limpia eso antes de subirlo.
     el que se decidió —10-20 MB— **era un número mío equivocado**: valía para
     una app sin servidor, y esta no puede serlo. Teniendo que empaquetar Node
     igual, la ventaja de Tauri desaparecía y solo quedaba su coste.
-17. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
+17. **El usuario confirmó que el panel funciona** al pulsar el engranaje. Eso
+    cierra la mitad que llevaba toda la sesión sin verificarse; lo que sigue sin
+    probarse es una descarga de verdad.
+18. **Se empezó el `.exe`, y avanzó bastante.** Se cerró el hueco de Python que
+    el ADR marcaba como bloqueante —el portal ya funciona en una máquina sin el
+    entorno del proyecto, que es justo la del usuario nuevo—, se repartió el
+    lanzador en una mitad compartida y un CLI fino, y se escribió el proceso de
+    Electron con su ensamblador de paquete.
+19. **Dos hallazgos del camino que valen más que el código:** en esta máquina
+    `python3` es un señuelo de la tienda de Windows que existe y no hace nada,
+    así que el buscador de intérpretes **ejecuta** al candidato en vez de
+    fiarse; y **instalar Electron rompió el empaquetado sin tocarlo**, porque
+    apareció un archivo en la raíz que hizo a Next cambiar de idea sobre dónde
+    estaba el proyecto y mover el servidor de sitio. Lo cazó la comprobación de
+    integridad del propio ensamblador, en vez de salir un instalador roto.
+20. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
     Decía que el proyecto no tiene licencia — sí la tiene, puesta horas antes.
     Las otras dos eran ciertas: que el historial se borraría solo si el `.exe`
     cambiara de puerto entre arranques, y **un fallo de esta misma sesión** en

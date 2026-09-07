@@ -11,7 +11,7 @@
  * build error, which is the intended guard rail.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -22,6 +22,12 @@ import path from "node:path";
  * runners, so neither is assumed: walk up until the manifest is found.
  */
 export function projectRoot(): string {
+  // Empaquetado, la raíz NO se adivina (ADR-009 D6.1). Electron la fija, porque
+  // deducirla subiendo desde un directorio de instalación es una conjetura que
+  // en la máquina de alguien va a salir mal. En desarrollo se sigue buscando.
+  const declarada = process.env.TTS_PROJECT_ROOT;
+  if (declarada && existsSync(path.join(declarada, "execution"))) return declarada;
+
   let dir = process.cwd();
   for (let i = 0; i < 4; i += 1) {
     if (existsSync(path.join(dir, "pyproject.toml"))) return dir;
@@ -56,6 +62,68 @@ export function pythonPath(root: string): string {
   return found;
 }
 
+/**
+ * Un intérprete para los scripts que NO necesitan paquetes de terceros.
+ *
+ * POR QUÉ EXISTE, Y POR QUÉ LA DISTINCIÓN ES LOAD-BEARING (ADR-009 D6.2):
+ * en una instalación recién hecha no hay `.venv`, y `pythonPath` lanza. Eso
+ * dejaba al portal de configuración sin poder auditar NI instalar justo en la
+ * máquina para la que existe — la del usuario nuevo. Pero la mayoría de los
+ * scripts de `execution/` son **biblioteca estándar pura** y corren con
+ * cualquier Python que haya por ahí.
+ *
+ * Medido, no supuesto: **solo dos** scripts necesitan paquetes de terceros —
+ * `tts_unir_tramos.py` (numpy, soundfile) y `transcribe_audio.py`
+ * (faster-whisper). Esos dos siguen exigiendo el entorno con `pythonPath`.
+ *
+ * Devuelve `null` en vez de lanzar: quien llama tiene que decidir qué contar,
+ * y «no hay Python» es una respuesta, no una excepción.
+ */
+let cacheStdlib: string | null | undefined;
+
+export function stdlibPython(root: string): string | null {
+  if (cacheStdlib !== undefined) return cacheStdlib;
+
+  // El del proyecto primero: si existe es el mejor, y evita sorpresas de versión.
+  try {
+    cacheStdlib = pythonPath(root);
+    return cacheStdlib;
+  } catch {
+    /* no hay venv — se busca uno del sistema */
+  }
+
+  const candidatos =
+    process.platform === "win32" ? ["python", "python3", "py"] : ["python3", "python"];
+
+  for (const candidato of candidatos) {
+    try {
+      // Se COMPRUEBA que arranca, no solo que está en el PATH. En Windows,
+      // `python` suele ser un señuelo de la Store que existe, no hace nada y
+      // abre una tienda: encontrarlo y creerle produce un fallo peor y más
+      // tarde que no encontrarlo.
+      const prueba = spawnSync(candidato, ["-c", "print(1)"], {
+        encoding: "utf8",
+        timeout: 5000,
+        windowsHide: true,
+      });
+      if (prueba.status === 0 && prueba.stdout.trim() === "1") {
+        cacheStdlib = candidato;
+        return cacheStdlib;
+      }
+    } catch {
+      /* siguiente */
+    }
+  }
+
+  cacheStdlib = null;
+  return null;
+}
+
+/** Solo para los tests: olvida el intérprete descubierto. */
+export function olvidarPythonDescubierto(): void {
+  cacheStdlib = undefined;
+}
+
 export type PythonResult = {
   stdout: string;
   stderr: string;
@@ -77,8 +145,19 @@ export function runScript(
   {
     timeoutMs = 60_000,
     input,
+    stdlibOnly = false,
   }: {
     timeoutMs?: number;
+    /**
+     * Este script es biblioteca estándar pura y puede correr con cualquier
+     * Python (ADR-009 D6.2).
+     *
+     * Se pide EXPLÍCITAMENTE y por defecto es `false`, porque el error en la
+     * dirección contraria es el caro: dejar que un script que necesita numpy
+     * caiga a un intérprete del sistema no falla al arrancar — falla dentro,
+     * con un `ImportError` que no dice que el problema es el entorno.
+     */
+    stdlibOnly?: boolean;
     /**
      * Text to write to the script's stdin, then close it.
      *
@@ -101,7 +180,15 @@ export function runScript(
   } = {},
 ): Promise<PythonResult> {
   const root = projectRoot();
-  const python = pythonPath(root);
+  const python = stdlibOnly ? stdlibPython(root) : pythonPath(root);
+  if (python === null) {
+    return Promise.reject(
+      new Error(
+        "No se encontró ningún Python en esta máquina. Instálalo desde " +
+          "python.org y vuelve a abrir la app.",
+      ),
+    );
+  }
   const script = path.join(root, "execution", scriptName);
 
   if (!existsSync(script)) {
@@ -167,7 +254,7 @@ export function runScript(
 export async function runScriptJson<T>(
   scriptName: string,
   args: string[],
-  options?: { timeoutMs?: number; input?: string },
+  options?: { timeoutMs?: number; input?: string; stdlibOnly?: boolean },
 ): Promise<{ data: T; code: number }> {
   const { stdout, stderr, code } = await runScript(scriptName, args, options);
 

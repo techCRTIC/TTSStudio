@@ -22,7 +22,7 @@ integración; apagado se saltan solas y salen 208) · **32 de Python** · los
 
 ---
 
-## ⚠️ LO PRIMERO: hay tres cosas que NADIE HA VISTO FUNCIONAR
+## ⚠️ LO PRIMERO: lo que todavía NADIE HA VISTO FUNCIONAR
 
 Ninguna se arregla con más pruebas. Hay que mirar.
 
@@ -33,15 +33,18 @@ verdad (`/object_info`) y el pack pasó de `no_verificable` a `instalada`. En
 esta máquina el informe sale así: **las cuatro cosas que bloquean, puestas**, y
 falta solo lo opcional — las nueve voces preestablecidas, 4 GB.
 
-⚠️ **SIN verificar: todo lo que se ve y se pulsa.** La pantalla **no se ha
-abierto en un navegador ni una vez** y **ninguna descarga se ha ejercitado**.
+✅ **La pantalla SE VIO Y FUNCIONA.** Confirmado por el usuario el 2026-09-07:
+*«lo del engranaje funciona perfecto»*. Eso cubre abrir el panel desde la
+cabecera y verlo pintado como es debido.
 
-> **Prueba concreta, y en esta máquina el portal NO se abrirá solo** (no falta
-> nada bloqueante): hay que **pulsar el engranaje de la cabecera**. Luego
-> **Instalar** en las voces preestablecidas y comprobar tres cosas: que la barra
-> se mueve, que al terminar la **re-auditoría** lo confirma, y que cerrar la
-> pestaña a media descarga no deja nada que parezca instalado (debe quedar una
-> carpeta con sufijo `.descargando`).
+⚠️ **SIGUE sin ejercitarse UNA descarga real.** Es lo único del portal que
+queda por ver funcionar.
+
+> **Prueba concreta:** pulsar **Instalar** en «las nueve voces preestablecidas»
+> (4 GB, tarda) y comprobar tres cosas: que la barra se mueve, que al terminar
+> la **re-auditoría** lo confirma, y que cerrar la pestaña a media descarga no
+> deja nada que parezca instalado (debe quedar una carpeta con sufijo
+> `.descargando`).
 
 **2. El latido de ComfyUI (sesión 6).** `watchComfy()` en `scripts/start.mjs`
 relanza el motor si se cae, hasta tres veces. **Nunca se ha ejercitado contra
@@ -190,48 +193,69 @@ incremental. Por eso la ruta de instalación hace `spawn` por su cuenta.
 
 ---
 
-## 💿 El `.exe` — decidido en `ADR-009`, sin una línea escrita
+## 💿 El `.exe` — CONSTRUIDO (sin probar el instalador)
 
-**Electron**, y el `.exe` lleva **solo la app**: ComfyUI, Python y los modelos
-los instala el portal en el primer arranque. Release **a mano** en GitHub, **sin
-firmar** (se dice en las notas y se publica el SHA-256; **nunca** pedirle a
-nadie que desactive SmartScreen) y **sin actualización automática**. Es
-**B-005**, y toca B-017.
+**Electron**, `.exe` con **solo la app** (~19 MB de contenido propio). ComfyUI,
+Python y modelos los instala el portal. Decidido en `ADR-009`.
 
-🚧 **HUECO BLOQUEANTE ANTES DE EMPAQUETAR (`ADR-009` D6).** `pythonPath()`
-(`web/src/lib/python.ts`) **exige** un `.venv` en la raíz del proyecto, y un
-usuario que instale el `.exe` no lo tendrá. Solo **dos** scripts necesitan de
-verdad ese entorno (`tts_unir_tramos`, `transcribe_audio`); **el resto es
-stdlib pura** y podría correr con cualquier Python. Eso hay que resolverlo
-antes, no durante.
+| Archivo | Qué es |
+|---|---|
+| `scripts/engine.mjs` | **Nuevo.** La mitad compartida del lanzador: `ensureComfy`, `clearPort`, `watchComfy`, `matarArbol`. Parametrizada, **sin `process.exit` dentro** — lanza, y quien llama decide (una ventana no puede morirse como un CLI). |
+| `scripts/start.mjs` | **Adelgazado.** Ahora solo hace lo que solo un terminal hace: compilar con el CLI de Next, abrir el navegador, y morir con un mensaje. |
+| `desktop/main.mjs` | **Nuevo.** Proceso principal de Electron. |
+| `scripts/prepare-desktop.mjs` | **Nuevo.** Ensambla `desktop/build/app/` y **comprueba** que lo ensamblado puede arrancar. |
+| `web/next.config.ts` | `output: "standalone"` + **`outputFileTracingRoot` fijada**. |
+| `package.json` | `main`, config de `electron-builder`, y los guiones `desktop:*`. |
 
-**Hechos verificados en esta máquina — no los redescubras:**
-- **Rust y cargo NO están instalados.** Tauri los exige, más MSVC: >1 GB.
-- **Las 16 rutas de `web/src/app/api/` no pueden volverse estáticas.** Lanzan
-  Python, leen disco, y quitan la cabecera `Origin` del ADR-001. Por tanto **el
-  paquete lleva un servidor Node dentro, con cualquier empaquetador**.
-- `web/next.config.ts` está vacío: **falta `output: "standalone"`**.
-- **El historial y los favoritos viven en `localStorage`** (`history.ts:89,117`,
-  `favorites.ts:46`), y Chromium lo particiona **por origen, puerto incluido**.
-  Un puerto libre distinto en cada arranque **borraría el historial en
-  silencio**. Por eso el ADR fija un puerto pegajoso, elegido una vez.
+**Guiones:** `npm run desktop` (abre la app empaquetada sin instalar) ·
+`npm run desktop:dist` (produce el instalador en `dist/`).
 
-⚠️ **Se eligió Tauri y se cambió a Electron el mismo día**, porque la
-estimación con la que se decidió (10-20 MB) **era errónea**: valía para un
-frontend estático. **Ningún tamaño está medido.**
+### Lo que hay que entender antes de tocarlo
 
-📌 **La línea de licencias que no hay que cruzar sin darse cuenta:** hoy la app
-**no distribuye** ComfyUI ni comfy-cli (GPL-3.0), solo los invoca. Un `.exe` con
-**solo la app** mantiene eso. Empaquetar ComfyUI dentro pasa a distribuir GPL,
-con obligación de entregar el código correspondiente — y exige su propio ADR.
+1. **El puerto se elige UNA VEZ y se guarda** (`userData/puerto.json`), y no es
+   manía: el historial y los favoritos viven en `localStorage`, que Chromium
+   particiona **por origen — puerto incluido**. Un puerto distinto en cada
+   arranque le vacía el historial al usuario sin decir nada. Se prefiere 3000
+   para que quien venga de `npm start` conserve el suyo.
+2. **El servidor de Next es un HIJO de Electron**, arrancado con
+   `ELECTRON_RUN_AS_NODE` (así no viaja otro Node). Se mata por **tres vías**
+   independientes, porque en Windows un hijo **no** muere con su padre, y un
+   huérfano se queda con el puerto.
+3. **La app ya no adivina dónde está**: Electron le pasa `TTS_PROJECT_ROOT`, y
+   `projectRoot()` lo respeta si contiene `execution/`.
+4. **El portal ya corre SIN el entorno del proyecto** (`ADR-009` D6, cerrado).
+   `stdlibPython()` usa el `.venv` si existe y, si no, **descubre** un Python
+   del sistema. Solo `tts_unir_tramos.py` y `transcribe_audio.py` necesitan
+   paquetes de terceros y siguen exigiendo `pythonPath()`.
 
-📌 **Límite honesto que el ADR deja escrito:** este `.exe` llega a **quien
-acepte instalar ComfyUI guiado a mano**, no a un clic. No es «usuario base»
-todavía.
+### 🐛 Dos trampas descubiertas construyendo esto
 
-⚠️ **Un hallazgo del ADR era FALSO y se corrigió en el propio ADR:** decía que
-no hay `LICENSE` en la raíz. Sí lo hay (MIT, `391aae8`). Verificar antes de
-creer, también a los subagentes.
+- **`python3` en esta máquina es un SEÑUELO de la Microsoft Store**: está en el
+  PATH, arranca, y no hace nada. Por eso `stdlibPython()` **ejecuta**
+  `-c "print(1)"` en cada candidato en vez de fiarse de que exista. Encontrarlo
+  y creerle daba un fallo mucho más tarde y peor de entender.
+- **Instalar Electron rompió el empaquetado sin que nadie lo tocara.** Apareció
+  un `package-lock.json` en la raíz, Next infirió otra raíz de proyecto y movió
+  el servidor de `standalone/server.js` a `standalone/web/server.js`. Ahora la
+  raíz está **fijada** en `next.config.ts`, y además el ensamblador **busca**
+  `server.js` en vez de suponer. Lo cazó su propia comprobación de integridad.
+
+### ✅ El instalador EXISTE
+
+`dist/TTS Studio Setup 0.1.0.exe` — **115,5 MB** (23 MB son la app; el resto es
+Chromium). SHA-256:
+`989a3c9ec54ad618c340881a2132ac03a8b16c9fd34be613e032cc44f0bfdcd0`
+
+**Comprobado abriendo el paquete**, no deducido: lleva `server.js`,
+`.next/static` (sin eso saldría sin estilos), los 14 scripts de `execution/`,
+el manifiesto y `pyproject.toml`. **No lleva** `src` ni `tests`. **No lleva
+ComfyUI ni modelos** — se buscó: los únicos aciertos de «comfy» son la ruta de
+la propia app, así que la línea de licencias sigue sin cruzarse.
+
+⚠️ **PERO NADIE LO HA EJECUTADO.** Compilar y empaquetar no es funcionar, y
+aquí hay más superficie nueva de la habitual: el puerto pegajoso, el servidor
+como hijo, y el apagado por tres vías. **Instalarlo y abrirlo es la prueba que
+falta**, y conviene hacerla con `npm start` cerrado para no confundir puertos.
 
 ## Siguiente paso
 

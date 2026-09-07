@@ -22,6 +22,10 @@ import { aInforme, type InformeSetup } from "@/lib/setup";
 async function auditar(): Promise<InformeSetup> {
   const { data } = await runScriptJson<unknown>("auditar_host.py", ["--app"], {
     timeoutMs: 30_000,
+    // El auditor es stdlib pura, así que corre sin el entorno del proyecto.
+    // Sin esto, la pantalla que arregla dependencias necesitaría una de ellas
+    // para arrancar (ADR-008 D8, ADR-009 D6.2).
+    stdlibOnly: true,
   });
   return aInforme(data);
 }

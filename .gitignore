@@ -14,3 +14,7 @@ token.json
 id_rsa*
 settings.local.json
 production/session-logs/
+
+# Empaquetado de escritorio: todo regenerable con `npm run desktop:dist`.
+desktop/build/
+dist/
