@@ -58,8 +58,11 @@ for _flujo in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
-RAIZ_SKILL = Path(__file__).resolve().parent.parent
-MANIFIESTO = RAIZ_SKILL / "workflows" / "manifiesto.json"
+# ADR-008 D2: ONE auditor, and it lives here. The app runtime must never reach
+# into `.claude/**` — that directory is the portable harness, not runtime code.
+# The `comfy-local` skill points at this file instead of forking it.
+AQUI = Path(__file__).resolve().parent
+MANIFIESTO = AQUI / "manifiesto.json"
 
 OK = "[OK]"
 FALTA = "[FALTA]"
@@ -577,12 +580,145 @@ def imprimir(informe: dict) -> None:
     print("=" * 66)
 
 
+# --------------------------------------------------------------------------
+# La app: sus siete requisitos, en idioma humano (ADR-008)
+# --------------------------------------------------------------------------
+
+def _ollama_modelos(timeout: float = 2.0) -> list[str] | None:
+    """Los modelos que ollama dice tener. `None` = ollama no responde.
+
+    PUNTO CIEGO DECLARADO: distingue "ollama apagado" de "modelo ausente",
+    que es justo la distincion que el portal necesita para no decirle al
+    usuario que instale algo que ya tiene.
+    """
+    url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434") + "/api/tags"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            datos = json.loads(r.read().decode("utf-8"))
+    except Exception:
+        return None
+    return [m.get("name", "") for m in datos.get("models", [])]
+
+
+def _whisper_en_cache() -> bool:
+    """Busca el modelo de faster-whisper en la cache de HuggingFace.
+
+    PUNTO CIEGO: solo mira que la carpeta exista. Un modelo a medio bajar
+    pasaria. Se acepta porque este modelo se descarga solo al usarlo y no
+    lo instala el portal.
+    """
+    base = Path(os.environ.get("HF_HOME") or (Path.home() / ".cache" / "huggingface"))
+    for sitio in (base / "hub", base):
+        try:
+            for hijo in sitio.iterdir():
+                if "faster-whisper-large-v3" in hijo.name:
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict) -> list[dict]:
+    """Evalua los requisitos de la app declarados en el manifiesto.
+
+    Tres estados, y el tercero NO es decorativo (ADR-008 D5):
+      - `instalada`      lo vimos.
+      - `falta`          miramos donde tocaba y no estaba.
+      - `no_verificable` no pudimos mirar. Con ComfyUI apagado no se pueden
+                         comprobar sus nodos, y decir "falta" ahi seria
+                         mandar al usuario a reinstalar lo que ya tiene.
+    """
+    modelos = manifiesto.get("modelos", {})
+    salida: list[dict] = []
+
+    for req in manifiesto.get("app", {}).get("requisitos", []):
+        estado, detalle, mb = "no_verificable", None, 0
+        rid = req["id"]
+
+        if rid == "comfyui-corriendo":
+            estado = "instalada" if comfyui.get("corriendo") else "falta"
+            if estado == "falta":
+                detalle = f"No responde en {comfyui.get('url')}"
+
+        elif req.get("tipo") == "pack":
+            pack = req["pack"]
+            presente = pack in (comfyui.get("packs") or [])
+            if not presente:
+                estado, detalle = "falta", "La carpeta del pack no esta en custom_nodes"
+            elif comfyui.get("corriendo"):
+                # D6: se comprueba de verdad, contra los nodos que el motor expone.
+                estado = "instalada" if _nodo_existe("Qwen3VoiceClone", {}) else "falta"
+                if estado == "falta":
+                    detalle = ("La carpeta esta, pero el motor no expone sus nodos: casi "
+                               "siempre son sus dependencias de Python sin instalar")
+            else:
+                detalle = ("La carpeta esta, pero con ComfyUI apagado no se puede "
+                           "confirmar que sus dependencias esten instaladas")
+
+        elif req.get("tipo") == "modelo":
+            nombre = req["modelo"]
+            spec = modelos.get(nombre, {})
+            mb = spec.get("mb", 0)
+            if nombre == "faster-whisper-large-v3":
+                estado = "instalada" if _whisper_en_cache() else "falta"
+                if estado == "falta":
+                    detalle = "Se descarga solo la primera vez que se transcribe"
+            elif workspace is None:
+                detalle = "No se encontro la carpeta de ComfyUI"
+            else:
+                ruta = _ruta_modelo(workspace, nombre, spec)
+                estado = "instalada" if ruta.exists() else "falta"
+                if estado == "falta":
+                    detalle = f"No esta en {ruta.parent}"
+
+        elif req.get("tipo") == "servicio":
+            if req.get("servicio") == "ollama":
+                instalados = _ollama_modelos()
+                pedido = req.get("modelo_servicio", "")
+                mb = (manifiesto.get("servicios", {}).get("ollama", {})
+                      .get("modelos", {}).get(pedido, {}).get("mb", 0))
+                if instalados is None:
+                    estado, detalle = "falta", "ollama no esta corriendo o no esta instalado"
+                elif any(m.split(":")[0] == pedido.split(":")[0] for m in instalados):
+                    estado = "instalada"
+                else:
+                    estado, detalle = "falta", f"ollama corre, pero no tiene {pedido}"
+
+        elif rid == "una-voz":
+            voces = comfyui.get("voces_registradas")
+            if voces is None:
+                detalle = "No se pudo leer la carpeta de voces"
+            else:
+                estado = "instalada" if voces else "falta"
+                if estado == "falta":
+                    detalle = "No hay ninguna voz registrada todavia"
+
+        salida.append({
+            "id": rid,
+            "titulo": req["titulo"],
+            "para_que": req["para_que"],
+            "bloquea": req.get("bloquea", False),
+            "instalable": req.get("instalable", False),
+            "tipo": req.get("tipo"),
+            "estado": estado,
+            "detalle": detalle,
+            "mb": mb if estado == "falta" else 0,
+            "sin_esto": req.get("sin_esto"),
+            "guia": req.get("guia"),
+            "nota": req.get("nota"),
+        })
+
+    return salida
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Audita si este PC puede correr el stack ComfyUI.")
     ap.add_argument("--json", action="store_true", help="salida legible por maquina")
     ap.add_argument("--exigir", metavar="ID",
                     help="salir con 1 si esa capacidad no esta lista (ids en el manifiesto)")
     ap.add_argument("--manifiesto", type=Path, default=MANIFIESTO)
+    ap.add_argument("--app", action="store_true",
+                    help="solo los requisitos de TTS Studio, en JSON (lo que lee el portal)")
     args = ap.parse_args()
 
     manifiesto = json.loads(args.manifiesto.read_text(encoding="utf-8"))
@@ -594,6 +730,19 @@ def main() -> int:
         "herramientas": auditar_herramientas(),
         "comfyui": auditar_comfyui(workspace),
     }
+    if args.app:
+        # El portal de la app no necesita las capacidades de imagen: pregunta
+        # solo por lo suyo, y siempre en JSON (ADR-008).
+        print(json.dumps({
+            "workspace": str(workspace) if workspace else None,
+            "comfyui_url": informe["comfyui"].get("url"),
+            "comfyui_corriendo": informe["comfyui"].get("corriendo", False),
+            "python_venv": informe["comfyui"].get("python_venv"),
+            "disco_libre_mb": informe["maquina"].get("disco_libre_mb"),
+            "requisitos": auditar_app(manifiesto, workspace, informe["comfyui"]),
+        }, indent=2, ensure_ascii=False))
+        return 0
+
     informe["capacidades"] = auditar_capacidades(manifiesto, workspace, informe["comfyui"])
     informe["por_descargar_mb"] = sum(
         c["mb_por_descargar"] for c in informe["capacidades"]

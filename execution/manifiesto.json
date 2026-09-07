@@ -1,0 +1,451 @@
+{
+  "version": 2,
+  "generado": "2026-08-28",
+  "origen": {
+    "maquina": "RTX 5090 Laptop, 24 GB VRAM, Windows 11",
+    "carpeta": "C:/Users/tech/comfy-workflows",
+    "comfyui": "0.33.0",
+    "nota": "Los tiempos son medidos en ESA maquina. En otra son ordenes de magnitud, no promesas."
+  },
+  "packs": {
+    "ComfyUI-Qwen3-TTS": {
+      "carpeta": "ComfyUI-Qwen3-TTS",
+      "instalar_con": "mcp__comfy__install_node",
+      "requirements_manual": true,
+      "nota": "Sus dependencias NO se instalan solas: pip install -r requirements.txt con el Python del venv de ComfyUI (qwen-tts, modelscope, soundfile, librosa). Reiniciar ComfyUI despues."
+    }
+  },
+  "modelos": {
+    "qwen_image_2512_fp8_e4m3fn.safetensors": {
+      "carpeta": "diffusion_models",
+      "mb": 19484
+    },
+    "qwen_image_edit_2511_fp8mixed.safetensors": {
+      "carpeta": "diffusion_models",
+      "mb": 19582
+    },
+    "qwen_2.5_vl_7b_fp8_scaled.safetensors": {
+      "carpeta": "text_encoders",
+      "mb": 8949
+    },
+    "qwen_image_vae.safetensors": {
+      "carpeta": "vae",
+      "mb": 242
+    },
+    "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors": {
+      "carpeta": "loras",
+      "mb": 1620
+    },
+    "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors": {
+      "carpeta": "loras",
+      "mb": 810
+    },
+    "Qwen3-TTS-12Hz-1.7B-Base": {
+      "carpeta": "Qwen3-TTS",
+      "mb": 4334,
+      "es_directorio": true,
+      "auto": "Qwen3Loader lo baja solo de HuggingFace en el primer uso",
+      "origen": {
+        "tipo": "huggingface",
+        "repo": "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+      }
+    },
+    "Qwen3-TTS-Tokenizer-12Hz": {
+      "carpeta": "Qwen3-TTS",
+      "mb": 651,
+      "es_directorio": true,
+      "auto": "solo hace falta para fine-tune; pre-descargarlo evita que un fallo de DNS mate un entrenamiento a media"
+    },
+    "Qwen3-TTS-12Hz-1.7B-CustomVoice": {
+      "carpeta": "Qwen3-TTS",
+      "mb": 4096,
+      "es_directorio": true,
+      "nota": "Checkpoint DISTINTO del -Base. Sin el, las nueve voces preestablecidas del modelo no se ofrecen (hasEngineModel en web/src/lib/comfy-files.ts). Descarga aparte, no viene con nada.",
+      "origen": {
+        "tipo": "huggingface",
+        "repo": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+        "verificado": "repo id leido de ComfyUI-Qwen3-TTS/nodes.py:43, no inventado. La descarga en si NO se ha ejercitado todavia."
+      }
+    },
+    "faster-whisper-large-v3": {
+      "carpeta": "(cache de faster-whisper, fuera de ComfyUI)",
+      "mb": 2900,
+      "es_directorio": true,
+      "auto": "se descarga solo la primera vez que se transcribe",
+      "nota": "Lo usa execution/transcribe_audio.py al dar de alta una voz desde audio (ADR-003). No es un modelo de ComfyUI."
+    }
+  },
+  "capacidades": [
+    {
+      "id": "texto-a-imagen-rapido",
+      "titulo": "Texto -> imagen, rapido",
+      "workflow": "t2i_qwen_lightning.json",
+      "cuando": "Por defecto para cualquier imagen nueva sin referencia.",
+      "tiempo_s": {
+        "caliente": 8,
+        "frio": 29
+      },
+      "nodos": [
+        "UNETLoader",
+        "CLIPLoader",
+        "VAELoader",
+        "LoraLoaderModelOnly",
+        "ModelSamplingAuraFlow",
+        "CLIPTextEncode",
+        "EmptySD3LatentImage",
+        "KSampler",
+        "VAEDecode",
+        "SaveImage"
+      ],
+      "packs": [],
+      "modelos": [
+        "qwen_image_2512_fp8_e4m3fn.safetensors",
+        "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "qwen_image_vae.safetensors",
+        "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors"
+      ],
+      "entradas": [],
+      "campos": {
+        "prompt": "5.inputs.text",
+        "semilla": "8.inputs.seed",
+        "ancho": "7.inputs.width",
+        "alto": "7.inputs.height"
+      },
+      "notas": [
+        "El prompt va en INGLES.",
+        "El negativo del nodo 6 esta en chino a proposito: es el negativo oficial de Qwen-Image. No tocarlo sin motivo."
+      ]
+    },
+    {
+      "id": "texto-a-imagen-calidad",
+      "titulo": "Texto -> imagen, calidad completa",
+      "workflow": "t2i_qwen_full_quality.json",
+      "cuando": "Solo si el rapido no convence en un detalle puntual. La mejora es real pero marginal (~10-15%) por 16x el tiempo.",
+      "tiempo_s": {
+        "caliente": 119
+      },
+      "nodos": [
+        "UNETLoader",
+        "CLIPLoader",
+        "VAELoader",
+        "ModelSamplingAuraFlow",
+        "CLIPTextEncode",
+        "EmptySD3LatentImage",
+        "KSampler",
+        "VAEDecode",
+        "SaveImage"
+      ],
+      "packs": [],
+      "modelos": [
+        "qwen_image_2512_fp8_e4m3fn.safetensors",
+        "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "qwen_image_vae.safetensors"
+      ],
+      "entradas": [],
+      "campos": {
+        "prompt": "5.inputs.text",
+        "semilla": "8.inputs.seed",
+        "ancho": "7.inputs.width",
+        "alto": "7.inputs.height"
+      },
+      "notas": [
+        "Mismo modelo que el rapido, sin LoRA. steps=50, cfg=4.0 son los defaults oficiales."
+      ]
+    },
+    {
+      "id": "editar-con-personaje",
+      "titulo": "Personaje de referencia -> escena nueva, rapido",
+      "workflow": "edit_qwen_lightning.json",
+      "cuando": "La receta ganadora para consistencia de personaje. Validada dos veces, identidad preservada en ambas.",
+      "tiempo_s": {
+        "caliente": 28
+      },
+      "nodos": [
+        "UNETLoader",
+        "CLIPLoader",
+        "VAELoader",
+        "LoadImage",
+        "FluxKontextImageScale",
+        "ModelSamplingAuraFlow",
+        "CFGNorm",
+        "LoraLoaderModelOnly",
+        "TextEncodeQwenImageEditPlus",
+        "FluxKontextMultiReferenceLatentMethod",
+        "VAEEncode",
+        "KSampler",
+        "VAEDecode",
+        "SaveImage"
+      ],
+      "packs": [],
+      "modelos": [
+        "qwen_image_edit_2511_fp8mixed.safetensors",
+        "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "qwen_image_vae.safetensors",
+        "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors"
+      ],
+      "entradas": [
+        {
+          "campo": "4.inputs.image",
+          "carpeta": "input",
+          "que_es": "la imagen de referencia del personaje"
+        }
+      ],
+      "campos": {
+        "referencia": "4.inputs.image",
+        "instruccion": "9.inputs.prompt",
+        "semilla": "14.inputs.seed"
+      },
+      "notas": [
+        "GOTCHA CRITICO que este grafo ya resuelve: el modelo 2511 exige TextEncodeQwenImageEditPlus (NO TextEncodeQwenImageEdit, que es del modelo base) mas FluxKontextImageScale y FluxKontextMultiReferenceLatentMethod. Sin ellos la salida colapsa: grillas rotas, personajes duplicados.",
+        "Terminar SIEMPRE la instruccion pidiendo que el personaje no cambie: solo la pose, el fondo y la accion."
+      ]
+    },
+    {
+      "id": "editar-con-personaje-calidad",
+      "titulo": "Personaje de referencia -> escena nueva, calidad completa",
+      "workflow": "edit_qwen_full_quality.json",
+      "cuando": "Produce poses algo mas dinamicas que la version rapida, a 7.6x el costo.",
+      "tiempo_s": {
+        "caliente": 216
+      },
+      "nodos": [
+        "UNETLoader",
+        "CLIPLoader",
+        "VAELoader",
+        "LoadImage",
+        "FluxKontextImageScale",
+        "ModelSamplingAuraFlow",
+        "CFGNorm",
+        "TextEncodeQwenImageEditPlus",
+        "FluxKontextMultiReferenceLatentMethod",
+        "VAEEncode",
+        "KSampler",
+        "VAEDecode",
+        "SaveImage"
+      ],
+      "packs": [],
+      "modelos": [
+        "qwen_image_edit_2511_fp8mixed.safetensors",
+        "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "qwen_image_vae.safetensors"
+      ],
+      "entradas": [
+        {
+          "campo": "4.inputs.image",
+          "carpeta": "input",
+          "que_es": "la imagen de referencia del personaje"
+        }
+      ],
+      "campos": {
+        "referencia": "4.inputs.image",
+        "instruccion": "8.inputs.prompt",
+        "semilla": "13.inputs.seed"
+      },
+      "notas": [
+        "Sin LoRA. steps=40, cfg=3 son los defaults oficiales. Ojo: los numeros de nodo NO son los mismos que en la version rapida."
+      ]
+    },
+    {
+      "id": "clonar-voz",
+      "titulo": "Clonar una voz desde una referencia corta",
+      "workflow": "tts_voice_clone.json",
+      "cuando": "Referencia de un solo uso. Si la voz se va a reusar, registrarla primero.",
+      "tiempo_s": {
+        "caliente": 20
+      },
+      "nodos": [
+        "Qwen3Loader",
+        "LoadAudio",
+        "Qwen3VoiceClone",
+        "SaveAudio"
+      ],
+      "packs": [
+        "ComfyUI-Qwen3-TTS"
+      ],
+      "modelos": [
+        "Qwen3-TTS-12Hz-1.7B-Base"
+      ],
+      "entradas": [
+        {
+          "campo": "2.inputs.audio",
+          "carpeta": "input",
+          "que_es": "WAV de referencia, 10-15 s de habla limpia"
+        }
+      ],
+      "campos": {
+        "referencia": "2.inputs.audio",
+        "texto_referencia": "3.inputs.ref_text",
+        "texto": "3.inputs.text",
+        "idioma": "3.inputs.language",
+        "semilla": "3.inputs.seed"
+      },
+      "notas": [
+        "ref_text es opcional en el schema pero OBLIGATORIO en la practica: Qwen3VoiceClone lanza ValueError si recibe ref_audio sin ref_text.",
+        "Techos del modelo: ~3 min de audio por pasada (8192 tokens), 2048 caracteres de entrada.",
+        "Sin control nativo de velocidad ni emocion en modo clon: generate_voice_clone no acepta instruct en ninguna forma. La palanca es la puntuacion del texto. Ver la skill voz-local."
+      ]
+    },
+    {
+      "id": "registrar-voz",
+      "titulo": "Precalcular una voz y guardarla como asset",
+      "workflow": "tts_voice_prompt_make.json",
+      "cuando": "Una sola vez por voz. Deja un .safetensors de ~20-50 KB que ya no depende del WAV.",
+      "tiempo_s": {
+        "caliente": 5
+      },
+      "nodos": [
+        "Qwen3Loader",
+        "LoadAudio",
+        "Qwen3PromptMaker",
+        "Qwen3SavePrompt"
+      ],
+      "packs": [
+        "ComfyUI-Qwen3-TTS"
+      ],
+      "modelos": [
+        "Qwen3-TTS-12Hz-1.7B-Base"
+      ],
+      "entradas": [
+        {
+          "campo": "2.inputs.audio",
+          "carpeta": "input",
+          "que_es": "WAV de referencia, 10-15 s de habla limpia"
+        }
+      ],
+      "campos": {
+        "referencia": "2.inputs.audio",
+        "texto_referencia": "3.inputs.ref_text",
+        "nombre": "4.inputs.filename"
+      },
+      "notas": [
+        "Lo guarda en models/Qwen3-TTS/prompts/<nombre>.safetensors."
+      ]
+    },
+    {
+      "id": "voz-cacheada",
+      "titulo": "Generar con una voz ya registrada",
+      "workflow": "tts_voice_clone_cached.json",
+      "cuando": "Siempre que se generen varias frases con la misma voz.",
+      "tiempo_s": {
+        "caliente": 20
+      },
+      "nodos": [
+        "Qwen3Loader",
+        "Qwen3LoadPrompt",
+        "Qwen3VoiceClone",
+        "SaveAudio"
+      ],
+      "packs": [
+        "ComfyUI-Qwen3-TTS"
+      ],
+      "modelos": [
+        "Qwen3-TTS-12Hz-1.7B-Base"
+      ],
+      "entradas": [
+        {
+          "campo": "2.inputs.prompt_file",
+          "carpeta": "models/Qwen3-TTS/prompts",
+          "que_es": "la voz registrada (.safetensors)"
+        }
+      ],
+      "campos": {
+        "voz": "2.inputs.prompt_file",
+        "texto": "3.inputs.text",
+        "semilla": "3.inputs.seed"
+      },
+      "notas": [
+        "Con prompt conectado NO se pasan ref_audio ni ref_text.",
+        "prompt_file es un combo validado contra los prompts existentes. Si la voz no esta guardada, validate falla con unknown_enum_value y la pista 'no prompts saved yet'. Registrar la voz primero."
+      ]
+    }
+  ],
+  "nota_v2": "v2 (2026-09-07, ADR-008 D3): este archivo dejo de ser solo el mapa de la skill y paso a ser EL mapa de dependencias, tambien el de la app. Vive en execution/ porque la app lo lee en tiempo de ejecucion y no puede depender de .claude/**.",
+  "servicios": {
+    "ollama": {
+      "proposito": "El boton de reescritura del guion",
+      "comprobar_con": "http://127.0.0.1:11434/api/tags",
+      "instalar_con": "guiar",
+      "url_humana": "https://ollama.com",
+      "modelos": {
+        "qwen3:4b": {
+          "mb": 2600,
+          "instalar_con": "ollama pull qwen3:4b",
+          "nota": "El nombre lo fija MODEL en web/src/lib/llm.ts, que lee OLLAMA_MODEL y cae a este literal."
+        }
+      }
+    }
+  },
+  "app": {
+    "nota": "Lo que TTS Studio necesita para funcionar. 'bloquea' = sin esto la app no puede generar voz y el portal se abre solo. 'instalable' = el portal puede resolverlo; si es false, solo puede explicar.",
+    "requisitos": [
+      {
+        "id": "comfyui-corriendo",
+        "titulo": "El motor de voz (ComfyUI)",
+        "para_que": "Es quien genera el audio. Sin el, la app no puede producir nada.",
+        "bloquea": true,
+        "instalable": false,
+        "tipo": "servicio",
+        "guia": "El lanzador (npm start) lo levanta solo si encuentra el ejecutable. Si no, hay que instalarlo: comfy-cli con `pip install comfy-cli`, y luego `comfy install`."
+      },
+      {
+        "id": "pack-qwen3-tts",
+        "titulo": "El pack de nodos Qwen3-TTS",
+        "para_que": "Ensena a ComfyUI a clonar voces. Sin el, el motor esta vivo pero no sabe hacer voz.",
+        "bloquea": true,
+        "instalable": true,
+        "tipo": "pack",
+        "pack": "ComfyUI-Qwen3-TTS",
+        "nota": "El paso que de verdad duele: sus dependencias de Python NO se instalan solas. Hay que correr su requirements.txt con el interprete propio de ComfyUI y reiniciar el motor. El portal lo automatiza (ADR-008 D7)."
+      },
+      {
+        "id": "modelo-base",
+        "titulo": "El modelo de voz",
+        "para_que": "El motor que convierte texto en habla.",
+        "bloquea": true,
+        "instalable": true,
+        "tipo": "modelo",
+        "modelo": "Qwen3-TTS-12Hz-1.7B-Base"
+      },
+      {
+        "id": "una-voz",
+        "titulo": "Al menos una voz registrada",
+        "para_que": "La app lee con una voz clonada; sin ninguna, no hay con que leer.",
+        "bloquea": true,
+        "instalable": false,
+        "tipo": "dato",
+        "guia": "No se descarga: se crea. Desde la app, en la biblioteca de voces, subiendo un audio de referencia corto o grabando por microfono."
+      },
+      {
+        "id": "voces-preestablecidas",
+        "titulo": "Las nueve voces preestablecidas",
+        "para_que": "Nueve voces que trae el modelo, para no tener que clonar ninguna.",
+        "bloquea": false,
+        "instalable": true,
+        "tipo": "modelo",
+        "modelo": "Qwen3-TTS-12Hz-1.7B-CustomVoice",
+        "sin_esto": "La app simplemente no las ofrece. Todo lo demas funciona igual."
+      },
+      {
+        "id": "reescritura",
+        "titulo": "El boton de reescribir el guion",
+        "para_que": "Revisa ortografia y ritmo, y propone una version escrita para ser leida en voz alta.",
+        "bloquea": false,
+        "instalable": true,
+        "tipo": "servicio",
+        "servicio": "ollama",
+        "modelo_servicio": "qwen3:4b",
+        "sin_esto": "El boton avisa que no esta disponible. La parte determinista de la revision sigue funcionando."
+      },
+      {
+        "id": "transcripcion",
+        "titulo": "La transcripcion al dar de alta una voz",
+        "para_que": "Al subir un audio de referencia, escribe solo lo que dice, para que puedas corregirlo.",
+        "bloquea": false,
+        "instalable": true,
+        "tipo": "modelo",
+        "modelo": "faster-whisper-large-v3",
+        "sin_esto": "Hay que escribir la transcripcion a mano."
+      }
+    ]
+  }
+}
