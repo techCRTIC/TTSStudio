@@ -26,16 +26,22 @@ detector de diseño de `impeccable` sin hallazgos.
 
 Ninguna se arregla con más pruebas. Hay que mirar.
 
-**1. El portal de instalación (sesión 7).** Compila y pasa 13 pruebas nuevas,
-pero **la pantalla no se ha abierto en un navegador ni una vez** y **ninguna
-descarga se ha ejercitado de punta a punta**.
+**1. El portal de instalación (sesión 7) — la MITAD está verificada.**
 
-> **Prueba concreta:** levantar la app con **ComfyUI apagado** y ver si el
-> portal se abre solo y dice la verdad. Después encender el motor, pulsar
-> **Instalar** en «las nueve voces preestablecidas» (4 GB, tarda) y comprobar
-> tres cosas: que la barra se mueve, que al terminar la **re-auditoría** lo
-> confirma, y que cerrar la pestaña a media descarga no deja nada que parezca
-> instalado (debe quedar una carpeta con sufijo `.descargando`).
+✅ **Verificado contra ComfyUI encendido:** el auditor consulta al motor de
+verdad (`/object_info`) y el pack pasó de `no_verificable` a `instalada`. En
+esta máquina el informe sale así: **las cuatro cosas que bloquean, puestas**, y
+falta solo lo opcional — las nueve voces preestablecidas, 4 GB.
+
+⚠️ **SIN verificar: todo lo que se ve y se pulsa.** La pantalla **no se ha
+abierto en un navegador ni una vez** y **ninguna descarga se ha ejercitado**.
+
+> **Prueba concreta, y en esta máquina el portal NO se abrirá solo** (no falta
+> nada bloqueante): hay que **pulsar el engranaje de la cabecera**. Luego
+> **Instalar** en las voces preestablecidas y comprobar tres cosas: que la barra
+> se mueve, que al terminar la **re-auditoría** lo confirma, y que cerrar la
+> pestaña a media descarga no deja nada que parezca instalado (debe quedar una
+> carpeta con sufijo `.descargando`).
 
 **2. El latido de ComfyUI (sesión 6).** `watchComfy()` en `scripts/start.mjs`
 relanza el motor si se cae, hasta tres veces. **Nunca se ha ejercitado contra
@@ -101,7 +107,7 @@ corrigió durante la construcción.
 | `web/src/app/api/setup/audit/route.ts` | Corre el auditor. Responde siempre, aunque no pueda auditar. |
 | `web/src/app/api/setup/install/route.ts` | Streaming NDJSON · lista blanca de ids · mata el proceso si se aborta. |
 | `web/src/components/SetupPortal.tsx` | La pantalla. |
-| `web/src/components/SetupGate.tsx` | Decide si se abre sola. Montado en `layout.tsx` para no tocar las 988 líneas de `page.tsx`. |
+| `web/src/components/SetupGate.tsx` | **El engranaje de la cabecera** + decide si el panel se abre solo. Montado en la cabecera de `page.tsx`, al lado de `EngineHealth`. |
 
 **Cuatro reglas que no son cosméticas:**
 
@@ -116,6 +122,9 @@ corrigió durante la construcción.
 4. **Se rehúsa antes que usar el intérprete equivocado.** Si no aparece el Python
    de ComfyUI, el paso no se hace: instalar en el Python del sistema ensucia la
    máquina y **no** arregla al motor.
+5. **Abrirlo a mano y que se abra solo NO son lo mismo.** El automático no se
+   puede cerrar (detrás no funciona nada); el que pide el usuario siempre sí,
+   aunque falte algo. Abrirlo a mano **vuelve a auditar** antes de pintar.
 
 **Dos cosas que el portal NO hace, a propósito:** no instala ComfyUI ni
 comfy-cli (solo guía), y **no reinicia el motor** — instala las dependencias del

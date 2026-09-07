@@ -38,7 +38,18 @@ voz — así que se limpia eso antes de subirlo.
 8. **Se eligió licencia MIT** — el repositorio no tenía ninguna, y sin eso
    «público» significa que se ve pero nadie puede usarlo.
 9. **EL PROYECTO ESTÁ PUBLICADO.** `github.com/techCRTIC/TTSStudio`, público,
-   67 commits, con los 65 anteriores que llevaban meses sin respaldo alguno.
+   con los commits que llevaban meses sin respaldo alguno.
+10. **El panel dejó de ser inalcanzable.** Solo se abría solo, y solo si faltaba
+    algo imprescindible: en una máquina donde todo funciona no había forma de
+    verlo. Ahora hay un engranaje en la cabecera, al lado del aviso del motor.
+11. **Y por fin se pudo comprobar algo de verdad**, porque el usuario tenía
+    ComfyUI encendido: el auditor consultó al motor vivo y el pack de nodos pasó
+    de «no se pudo comprobar» a «instalada». Los dos tests de integración
+    corrieron por primera vez en la sesión: **210 pruebas, cero saltadas**.
+12. **Eso destapó un defecto de esta misma sesión, ya corregido.** La función que
+    pregunta al motor devuelve «no lo sé» cuando no puede preguntar, y el código
+    lo estaba leyendo como «no está» — justo la mentira contra la que se había
+    inventado el tercer estado. Habría mandado a reinstalar un pack correcto.
 
 **Qué se decidió y por qué**
 - **El repositorio va a ser público**, decisión del usuario tomada con el
@@ -86,15 +97,16 @@ voz — así que se limpia eso antes de subirlo.
   rechazado, así que su rechazo vuelve a valer entero.
 
 **Estado al cerrar:** **PUBLICADO** en `github.com/techCRTIC/TTSStudio`,
-público, rama `main`, **67 commits**, árbol limpio, licencia MIT reconocida.
-Verde: tipos · lint · build · **210 pruebas** de la app (0 fallos, 2 saltadas
-porque el motor está apagado) · 32 de Python · los cuatro verificadores de
-costura · el detector de diseño sin hallazgos.
+público, rama `main`, árbol limpio, licencia MIT reconocida. Verde: tipos · lint
+· build · **210 pruebas de la app, CERO saltadas** (con ComfyUI encendido) · 32
+de Python · los cuatro verificadores de costura · el detector de diseño sin
+hallazgos.
 
-⚠️ **Lo que NO se ha visto funcionar:** la pantalla del portal **no se ha
-abierto en un navegador ni una vez**, y **ninguna descarga se ha ejercitado**.
-Compilar y pasar pruebas no es lo mismo que funcionar. Tampoco se ha escuchado
-todavía la pieza larga unida, que sigue pendiente desde la sesión 5.
+⚠️ **Lo que sigue sin verse funcionar:** la pantalla del portal **no se ha
+abierto en un navegador**, y **ninguna descarga se ha ejercitado**. El auditor
+sí quedó comprobado contra el motor vivo, que es la mitad de abajo; la mitad de
+arriba —lo que se ve y lo que se pulsa— no. Tampoco se ha escuchado la pieza
+larga unida, pendiente desde la sesión 5.
 
 **Siguiente paso concreto:** levantar la app con ComfyUI **apagado** y mirar si
 el portal se abre solo y dice la verdad; después encenderlo, pulsar «Instalar»
