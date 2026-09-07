@@ -12,8 +12,8 @@ atrás dos sesiones seguidas: por eso ahora no lleva número.)
 
 ## 🔧 Sesión 7 (2026-09-07) — rumbo a GitHub
 
-**Status:** rama `main`, **61 commits**, **sin subir — no hay remoto
-configurado**. `README.md` reescrito y **sin commitear**.
+**Status:** ✅ **PUBLICADO** — https://github.com/techCRTIC/TTSStudio
+Público, rama `main`, **67 commits**, árbol limpio, licencia **MIT**.
 **Last update:** 2026-09-07 (sesión 7)
 
 **Verificado esta sesión, ejecutándolo:** 197 pruebas de la app (195 pasan, **2
@@ -103,33 +103,25 @@ preparación del repo · (3) push. El repositorio será **público**.
 | `e401d30` | `comfy-local` entera: auditoría, instalador, 8 grafos, referencias |
 | `7c63b7f` | La bitácora y el estado de la sesión 6 |
 
-### 🚫 EL PUSH ESTÁ BLOQUEADO, y por qué
-`security-reviewer` dio **BLOCK para público**, y se verificó a mano:
+### ✅ Publicado, y qué hubo que limpiar antes
 
-1. **El nombre y apellido de una persona real se usa como identificador en 50
-   sitios de 21 archivos.** No solo en documentación: también en
-   `web/src/lib/voices.ts`, `web/src/lib/tts.ts`, `web/src/components/VoiceLibrary.tsx`,
-   las rutas de `api/voices/`, `execution/check_voice_sidecar.py`,
-   `execution/migrate_voice_provenance.py` y varios tests.
-   → Se arregla con un commit nuevo.
-2. **Está en TRES mensajes de commit:** `0486661`, `a56b323`, `56226da`. El
-   último lo describe explícitamente como *«the speaker's own name»*.
-   → **Requiere reescribir la historia** (`git filter-repo --message-callback`).
-   Un commit nuevo NO lo borra.
-3. **`ADR-003` (líneas 108-109) y `ADR-005` (44, 73, 98, 121) publican la
-   procedencia del audio**: nombres de archivo, duraciones y el pasaje exacto de
-   la entrevista. Publicar eso divulga que existe un clon de voz de una persona
-   identificable. El consentimiento **no consta en el repositorio**, pese a que
-   el propio ADR-005 dice que ahí es donde vive.
+El repositorio **nunca se había subido**: no existía. Antes de crearlo se revisó
+qué se iba a publicar, y apareció el nombre de una persona real junto con la
+procedencia de su voz clonada.
 
-**Descartado comprobándolo** (no son problema): **cero** archivos de audio en
-toda la historia — nunca se commiteó un `.wav`/`.mp3`, así que no hay dato
-biométrico real; **cero** claves o contraseñas en los 61 commits; las 16 rutas
-absolutas solo revelan el usuario `tech`.
+**Hecho:** 86 apariciones en 26 archivos sustituidas por **Martín Vega**, y los
+**tres mensajes de commit** (`0486661`, `a56b323`, `56226da`) reescritos con
+`git filter-branch`. Seguro porque nadie tenía esos identificadores. Se
+comprobó que el contenido quedó **byte a byte idéntico**: solo cambiaron los
+mensajes.
 
-⚠️ **El README nuevo está limpio, pero enlaza a `ADR-005`**, que tiene el nombre
-cuatro veces — y lo enlaza desde la sección sobre consentimiento. Limpiar el
-README no basta: hay que limpiar lo que apunta.
+⚠️ **El respaldo `respaldo-antes-de-limpiar-historia` SIGUE EN LOCAL y contiene
+la historia vieja con el nombre. NO SUBIRLO.** Se puede borrar cuando estés
+tranquilo con el resultado: `git branch -D respaldo-antes-de-limpiar-historia`.
+
+**Licencia MIT.** Primero se escribió con una nota explicativa al final y
+GitHub la leyó como «Other» — la nota derrotaba a lo que explicaba. Ahora el
+`LICENSE` es MIT puro y las advertencias viven en el README.
 
 ### 📄 README reescrito (202 líneas)
 Se corrigió lo que estaba desfasado desde la sesión 1: decía «7 tests» (son 197

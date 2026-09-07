@@ -32,77 +32,13 @@ voz — así que se limpia eso antes de subirlo.
 6. **Se limpió el nombre de la persona real del repositorio**: 86 apariciones
    en 26 archivos, sustituidas por una persona inventada. Ninguna era código
    de verdad — todas eran comentarios, textos de ejemplo y datos de prueba.
-7. **Falta un permiso para terminar.** El nombre sigue en tres mensajes de
-   commit antiguos, y borrarlo exige reescribir la historia. El sistema pidió
-   permiso explícito para eso y no se forzó.
-
-**Qué se hizo**
-- **Se commiteó todo lo que estaba suelto.** Las dos habilidades (`voz-local`,
-  que llevaba sesiones existiendo en disco sin estar versionada, y `comfy-local`
-  entera) más la bitácora de la sesión 6. Tres commits, agrupados por capa.
-  Árbol limpio, 61 commits en total.
-- **Se descubrió que el proyecto NUNCA se ha subido.** No hay ningún remoto
-  configurado. «Pushear» no era empujar a un repositorio existente: era crearlo.
-  Eso cambió la conversación entera, porque publicar expone los 61 commits con
-  toda su historia, no el estado de hoy.
-- **Se hizo una revisión de seguridad antes de publicar, y salió bloqueante para
-  público.** El nombre y apellido de una persona real se usa como identificador
-  en **50 sitios repartidos en 21 archivos** — y no solo en documentación:
-  también en código de producción, en tests y en dos scripts de Python. Peor:
-  está en **tres mensajes de commit**, y uno de ellos lo describe explícitamente
-  como el nombre del hablante. Un mensaje de commit no se arregla con un commit
-  nuevo; hay que reescribir la historia.
-- **Y lo que de verdad pesa no es el nombre, es lo que el nombre revela.** Los
-  ADR-003 y ADR-005 publican los archivos de audio de origen, sus duraciones y
-  el pasaje exacto de la entrevista del que se sacó la voz. Publicar eso es
-  divulgar que existe un clon de voz de una persona identificable, con su
-  procedencia — y el consentimiento no consta en ninguna parte del repositorio,
-  pese a que el propio ADR-005 dice que el campo de procedencia es «donde vive
-  el consentimiento».
-- **Lo que la revisión descartó, comprobándolo:** cero archivos de audio en toda
-  la historia (nunca se commiteó un `.wav` ni un `.mp3`, así que no hay dato
-  biométrico real, solo metadatos), cero claves o contraseñas en los 61 commits,
-  y las rutas absolutas solo revelan el nombre de usuario del computador.
-- **Se reescribió el README de arriba abajo.** El anterior describía la app de
-  la primera sesión: decía «7 tests» cuando son 197 más 32, llamaba pendiente a
-  la biblioteca de voces que está terminada desde la sesión 2, y no mencionaba
-  guiones largos, procedencia, escritura asistida ni el latido del motor.
-- **Se planificó el portal de instalación, y el plan se negó a construirse.** El
-  pipeline devolvió el encuadre, dieciséis criterios de aceptación y un
-  esqueleto de ADR — y el lead paró en seco, correctamente: dos decisiones eran
-  del usuario, no suyas, y escribir código antes de que existieran habría sido
-  actuar antes del punto de decisión.
-- **El plan destapó cuatro cosas que nadie había mirado.** Que el roadmap
-  declaraba «instaladores públicos, distribución» fuera de alcance, y lo pedido
-  apuntaba justo ahí. Que esto **enmienda el ADR-007**, que había rechazado
-  explícitamente un almacén de trabajos en el servidor. Que `runScript` tiene un
-  tope de **60 segundos**, por donde una descarga de 4 GB no cabe *(esto último
-  resultó ser inexacto — ver más abajo: el tope es solo un valor por defecto, y
-  el bloqueo real es otro)*. Y que el
-  latido gasta cupo de sus tres reintentos aunque el relanzamiento falle, así
-  que un reinicio pedido por el portal se leería como una caída.
-- **Se contestaron las dos decisiones y se enmendó el roadmap** en la misma
-  sesión, marcada en el sitio, siguiendo el precedente del ADR-007.
-- **Se escribió y aceptó el `ADR-008`** (309 líneas, doce decisiones). Y al
-  escribirlo se le pidió expresamente que contradijera el plan donde el código
-  no lo respaldara, cosa que hizo: **tres de los hechos del plan resultaron
-  inexactos**. El más importante — el problema de `runScript` **no es** su tope
-  de 60 segundos, que es solo un valor por defecto que cualquier llamador
-  sobrescribe; el bloqueo real es que **acumula toda la salida en memoria y solo
-  responde al terminar el proceso**, así que no hay manera de recibir avances.
-  La conclusión aguanta (una descarga de 4 GB no cabe por ahí), el mecanismo era
-  otro.
-- **Y apareció un riesgo peor del que se creía en el vigilante del motor:** no
-  existe ningún gancho para avisarle de un reinicio pedido por la app, así que
-  un latido que caiga en la ventana de apagado llama a `ensureComfy()` por su
-  cuenta. El daño no es gastar un reintento: son **dos relanzamientos peleándose
-  por el mismo puerto**.
-- **Se contestó una duda de licencias leyendo los archivos, no de memoria.** La
-  pregunta era si usar el CLI de Comfy obliga a publicar bajo AGPL. **No.**
-  ComfyUI y comfy-cli son **GPL-3.0**, no AGPL; la app los usa como procesos
-  separados —uno por línea de comandos, el otro por HTTP—, que es agregación y
-  no obra derivada; y las obligaciones se activan al **distribuir**, cosa que
-  hoy no ocurre porque el repositorio no los contiene.
+7. **Se reescribieron los tres mensajes de commit** que aún llevaban el nombre.
+   Seguro aquí porque el repositorio nunca se había subido: nadie tenía esos
+   identificadores. Quedó respaldo local antes de tocar nada.
+8. **Se eligió licencia MIT** — el repositorio no tenía ninguna, y sin eso
+   «público» significa que se ve pero nadie puede usarlo.
+9. **EL PROYECTO ESTÁ PUBLICADO.** `github.com/techCRTIC/TTSStudio`, público,
+   67 commits, con los 65 anteriores que llevaban meses sin respaldo alguno.
 
 **Qué se decidió y por qué**
 - **El repositorio va a ser público**, decisión del usuario tomada con el
@@ -149,20 +85,23 @@ voz — así que se limpia eso antes de subirlo.
   no necesita el almacén de trabajos en el servidor que aquel ADR había
   rechazado, así que su rechazo vuelve a valer entero.
 
-**Estado al cerrar:** rama `main`, **61 commits**, **sin subir** (no hay remoto).
-**Sin commitear:** `README.md`, el roadmap enmendado, el `ADR-008` nuevo y los
-dos documentos de sesión. La suite verificada esta sesión: **197 pruebas de la app** (195 pasan, 2
-se saltan solas porque el motor está apagado, 0 fallos), **32 de Python**, y los
-**cuatro verificadores de costura** en verde. **`ADR-008` está ACEPTADO**, así que el
-portal ya se puede construir — pero **no se escribió ni una línea de él** en
-esta sesión.
+**Estado al cerrar:** **PUBLICADO** en `github.com/techCRTIC/TTSStudio`,
+público, rama `main`, **67 commits**, árbol limpio, licencia MIT reconocida.
+Verde: tipos · lint · build · **210 pruebas** de la app (0 fallos, 2 saltadas
+porque el motor está apagado) · 32 de Python · los cuatro verificadores de
+costura · el detector de diseño sin hallazgos.
 
-**Siguiente paso concreto:** construir el portal siguiendo el `ADR-008`,
-empezando por mudar el auditor a `execution/` (D2) y extender el manifiesto
-con su verificador de costura (D3). Antes de publicar siguen pendientes la
-limpieza del nombre —21 archivos más tres mensajes de commit con
-`git filter-repo`— y **elegir una licencia: el repositorio no tiene NINGUNA**
-y va a ser público.
+⚠️ **Lo que NO se ha visto funcionar:** la pantalla del portal **no se ha
+abierto en un navegador ni una vez**, y **ninguna descarga se ha ejercitado**.
+Compilar y pasar pruebas no es lo mismo que funcionar. Tampoco se ha escuchado
+todavía la pieza larga unida, que sigue pendiente desde la sesión 5.
+
+**Siguiente paso concreto:** levantar la app con ComfyUI **apagado** y mirar si
+el portal se abre solo y dice la verdad; después encenderlo, pulsar «Instalar»
+en las voces preestablecidas (4 GB, tarda) y ver si la barra se mueve y si al
+terminar la re-auditoría lo confirma. Es lo único que separa al portal de estar
+verificado.
+
 <!-- /cierre -->
 
 **Hora:** mañana
