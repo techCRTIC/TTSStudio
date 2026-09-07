@@ -1,0 +1,32 @@
+{
+  "1": {
+    "class_type": "Qwen3Loader",
+    "inputs": {
+      "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "source": "HuggingFace",
+      "precision": "bf16",
+      "attention": "sdpa"
+    }
+  },
+  "2": {
+    "class_type": "LoadAudio",
+    "inputs": { "audio": "andres_bobe_ref.wav" }
+  },
+  "3": {
+    "class_type": "Qwen3VoiceClone",
+    "inputs": {
+      "model": ["1", 0],
+      "text": "PLACEHOLDER: texto en español que dirá la voz clonada",
+      "seed": 42,
+      "language": "Spanish",
+      "ref_audio": ["2", 0],
+      "ref_text": "PLACEHOLDER: transcripción exacta del audio de referencia (mejora mucho la calidad; obtener con Whisper si no se tiene a mano)",
+      "max_new_tokens": 4096,
+      "ref_audio_max_seconds": 30.0
+    }
+  },
+  "4": {
+    "class_type": "SaveAudio",
+    "inputs": { "audio": ["3", 0], "filename_prefix": "tts_clone" }
+  }
+}
