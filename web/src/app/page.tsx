@@ -451,6 +451,36 @@ export default function Studio() {
     }
   };
 
+  /**
+   * Llevar al archivo en el disco.
+   *
+   * El fallo esperable no es que el explorador no abra: es que el archivo ya no
+   * esté. El historial guarda el texto y un enlace, no el audio, así que vaciar
+   * la carpeta de salida de ComfyUI deja tomas en la lista sin nada detrás. Por
+   * eso el error del servidor se muestra tal cual, en el mismo sitio donde ya
+   * se muestran los de borrar.
+   */
+  const revealTake = async (take: Take) => {
+    setTakeError(null);
+    try {
+      const res = await fetch("/api/takes/reveal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: take.filename }),
+      });
+      if (!res.ok) {
+        const cuerpo = (await res.json().catch(() => null)) as { mensaje?: unknown } | null;
+        setTakeError(
+          typeof cuerpo?.mensaje === "string"
+            ? cuerpo.mensaje
+            : "No se pudo abrir la carpeta del archivo.",
+        );
+      }
+    } catch {
+      setTakeError("No se pudo abrir la carpeta del archivo.");
+    }
+  };
+
   const recall = (take: Take) => {
     setCurrent(take);
     setText(take.text);
@@ -836,6 +866,7 @@ export default function Studio() {
                       confirming={confirmingTake === t.id}
                       onRecall={() => recall(t)}
                       onToggleGood={() => toggleGood(t.id)}
+                      onReveal={() => void revealTake(t)}
                       onAskDelete={() => setConfirmingTake(t.id)}
                       onCancelDelete={() => setConfirmingTake(null)}
                       onConfirmDelete={() => void removeTake(t)}
@@ -867,6 +898,7 @@ function TakeRow({
   confirming,
   onRecall,
   onToggleGood,
+  onReveal,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -876,6 +908,7 @@ function TakeRow({
   confirming: boolean;
   onRecall: () => void;
   onToggleGood: () => void;
+  onReveal: () => void;
   onAskDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -950,6 +983,30 @@ function TakeRow({
             fill={take.good ? "currentColor" : "none"}
             fillOpacity={take.good ? 0.22 : 0}
           />
+        </svg>
+      </button>
+      {/* Llevar al archivo en el disco. Va aquí, y no en la tarjeta de arriba,
+          porque es una acción SOBRE ESTA toma — el mismo sitio donde ya viven
+          marcarla y borrarla. */}
+      <button
+        type="button"
+        onClick={onReveal}
+        aria-label="Ver el archivo en el disco"
+        title="Ver el archivo en el disco"
+        className="mt-3 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-muted opacity-0 transition-opacity duration-200 hover:text-ink focus-visible:opacity-100 group-hover:opacity-100"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M1.6 11V3.6a.8.8 0 0 1 .8-.8h2.7l1.1 1.4h5.4a.8.8 0 0 1 .8.8V11a.8.8 0 0 1-.8.8H2.4a.8.8 0 0 1-.8-.8Z" />
         </svg>
       </button>
       <button

@@ -80,7 +80,17 @@ voz — así que se limpia eso antes de subirlo.
     apareció un archivo en la raíz que hizo a Next cambiar de idea sobre dónde
     estaba el proyecto y mover el servidor de sitio. Lo cazó la comprobación de
     integridad del propio ensamblador, en vez de salir un instalador roto.
-20. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
+20. **El usuario instaló el `.exe` y confirmó que corre.**
+21. **Se añadió un botón para ir al archivo en el disco**, junto al de favorito
+    en cada toma del historial. La ruta nunca viene del navegador: llega un
+    nombre y lo resuelve el único módulo que calcula rutas legales — importa
+    más aquí que en otras rutas, porque lo que sale de ahí va a un proceso del
+    sistema operativo.
+22. **Se empezó la identidad, iterando con Ideogram sobre el ComfyUI local.**
+    Diez propuestas, ocho descartadas con su motivo. Quedan dos candidatas: un
+    logotipo con TTS, la onda de regla y STUDIO calzado debajo, y un icono de
+    un trazo que entra plano y sale en onda. **Sin cerrar.**
+23. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
     Decía que el proyecto no tiene licencia — sí la tiene, puesta horas antes.
     Las otras dos eran ciertas: que el historial se borraría solo si el `.exe`
     cambiara de puerto entre arranques, y **un fallo de esta misma sesión** en
