@@ -125,5 +125,5 @@ TTSStudio/
 - La carpeta heredada `comfy-mcp/` asume vivir dentro de un hub de
   investigaciones que aquí no existe (referencia un `investigaciones/INDEX.md`
   y un puntero raíz ausentes). Arrastra ~105 MB en su `.tmp/`, de los cuales
-  **61 MB son los audios de Andrés — material no regenerable y materia prima
+  **61 MB son los audios de Martín — material no regenerable y materia prima
   del fine-tune futuro**. Está gitignorado, así que no afecta al repo.

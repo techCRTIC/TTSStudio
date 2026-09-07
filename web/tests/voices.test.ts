@@ -30,7 +30,7 @@ describe("voiceSlug", () => {
   });
 
   test("strips accents so it round-trips with labelFor", () => {
-    assert.equal(voiceSlug("Andrés Bobe"), "andres_bobe");
+    assert.equal(voiceSlug("Martín Vega"), "martin_vega");
     assert.equal(voiceSlug("Iñaki Muñoz"), "inaki_munoz");
   });
 
@@ -67,7 +67,7 @@ describe("assertAudioFilename", () => {
 });
 
 describe("buildRegistrationWorkflow", () => {
-  const graph = buildRegistrationWorkflow("andres.wav", "Hola, soy Andrés.", "andres_bobe", 30);
+  const graph = buildRegistrationWorkflow("martin.wav", "Hola, soy Martín.", "martin_vega", 30);
 
   test("wires the chain the pack's source defines", () => {
     assert.equal(graph["2"].class_type, "LoadAudio");
@@ -80,9 +80,9 @@ describe("buildRegistrationWorkflow", () => {
   });
 
   test("passes the transcript through untouched", () => {
-    assert.equal(graph["3"].inputs.ref_text, "Hola, soy Andrés.");
-    assert.equal(graph["4"].inputs.filename, "andres_bobe");
-    assert.equal(graph["2"].inputs.audio, "andres.wav");
+    assert.equal(graph["3"].inputs.ref_text, "Hola, soy Martín.");
+    assert.equal(graph["4"].inputs.filename, "martin_vega");
+    assert.equal(graph["2"].inputs.audio, "martin.wav");
   });
 
   // THE TRIM CONTRACT (ADR-003). The transcript covers only the first N

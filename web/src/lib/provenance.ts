@@ -43,8 +43,8 @@ export type Provenance = {
    * The name AS TYPED, accents intact.
    *
    * This is not a duplicate of the filename: `voiceSlug` strips accents to
-   * build a safe path, so "Andrés Bobe" becomes `andres_bobe` and `labelFor`
-   * can only ever bring back "Andres Bobe". The accent is only recoverable if
+   * build a safe path, so "Martín Vega" becomes `martin_vega` and `labelFor`
+   * can only ever bring back "Martin Vega". The accent is only recoverable if
    * something wrote it down, and this is that something.
    */
   displayName: string;

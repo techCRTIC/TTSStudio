@@ -29,7 +29,7 @@ function nodeOfType(graph: Graph, classType: string): Node | undefined {
 
 describe("buildWorkflow — la voz decide el nodo", () => {
   test("una voz clonada va por Qwen3VoiceClone y carga su archivo de prompt", () => {
-    const graph = buildWorkflow("hola", "andres_bobe.safetensors", 42, {}, "cloned") as Graph;
+    const graph = buildWorkflow("hola", "martin_vega.safetensors", 42, {}, "cloned") as Graph;
 
     const clone = nodeOfType(graph, "Qwen3VoiceClone");
     assert.ok(clone, "falta el nodo de clonación");
@@ -37,7 +37,7 @@ describe("buildWorkflow — la voz decide el nodo", () => {
 
     const loader = nodeOfType(graph, "Qwen3LoadPrompt");
     assert.ok(loader, "una voz clonada necesita cargar su prompt");
-    assert.equal(loader.inputs.prompt_file, "andres_bobe.safetensors");
+    assert.equal(loader.inputs.prompt_file, "martin_vega.safetensors");
   });
 
   test("una voz del modelo va por Qwen3CustomVoice, con el hablante como texto", () => {
@@ -57,7 +57,7 @@ describe("buildWorkflow — la voz decide el nodo", () => {
   });
 
   test("por defecto se asume clonada — el camino que siempre ha corrido", () => {
-    const graph = buildWorkflow("hola", "andres_bobe.safetensors", 42) as Graph;
+    const graph = buildWorkflow("hola", "martin_vega.safetensors", 42) as Graph;
     assert.ok(nodeOfType(graph, "Qwen3VoiceClone"));
   });
 

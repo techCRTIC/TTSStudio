@@ -17,7 +17,7 @@ THE SEAM
     If that filter ever widens — the pack lists everything, or adds `.json`
     support, or switches to a glob — then EVERY provenance file this app has
     ever written instantly becomes a fake voice in the user's dropdown. The app
-    would offer to generate speech with `andres_bobe.json`, which is not a voice
+    would offer to generate speech with `martin_vega.json`, which is not a voice
     embedding at all.
 
     Nothing in this project would see it. The pack is a third-party dependency

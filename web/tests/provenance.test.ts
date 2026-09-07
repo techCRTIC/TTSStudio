@@ -37,10 +37,10 @@ describe("parseProvenance — salvaging what is on disk", () => {
   });
 
   test("keeps the accents the slug destroyed", () => {
-    // The whole reason displayName is stored: `andres_bobe` can never become
-    // "Andrés Bobe" again by any transformation of the filename.
-    const p = parseProvenance({ displayName: "Andrés Bobe" });
-    assert.equal(p?.displayName, "Andrés Bobe");
+    // The whole reason displayName is stored: `martin_vega` can never become
+    // "Martín Vega" again by any transformation of the filename.
+    const p = parseProvenance({ displayName: "Martín Vega" });
+    assert.equal(p?.displayName, "Martín Vega");
   });
 
   test("an unknown source degrades to pre-existing rather than being believed", () => {

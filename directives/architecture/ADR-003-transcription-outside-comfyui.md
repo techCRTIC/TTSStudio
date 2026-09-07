@@ -40,7 +40,7 @@ to the browser, where the user can **edit it before committing to the voice**.
 
 - **The transcript must be editable before it is used, and that makes it a
   separate step by nature.** ASR mis-hears proper nouns — the very first real
-  clip in this project contains four (Beto, Luciano, Mauricio, Andrés) — and
+  clip in this project contains four (Beto, Luciano, Mauricio, Martín) — and
   `ref_text` is not cosmetic: a transcript that does not match the audio
   produces a worse embedding. A node buried inside the graph computes the text
   and consumes it in the same run, with no seam to correct it at. A separate
@@ -105,11 +105,11 @@ text that produced the voice already in use.
 
 | Clip | Audio | Time | Result |
 |---|---|---|---|
-| `andres_bobe_ref_v3.wav` | 10.6 s | 16.2 s | 2 errors in 33 words |
-| `andres_bobe_min1.wav` | 60 s → trimmed to 30 s | 26.9 s | both errors gone |
+| `martin_vega_ref_v3.wav` | 10.6 s | 16.2 s | 2 errors in 33 words |
+| `martin_vega_min1.wav` | 60 s → trimmed to 30 s | 26.9 s | both errors gone |
 
-**The 10.6 s clip mis-transcribed the speaker's own name — "Andrés" became
-"Andrea" — while getting the other three proper nouns right.** That single
+**The 10.6 s clip mis-transcribed the speaker's own name — "Martín" became
+"Martina" — while getting the other three proper nouns right.** That single
 result is the empirical case for the editable-transcript step: without it, the
 voice would have been computed against a transcript naming the wrong person.
 The 30 s clip got it right, so more context helps; it does not guarantee.

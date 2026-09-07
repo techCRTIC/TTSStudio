@@ -25,7 +25,7 @@ sesión, en la instalación real de un stack completo de generación local**
 - **Qwen-Image-Edit 2511 + su LoRA Lightning** también instalados —
   necesario para el flujo de consistencia de personaje (ver abajo).
 - **Voz**: nodo `ComfyUI-Qwen3-TTS` instalado (10 sub-nodos). Clonación
-  zero-shot validada con 15s de referencia real (audio de "Andrés"),
+  zero-shot validada con 15s de referencia real (audio de "Martín"),
   veredicto del usuario: "bastante decente". Benchmark de 16 segmentos
   real-vs-clonado hecho. Ritmo/emoción no son controlables por parámetro
   nativo en modo Voice Clone (solo `CustomVoice` con voces preestablecidas

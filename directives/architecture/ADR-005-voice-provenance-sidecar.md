@@ -41,7 +41,7 @@ and it was wrong in a way worth recording rather than quietly editing out.
 project's first session, carrying almost exactly the fields this ADR designed:
 
 ```json
-{"andres_bobe": {"archivo": "andres_bobe.safetensors", "registrada": "2026-08-19",
+{"martin_vega": {"archivo": "martin_vega.safetensors", "registrada": "2026-08-19",
   "de": "entrevista '…', pasaje 5.02-15.66s", "duracion_referencia_s": 10.64,
   "notas": "…", "ref_text": "…"}}
 ```
@@ -70,7 +70,7 @@ Two further facts constrain the choice:
 1. **The reference clip is gone by design.** ADR-004's retention rule deletes it
    as soon as the embedding exists, and the UI tells the user so. Provenance
    cannot lean on the original audio being around.
-2. **The existing voice predates all of this.** `andres_bobe.safetensors` was
+2. **The existing voice predates all of this.** `martin_vega.safetensors` was
    computed outside the app. Any design that captures provenance *only at
    registration* leaves the project's only real voice permanently blank.
 
@@ -95,7 +95,7 @@ sidecar is a decoration joined to that list by id, and it is never authoritative
 
 - **Voice with no sidecar** → shown as *"sin procedencia registrada"*, which is
   the truth, and editable so it can be filled in. This is the path that gives
-  `andres_bobe` a provenance it never had.
+  `martin_vega` a provenance it never had.
 - **Sidecar with no voice** → ignored on read. It is a few hundred bytes of
   nothing, and inventing a voice out of it would be exactly the drift this rule
   exists to prevent.
@@ -118,7 +118,7 @@ Five fields, and the list is short on purpose (CLAUDE.md § 3, data minimization
 
 | Field | Why it is needed |
 |---|---|
-| `displayName` | The name **as typed**, with accents. The slug cannot round-trip: `andres_bobe` can never become "Andrés Bobe" again. |
+| `displayName` | The name **as typed**, with accents. The slug cannot round-trip: `martin_vega` can never become "Martín Vega" again. |
 | `registeredAt` | When this person's voice was turned into a clone. |
 | `source` | `upload` / `microphone` / `pre-existing` — how the audio arrived. |
 | `refSeconds` | How much audio the embedding was computed from; the honest measure of its quality. |

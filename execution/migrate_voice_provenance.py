@@ -104,7 +104,7 @@ def note_from(entry: dict) -> str:
 
 
 def label_from_slug(slug: str) -> str:
-    """Mirror of `labelFor` in web/src/lib/tts.ts: andres_bobe -> Andres Bobe."""
+    """Mirror of `labelFor` in web/src/lib/tts.ts: martin_vega -> Martin Vega."""
     words = [w for w in slug.replace("-", "_").split("_") if w]
     return " ".join(w[0].upper() + w[1:] for w in words)[:NAME_MAX]
 

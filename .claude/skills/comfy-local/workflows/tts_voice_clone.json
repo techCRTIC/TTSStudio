@@ -10,7 +10,7 @@
   },
   "2": {
     "class_type": "LoadAudio",
-    "inputs": { "audio": "andres_bobe_ref.wav" }
+    "inputs": { "audio": "martin_vega_ref.wav" }
   },
   "3": {
     "class_type": "Qwen3VoiceClone",

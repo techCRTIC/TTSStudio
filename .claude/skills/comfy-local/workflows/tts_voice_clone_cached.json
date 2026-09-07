@@ -12,7 +12,7 @@
   "2": {
     "class_type": "Qwen3LoadPrompt",
     "_meta": { "title": "Voz ya calculada — combo poblado desde models/Qwen3-TTS/prompts/" },
-    "inputs": { "prompt_file": "andres_bobe.safetensors" }
+    "inputs": { "prompt_file": "martin_vega.safetensors" }
   },
   "3": {
     "class_type": "Qwen3VoiceClone",

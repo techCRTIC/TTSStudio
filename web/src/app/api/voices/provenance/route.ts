@@ -3,7 +3,7 @@
  *
  * WHY THIS ROUTE EXISTS SEPARATELY FROM REGISTRATION
  *   Because most voices that need a record are not being registered right now.
- *   `andres_bobe.safetensors` was computed before this app existed; if
+ *   `martin_vega.safetensors` was computed before this app existed; if
  *   provenance could only be captured at registration, the project's one real
  *   voice would stay blank forever and the feature would be invisible exactly
  *   where it matters. Provenance is also the kind of thing you write down after

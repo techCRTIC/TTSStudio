@@ -20,7 +20,7 @@ Hoy está solo en Claude Code (scope user). Si se adopta como motor estándar,
 evaluar registrarlo también en Claude Desktop (y Cursor si aplica). Es una
 línea de config por cliente.
 
-## B-003 — Fine-tune real de Qwen3-TTS con el audio completo de Andrés
+## B-003 — Fine-tune real de Qwen3-TTS con el audio completo de Martín
 **Status:** idea
 Hoy solo se probó clonación **zero-shot** (3-15s de referencia, puro
 conditioning, sin ajustar pesos). El siguiente escalón real es un **fine-tune**

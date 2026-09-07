@@ -116,7 +116,7 @@ entrada máx. 2048 caracteres; para más largo se trocea y concatena.
   sintetizar. Nada corrido todavía con este nodo.
 
 ### Continuación: 5 paneles de cómic, `.tmp/` ordenado, Lightning vs calidad completa, Edit
-- Llegaron los audios de referencia (`andres bobe compacto.m4a` / `full.m4a`)
+- Llegaron los audios de referencia (`martin bobe compacto.m4a` / `full.m4a`)
   a `.tmp/` — TTS queda pendiente para retomar con ellos.
 - **5 paneles de cómic** generados (castor superhéroe radioactivo vs. árboles
   mutantes, estilo 90s) con el mismo prompt de personaje repetido en cada uno
@@ -155,7 +155,7 @@ entrada máx. 2048 caracteres; para más largo se trocea y concatena.
 - `ffmpeg` **no estaba en el PATH** pero sí instalado (viene con Shutter
   Encoder y TouchDesigner) — se usó directo desde su ruta absoluta, sin
   instalar nada nuevo.
-- Recortado clip de referencia: `andres_bobe_ref.wav` (15s, 00:02–00:17 del
+- Recortado clip de referencia: `martin_vega_ref.wav` (15s, 00:02–00:17 del
   audio "compacto" de 6:40 min, indicado por el usuario), mono 24kHz, dejado
   en `ComfyUI/input/`.
 - **Gotcha del nodo**: `ref_text` es opcional según el schema de ComfyUI pero
@@ -173,7 +173,7 @@ entrada máx. 2048 caracteres; para más largo se trocea y concatena.
   Qwen3VoiceClone(ref_audio, ref_text, language=Spanish) → SaveAudio`.
   Modelo Base descargado automáticamente por el nodo (~3-4 GB, primera vez) a
   `ComfyUI/models/Qwen3-TTS/` (no al caché estándar de HuggingFace).
-- **Resultado**: `andres_bobe_clone_test_00001.flac` (11.04s, FLAC 24kHz mono,
+- **Resultado**: `martin_vega_clone_test_00001.flac` (11.04s, FLAC 24kHz mono,
   19.1s de generación tras tener el modelo cacheado) — copiado a
   `.tmp/tts/`. Texto sintetizado: saludo de prueba mencionando que corre
   local vía Qwen3 TTS en ComfyUI.
@@ -190,7 +190,7 @@ entrada máx. 2048 caracteres; para más largo se trocea y concatena.
   - Gotcha repetido: al escribir el path a mano se me olvidó la tilde de
     "Investigación" → `FileNotFoundError` silencioso hasta revisar el log.
     Se resolvió pasando a un script `.py` en archivo en vez de `-c` inline.
-  - Audio largo (`andres_bobe_pierna`) generado con el mismo `ref_audio`/
+  - Audio largo (`martin_vega_pierna`) generado con el mismo `ref_audio`/
     `ref_text` de antes, `max_new_tokens=4096` por el texto más largo:
     21.92s, 38.1s de generación.
   - **Veredicto final del usuario: "bastante bien, para haber montado un
@@ -219,7 +219,7 @@ entrada máx. 2048 caracteres; para más largo se trocea y concatena.
     casi no cambió. La puntuación sí parece ser una palanca real para
     **dónde caen las pausas y la modulación**, no necesariamente para
     estirar la duración total — son ejes distintos. Se deja la v2
-    (`andres_bobe_perrito_v2_00001.flac`) como la versión válida del cierre.
+    (`martin_vega_perrito_v2_00001.flac`) como la versión válida del cierre.
     Post-proceso con `ffmpeg atempo` sigue disponible si se quiere ir más
     lento todavía, pero no fue necesario — el usuario decidió dejarlo así.
 
@@ -329,7 +329,7 @@ investigaciones, Capa 3 del modelo de 3 capas), no dejarlos acotados a esta
 investigación, coherente con B-001.
 - **5 plantillas** en formato API (el que consume `run_workflow`), con
   contenido placeholder/genérico en vez del específico de hoy (Bruni,
-  Andrés): `t2i_qwen_lightning.json`, `t2i_qwen_full_quality.json`,
+  Martín): `t2i_qwen_lightning.json`, `t2i_qwen_full_quality.json`,
   `edit_qwen_lightning.json` (la receta ganadora: ~28s, consistencia
   completa), `edit_qwen_full_quality.json`, `tts_voice_clone.json`.
 - **`README.md`** documentando, por plantilla: qué hace, cuándo usarla,

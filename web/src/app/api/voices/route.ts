@@ -40,8 +40,8 @@ function sampleUrlFor(filename: string): string {
  * with no sidecar is reported honestly as undocumented rather than hidden.
  *
  * The label prefers the recorded name because the slug destroys accents:
- * "Andrés Bobe" becomes `andres_bobe`, and `labelFor` can only ever bring back
- * "Andres Bobe". The sidecar is the only place the real spelling survives.
+ * "Martín Vega" becomes `martin_vega`, and `labelFor` can only ever bring back
+ * "Martin Vega". The sidecar is the only place the real spelling survives.
  */
 export async function GET() {
   try {

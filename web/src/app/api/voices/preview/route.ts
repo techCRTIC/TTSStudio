@@ -35,7 +35,7 @@ export const dynamic = "force-dynamic";
  * Resolve a requested voice against the engine's own list.
  *
  * Returns the ENGINE'S ENTRY rather than the bare id, because the label it
- * derived from the filename ("Andres Bobe") is the best name available for a
+ * derived from the filename ("Martin Vega") is the best name available for a
  * voice nobody has documented. Handing back only the id led to a real bug: the
  * preview wrote the raw slug as the display name, and since the library prefers
  * the recorded name over the derived one, PRESSING PLAY RENAMED THE VOICE —

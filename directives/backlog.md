@@ -327,7 +327,7 @@ tipo de regla es justo lo que debería quedar escrito.
 
 ## ❌ B-001 — [CERRADO] Ordenar la herencia `comfy-mcp/`
 **Status:** ❌ sin objeto
-Se proponía rescatar de `comfy-mcp/.tmp/` los 61 MB de audio de Andrés (material
+Se proponía rescatar de `comfy-mcp/.tmp/` los 61 MB de audio de Martín (material
 no regenerable, materia prima de la Fase 3) y los 9,4 MB del benchmark zero-shot,
 antes de que una purga de `.tmp/` los borrara. **El usuario lo descartó
 explícitamente el 2026-08-19** ("lo primero no importa"). Queda registrado el

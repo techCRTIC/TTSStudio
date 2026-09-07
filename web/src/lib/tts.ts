@@ -42,7 +42,7 @@ export type GenerationStatus =
   | { state: "finished" }
   | { state: "failed"; message: string };
 
-/** Turn "andres_bobe.safetensors" into "Andres Bobe". */
+/** Turn "martin_vega.safetensors" into "Martin Vega". */
 function labelFor(file: string): string {
   return file
     .replace(/\.safetensors$/i, "")
@@ -114,7 +114,7 @@ export const TOKENS_STEP = 64;
  * How many audio tokens the engine spends per second of speech. MEASURED.
  *
  * `execution/benchmark_token_rate.py`, 2026-08-21, against this machine's
- * engine and the andres_bobe voice. Four ceilings that genuinely constrained
+ * engine and the martin_vega voice. Four ceilings that genuinely constrained
  * the generation:
  *
  *     128 -> 10.16 s   192 -> 15.28 s   256 -> 20.40 s   320 -> 25.52 s

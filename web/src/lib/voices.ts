@@ -41,13 +41,13 @@ const ALLOWED_AUDIO = new Set([".wav", ".mp3", ".flac", ".ogg", ".m4a"]);
  * string and that join: the output is restricted to [a-z0-9_], which cannot
  * express a traversal at all.
  *
- * It is also the inverse of `labelFor` in ./tts, so "Andrés Bobe" round-trips
- * to "andres_bobe" and back.
+ * It is also the inverse of `labelFor` in ./tts, so "Martín Vega" round-trips
+ * to "martin_vega" and back.
  */
 export function voiceSlug(displayName: string): string {
   const slug = displayName
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // strip accents: "Andrés" -> "Andres"
+    .replace(/[̀-ͯ]/g, "") // strip accents: "Martín" -> "Martin"
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");

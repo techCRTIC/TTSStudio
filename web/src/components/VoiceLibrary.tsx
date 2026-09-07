@@ -20,8 +20,8 @@ import {
  *
  * Registration is two server steps, and they are two steps because the middle
  * of them belongs to the user: the engine needs a transcript of the reference
- * clip, an ASR draft is wrong often enough to matter (it turned "Andrés" into
- * "Andrea" on the very first real clip), and a transcript that does not match
+ * clip, an ASR draft is wrong often enough to matter (it turned "Martín" into
+ * "Martina" on the very first real clip), and a transcript that does not match
  * the audio makes a worse voice. So the draft is shown, and it is editable,
  * before anything is computed. See ADR-003.
  *
@@ -298,7 +298,7 @@ function VoiceRow({
             maxLength={NOTE_MAX}
             rows={3}
             onChange={(e) => onChangeEdit({ note: e.target.value })}
-            placeholder="Andrés, grabado el 12 de agosto con su permiso para el proyecto."
+            placeholder="Martín, grabado el 12 de agosto con su permiso para el proyecto."
             className="script-area w-full resize-none bg-transparent text-sm leading-relaxed text-ink outline-none placeholder:text-ink-muted"
           />
         </div>
@@ -676,7 +676,7 @@ export function VoiceLibrary({
 
   /**
    * Suggest a name from the file, so the common case needs no typing.
-   * "andres_bobe_ref_v3.wav" -> "Andres Bobe Ref V3" is close enough to edit.
+   * "martin_vega_ref_v3.wav" -> "Martin Vega Ref V3" is close enough to edit.
    */
   const nameFromFile = (filename: string) =>
     filename
@@ -1069,7 +1069,7 @@ function RegistrationPanel({
             onKeyDown={(e) => {
               if (e.key === "Enter" && canCreate) onCreate();
             }}
-            placeholder="Andrés Bobe"
+            placeholder="Martín Vega"
             className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
           />
         </div>
@@ -1089,7 +1089,7 @@ function RegistrationPanel({
             maxLength={NOTE_MAX}
             onChange={(e) => onChangeStage({ ...stage, note: e.target.value })}
             rows={2}
-            placeholder="Andrés, grabado con su permiso para este proyecto."
+            placeholder="Martín, grabado con su permiso para este proyecto."
             className="script-area w-full resize-none bg-transparent text-sm leading-relaxed text-ink outline-none placeholder:text-ink-muted"
           />
         </div>

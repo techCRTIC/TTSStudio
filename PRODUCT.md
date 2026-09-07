@@ -117,7 +117,7 @@ match that.
 
 ## Evidence on Hand
 
-- **Real reference audio of a real, identifiable person** ("Andrés"): ~37 min
+- **Real reference audio of a real, identifiable person** ("Martín"): ~37 min
   full and a compact cut, at `comfy-mcp/.tmp/audio/`. Not regenerable.
 - **A 16-segment real-vs-cloned benchmark** at `comfy-mcp/.tmp/tts/benchmark/`,
   with its manifest. This is the existing quality baseline; any future claim of

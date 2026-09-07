@@ -12,9 +12,9 @@ para lo que autorizó).
 
 Uso:
     python tts_voces.py listar
-    python tts_voces.py registrar andres_bobe --de "entrevista 2019" \\
+    python tts_voces.py registrar martin_vega --de "entrevista 2019" \\
         --ref-texto-archivo ref.txt --consentimiento "autorizó uso interno"
-    python tts_voces.py ver andres_bobe
+    python tts_voces.py ver martin_vega
 """
 from __future__ import annotations
 
