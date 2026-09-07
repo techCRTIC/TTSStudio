@@ -12,7 +12,7 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 ---
 
 **Status:** ✅ **PUBLICADO** — https://github.com/techCRTIC/TTSStudio
-Público · rama `main` · **73 commits** · árbol limpio · licencia **MIT**.
+Público · rama `main` · **75 commits** · árbol limpio · licencia **MIT**.
 **Last update:** 2026-09-07 (sesión 7)
 
 **Verificado ejecutándolo esta sesión:** tipos · lint · build · **210 pruebas de
@@ -190,45 +190,64 @@ incremental. Por eso la ruta de instalación hace `spawn` por su cuenta.
 
 ---
 
-## 💿 El `.exe` — decidido, sin empezar
+## 💿 El `.exe` — decidido en `ADR-009`, sin una línea escrita
 
 **Electron**, y el `.exe` lleva **solo la app**: ComfyUI, Python y los modelos
-los instala el portal en el primer arranque. Objetivo del usuario: llegar a un
-usuario base y **publicarlo como release en GitHub**. Es **B-005**, y toca
-B-017. `ADR-009` se estaba escribiendo al cerrar la sesión.
+los instala el portal en el primer arranque. Release **a mano** en GitHub, **sin
+firmar** (se dice en las notas y se publica el SHA-256; **nunca** pedirle a
+nadie que desactive SmartScreen) y **sin actualización automática**. Es
+**B-005**, y toca B-017.
 
-**Hechos verificados en esta máquina, no los redescubras:**
-- **Rust y cargo NO están instalados.** Tauri los exige, más MSVC: >1 GB de
-  prerrequisitos.
+🚧 **HUECO BLOQUEANTE ANTES DE EMPAQUETAR (`ADR-009` D6).** `pythonPath()`
+(`web/src/lib/python.ts`) **exige** un `.venv` en la raíz del proyecto, y un
+usuario que instale el `.exe` no lo tendrá. Solo **dos** scripts necesitan de
+verdad ese entorno (`tts_unir_tramos`, `transcribe_audio`); **el resto es
+stdlib pura** y podría correr con cualquier Python. Eso hay que resolverlo
+antes, no durante.
+
+**Hechos verificados en esta máquina — no los redescubras:**
+- **Rust y cargo NO están instalados.** Tauri los exige, más MSVC: >1 GB.
 - **Las 16 rutas de `web/src/app/api/` no pueden volverse estáticas.** Lanzan
-  Python, leen disco, y quitan la cabecera `Origin` que exige el ADR-001. Por
-  tanto **el paquete lleva un servidor Node dentro, con cualquier empaquetador**.
+  Python, leen disco, y quitan la cabecera `Origin` del ADR-001. Por tanto **el
+  paquete lleva un servidor Node dentro, con cualquier empaquetador**.
 - `web/next.config.ts` está vacío: **falta `output: "standalone"`**.
+- **El historial y los favoritos viven en `localStorage`** (`history.ts:89,117`,
+  `favorites.ts:46`), y Chromium lo particiona **por origen, puerto incluido**.
+  Un puerto libre distinto en cada arranque **borraría el historial en
+  silencio**. Por eso el ADR fija un puerto pegajoso, elegido una vez.
 
-⚠️ **Se eligió Tauri primero y se cambió a Electron el mismo día**, porque la
-estimación de tamaño con la que se decidió (10-20 MB) **era errónea**: valía
-para un frontend estático, y este no puede serlo. Teniendo que empaquetar Node
-igual, la ventaja de Tauri casi desaparecía. **Ningún tamaño está medido**
-(~90-150 MB Tauri vs ~150 Electron son estimaciones).
+⚠️ **Se eligió Tauri y se cambió a Electron el mismo día**, porque la
+estimación con la que se decidió (10-20 MB) **era errónea**: valía para un
+frontend estático. **Ningún tamaño está medido.**
 
 📌 **La línea de licencias que no hay que cruzar sin darse cuenta:** hoy la app
-**no distribuye** ComfyUI ni comfy-cli (GPL-3.0), solo los invoca. Un `.exe` que
-lleve **solo la app** mantiene eso. El día que empaquete ComfyUI dentro, pasa a
-distribuir GPL con la obligación de entregar el código correspondiente.
+**no distribuye** ComfyUI ni comfy-cli (GPL-3.0), solo los invoca. Un `.exe` con
+**solo la app** mantiene eso. Empaquetar ComfyUI dentro pasa a distribuir GPL,
+con obligación de entregar el código correspondiente — y exige su propio ADR.
+
+📌 **Límite honesto que el ADR deja escrito:** este `.exe` llega a **quien
+acepte instalar ComfyUI guiado a mano**, no a un clic. No es «usuario base»
+todavía.
+
+⚠️ **Un hallazgo del ADR era FALSO y se corrigió en el propio ADR:** decía que
+no hay `LICENSE` en la raíz. Sí lo hay (MIT, `391aae8`). Verificar antes de
+creer, también a los subagentes.
 
 ## Siguiente paso
 
 1. **Mirar las tres cosas de arriba que nadie ha visto funcionar.** Es lo único
-   que las convierte en reales.
-2. **Documentación pendiente de una pasada:** mover **B-003, B-006 y B-012** a
+   que las convierte en reales. **Empezar por pulsar el engranaje**: en esta
+   máquina el panel no se abre solo porque no falta nada bloqueante.
+2. **Cerrar el hueco de Python del `ADR-009` D6** antes de tocar Electron.
+3. **Documentación pendiente de una pasada:** mover **B-003, B-006 y B-012** a
    `## Cerradas` marcadas `[CERRADO]` conservando su número; anotar en **B-017**
    que «el portal sea dueño de ComfyUI» quedó **diferido a un ADR futuro**;
    nombrar la fase del roadmap a la que pertenece el portal; y actualizar
    `project-overview.md`, que **sigue describiendo la sesión 4**.
-3. **Anotar en el backlog** que `tts_normalizar_texto.py` y
+4. **Anotar en el backlog** que `tts_normalizar_texto.py` y
    `tts_revisar_texto.py` existen duplicados y **divergidos** (~500 líneas) entre
    `execution/` y `.claude/skills/voz-local/scripts/`.
-4. **Borrar la rama de respaldo** cuando haya confianza.
+5. **Borrar la rama de respaldo** cuando haya confianza.
 
 ## Decisiones, con dónde viven
 
@@ -241,3 +260,5 @@ distribuir GPL con la obligación de entregar el código correspondiente.
 | Hasta dónde llega la app dentro de su propio entorno | `ADR-008` |
 | Preparar el entorno **no** es distribuir; el `.exe` sigue fuera | `roadmap.md` + `ADR-008` D0 |
 | MIT, y qué **no** cubre (modelos, ComfyUI, comfy-cli) | `LICENSE` + `README.md` |
+| Electron, `.exe` con solo la app, release a mano y sin firmar | `ADR-009` |
+| El `.exe` entra en alcance; redistribuir software ajeno no | `roadmap.md` + `ADR-009` D0 |

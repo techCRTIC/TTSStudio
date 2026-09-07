@@ -58,6 +58,19 @@ voz — así que se limpia eso antes de subirlo.
     velo que oscurece y desenfoca, botón de cerrar siempre visible, entrada y
     salida animadas —más rápida al salir, porque el usuario ya decidió—, foco
     atrapado que vuelve al engranaje, Escape, y el fondo que deja de moverse.
+15. **Se decidió el `.exe`: Electron, y llevará solo la app.** ComfyUI, Python y
+    los modelos los instala el portal en el primer arranque. Se publicará como
+    release en GitHub. Está escrito en `ADR-009`.
+16. **Se eligió Tauri primero y se cambió el mismo día**, porque el tamaño con
+    el que se decidió —10-20 MB— **era un número mío equivocado**: valía para
+    una app sin servidor, y esta no puede serlo. Teniendo que empaquetar Node
+    igual, la ventaja de Tauri desaparecía y solo quedaba su coste.
+17. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
+    Decía que el proyecto no tiene licencia — sí la tiene, puesta horas antes.
+    Las otras dos eran ciertas: que el historial se borraría solo si el `.exe`
+    cambiara de puerto entre arranques, y **un fallo de esta misma sesión** en
+    el botón de instalar, que en una máquina sin Python devolvía un error pelado
+    en vez de explicarse. Corregido.
 
 **Qué se decidió y por qué**
 - **El repositorio va a ser público**, decisión del usuario tomada con el
@@ -105,22 +118,21 @@ voz — así que se limpia eso antes de subirlo.
   rechazado, así que su rechazo vuelve a valer entero.
 
 **Estado al cerrar:** **PUBLICADO** en `github.com/techCRTIC/TTSStudio`,
-público, rama `main`, árbol limpio, licencia MIT reconocida. Verde: tipos · lint
-· build · **210 pruebas de la app, CERO saltadas** (con ComfyUI encendido) · 32
-de Python · los cuatro verificadores de costura · el detector de diseño sin
-hallazgos.
+público, rama `main`, árbol limpio, licencia MIT. Verde: tipos · lint · build ·
+**210 pruebas de la app, CERO saltadas** (con ComfyUI encendido) · 32 de Python
+· los cuatro verificadores de costura · el detector de diseño sin hallazgos
+propios.
 
 ⚠️ **Lo que sigue sin verse funcionar:** la pantalla del portal **no se ha
-abierto en un navegador**, y **ninguna descarga se ha ejercitado**. El auditor
-sí quedó comprobado contra el motor vivo, que es la mitad de abajo; la mitad de
-arriba —lo que se ve y lo que se pulsa— no. Tampoco se ha escuchado la pieza
+abierto en un navegador**, y **ninguna descarga se ha ejercitado**. Del `.exe`
+no hay ni una línea: está decidido, no empezado. Y sigue sin escucharse la pieza
 larga unida, pendiente desde la sesión 5.
 
-**Siguiente paso concreto:** levantar la app con ComfyUI **apagado** y mirar si
-el portal se abre solo y dice la verdad; después encenderlo, pulsar «Instalar»
-en las voces preestablecidas (4 GB, tarda) y ver si la barra se mueve y si al
-terminar la re-auditoría lo confirma. Es lo único que separa al portal de estar
-verificado.
+**Siguiente paso concreto:** abrir la app y **pulsar el engranaje** — nadie ha
+visto el panel todavía, y es lo único que separa «construido» de «funciona».
+Después, para empezar el `.exe`, hay un hueco marcado como bloqueante en el
+`ADR-009` D6: la app exige hoy un entorno de Python que un usuario recién
+instalado no tendrá.
 
 <!-- /cierre -->
 
