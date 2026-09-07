@@ -1,0 +1,56 @@
+{
+  "1": {
+    "class_type": "Qwen3Loader",
+    "_meta": {
+      "title": "Modelo Base"
+    },
+    "inputs": {
+      "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "source": "HuggingFace",
+      "precision": "bf16",
+      "attention": "sdpa"
+    }
+  },
+  "2": {
+    "class_type": "Qwen3LoadPrompt",
+    "_meta": {
+      "title": "Voz ya calculada — combo poblado desde models/Qwen3-TTS/prompts/"
+    },
+    "inputs": {
+      "prompt_file": "REEMPLAZAR_voz.safetensors"
+    }
+  },
+  "3": {
+    "class_type": "Qwen3VoiceClone",
+    "_meta": {
+      "title": "Con `prompt` NO se pasan ref_audio ni ref_text"
+    },
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "prompt": [
+        "2",
+        0
+      ],
+      "text": "PLACEHOLDER: el texto a decir. Escríbelo con puntuación prosódica — elipsis, frases cortas, preguntas. Esa es la palanca principal de calidad.",
+      "seed": 42,
+      "language": "Spanish",
+      "max_new_tokens": 4096
+    }
+  },
+  "4": {
+    "class_type": "SaveAudio",
+    "_meta": {
+      "title": "Salida"
+    },
+    "inputs": {
+      "audio": [
+        "3",
+        0
+      ],
+      "filename_prefix": "tts_clone_cached"
+    }
+  }
+}

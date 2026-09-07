@@ -1,0 +1,54 @@
+{
+  "1": {
+    "class_type": "Qwen3Loader",
+    "_meta": {
+      "title": "Modelo Base (el de clonación)"
+    },
+    "inputs": {
+      "repo_id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "source": "HuggingFace",
+      "precision": "bf16",
+      "attention": "sdpa"
+    }
+  },
+  "2": {
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "Referencia: debe existir en ComfyUI/input/, 10-15s limpios"
+    },
+    "inputs": {
+      "audio": "REEMPLAZAR_referencia.wav"
+    }
+  },
+  "3": {
+    "class_type": "Qwen3PromptMaker",
+    "_meta": {
+      "title": "Calcula el embedding de voz UNA vez"
+    },
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "ref_audio": [
+        "2",
+        0
+      ],
+      "ref_text": "PLACEHOLDER: transcripción exacta del audio de referencia (obligatoria en la práctica; sacarla con Whisper si no se tiene)",
+      "ref_audio_max_seconds": 30.0
+    }
+  },
+  "4": {
+    "class_type": "Qwen3SavePrompt",
+    "_meta": {
+      "title": "Lo guarda en models/Qwen3-TTS/prompts/<filename>.safetensors"
+    },
+    "inputs": {
+      "prompt": [
+        "3",
+        0
+      ],
+      "filename": "PLACEHOLDER_nombre_de_la_voz"
+    }
+  }
+}
