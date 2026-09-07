@@ -12,13 +12,13 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 ---
 
 **Status:** ✅ **PUBLICADO** — https://github.com/techCRTIC/TTSStudio
-Público · rama `main` · **68 commits** · árbol limpio · licencia **MIT**.
+Público · rama `main` · **71 commits** · árbol limpio · licencia **MIT**.
 **Last update:** 2026-09-07 (sesión 7)
 
 **Verificado ejecutándolo esta sesión:** tipos · lint · build · **210 pruebas de
-la app** (208 pasan, **2 se saltan solas** porque ComfyUI está apagado, 0
-fallos) · **32 de Python** · los **cuatro verificadores de costura** · el
-detector de diseño de `impeccable` sin hallazgos.
+la app, CERO saltadas** (con ComfyUI encendido corren también las dos de
+integración; apagado se saltan solas y salen 208) · **32 de Python** · los
+**cuatro verificadores de costura** · el detector de diseño sin hallazgos.
 
 ---
 
@@ -109,7 +109,7 @@ corrigió durante la construcción.
 | `web/src/components/SetupPortal.tsx` | La pantalla. |
 | `web/src/components/SetupGate.tsx` | **El engranaje de la cabecera** + decide si el panel se abre solo. Montado en la cabecera de `page.tsx`, al lado de `EngineHealth`. |
 
-**Cuatro reglas que no son cosméticas:**
+**Cinco reglas que no son cosméticas:**
 
 1. **No se cree al instalador.** Una dependencia se marca resuelta **solo cuando
    una re-auditoría la observa**. Un instalador puede salir 0 sin instalar nada.
