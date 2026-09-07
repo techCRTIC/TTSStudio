@@ -47,9 +47,30 @@ export async function POST(request: Request) {
     return Response.json({ error: "id_no_instalable" }, { status: 400 });
   }
 
+  // ADR-008 D8, y aqui faltaba: la pantalla que arregla dependencias no puede
+  // necesitar una. `pythonPath` LANZA si no encuentra el entorno del proyecto,
+  // y esa llamada estaba fuera de todo resguardo — en una maquina sin `.venv`,
+  // que es justo el usuario nuevo al que sirve este portal, el boton devolvia
+  // un 500 sin explicar nada. La ruta de auditoria si se protegia; esta no.
   const root = projectRoot();
+  let interprete: string;
+  try {
+    interprete = pythonPath(root);
+  } catch (error) {
+    return Response.json(
+      {
+        error: "sin_python",
+        mensaje:
+          error instanceof Error
+            ? error.message
+            : "No se encontro el entorno de Python del proyecto.",
+      },
+      { status: 503 },
+    );
+  }
+
   const hijo = spawn(
-    pythonPath(root),
+    interprete,
     ["execution/instalar_dependencia.py", "--requisito", id],
     { cwd: root, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
   );

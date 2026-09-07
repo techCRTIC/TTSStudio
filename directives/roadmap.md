@@ -24,11 +24,20 @@
 - **Preparación del entorno en la máquina que ya tiene el repositorio**: auditar
   qué dependencias faltan, descargarlas, e instalar lo que se pueda automatizar
   con seguridad. *(Añadido el 2026-09-07 — ver `ADR-008` D0.)*
+- **Un `.exe` de Windows con la app**, publicado como release en GitHub. Lo que
+  va debajo —ComfyUI, Python, modelos— lo instala el portal en el primer
+  arranque, no el instalador. *(Añadido el 2026-09-07 — ver `ADR-009` D0.)*
 
 **Fuera de alcance**
 - Multiusuario, autenticación, cuentas, permisos.
-- **Instaladores públicos, despliegue a terceros y distribución.** El `.exe`
-  empaquetado sigue fuera (`B-017`).
+- **Despliegue a terceros y redistribución de software ajeno.** *(Enmendado por
+  segunda vez el 2026-09-07, y hay que decirlo así: la enmienda de esta misma
+  mañana dejaba el `.exe` explícitamente FUERA, y esa parte se revierte. Ver
+  `ADR-009` D0.)* **Lo que ENTRA:** un `.exe` de Windows que lleva **solo la
+  app**, publicado como release en GitHub. **Lo que SIGUE FUERA:** empaquetar
+  ComfyUI, Python o los modelos dentro del instalador —eso sería redistribuir
+  software GPL de terceros, con las obligaciones que trae—, macOS y Linux,
+  actualización automática, y firmar el ejecutable.
   *(Enmendado el 2026-09-07: esta línea decía «Despliegue a terceros,
   instaladores públicos, distribución» y fundía dos cosas distintas. Preparar el
   entorno en una máquina que **ya clonó el repositorio** no es distribuir, y

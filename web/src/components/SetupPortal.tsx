@@ -377,7 +377,17 @@ export default function SetupPortal({
         });
 
         if (!respuesta.ok || !respuesta.body) {
-          throw new Error("El instalador no arrancó");
+          // El servidor sabe POR QUÉ no pudo, y a veces es algo que el usuario
+          // puede resolver. Repetir aquí un «no arrancó» genérico tiraría esa
+          // explicación justo delante de quien la necesita.
+          const cuerpo = (await respuesta.json().catch(() => null)) as {
+            mensaje?: unknown;
+          } | null;
+          throw new Error(
+            typeof cuerpo?.mensaje === "string" && cuerpo.mensaje.length > 0
+              ? cuerpo.mensaje
+              : "El instalador no arrancó",
+          );
         }
 
         // NDJSON: se lee por líneas, y la última línea parcial se guarda para
