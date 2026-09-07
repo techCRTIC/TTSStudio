@@ -37,8 +37,10 @@ Qué es y para quién → [`PRODUCT.md`](PRODUCT.md) · a dónde va →
   cambió. Lo determinista lo hacen scripts de Python; el modelo local solo hace
   lo que es criterio ([ADR-006](directives/architecture/ADR-006-local-language-model-for-text.md)).
 - **Historial persistente** de todas las generaciones.
+- **Portal de configuración.** Al arrancar comprueba qué falta y, si falta algo
+  que impide generar, lo explica en una pantalla y lo instala.
 
-**Salud:** 197 tests de la app (2 se saltan solos si ComfyUI está apagado), 32
+**Salud:** 210 tests de la app (2 se saltan solos si ComfyUI está apagado), 32
 de Python, y cuatro verificadores de costura (`execution/check_*.py`) que
 comprueban los contratos que ningún analizador ve enteros.
 
@@ -46,9 +48,16 @@ comprueban los contratos que ningún analizador ve enteros.
 
 ## Qué necesitas tener instalado
 
-⚠️ **La app todavía no instala nada de esto por ti.** Es el pendiente principal
-(`B-006` / `B-017` en [`directives/backlog.md`](directives/backlog.md)): hoy hay
-que dejar el stack montado a mano antes de que la app sirva de algo.
+**La app se audita sola al arrancar.** Si falta algo imprescindible abre un
+portal que lo explica y **descarga e instala lo que se puede instalar sin
+riesgo**: los modelos, las dependencias del pack de nodos (con el intérprete
+propio de ComfyUI, que es el paso que siempre falla a mano) y el modelo de
+ollama. De **ComfyUI y comfy-cli solo te guía** — la app no se hace dueña de un
+proyecto ajeno que no versiona. Ver
+[ADR-008](directives/architecture/ADR-008-setup-portal.md).
+
+Una dependencia se marca resuelta **solo cuando una auditoría nueva la ve**,
+nunca porque el instalador dijera que fue bien.
 
 | | |
 |---|---|
@@ -95,7 +104,7 @@ en orden:
 
 ```bash
 npm run dev      # desarrollo con recarga en caliente (también comprueba ComfyUI)
-npm test         # 197 tests; 2 se saltan solos si el motor está apagado
+npm test         # 210 tests; 2 se saltan solos si el motor está apagado
 npm run build    # solo compilar
 npm run lint
 ```
