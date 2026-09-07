@@ -240,7 +240,18 @@ Python y modelos los instala el portal. Decidido en `ADR-009`.
   raíz está **fijada** en `next.config.ts`, y además el ensamblador **busca**
   `server.js` en vez de suponer. Lo cazó su propia comprobación de integridad.
 
-### ✅ El instalador EXISTE
+### ✅ PUBLICADO COMO RELEASE — y el usuario confirmó que corre
+
+**https://github.com/techCRTIC/TTSStudio/releases/tag/v0.1.0**
+Etiqueta `v0.1.0`, instalador adjunto. GitHub renombra el archivo a
+`TTS.Studio.Setup.0.1.0.exe` (puntos en vez de espacios) — **las notas citaban
+el nombre con espacios y el comando de comprobación fallaba**; corregido.
+
+**Publicar otra versión:** subir `version` en `package.json` ·
+`npm run desktop:dist` · calcular el SHA-256 · `git tag -a vX.Y.Z` ·
+`gh release create`. **A mano y sin actualización automática** (ADR-009 D9).
+
+### ✅ El instalador
 
 `dist/TTS Studio Setup 0.1.0.exe` — **115,5 MB** (23 MB son la app; el resto es
 Chromium). SHA-256:

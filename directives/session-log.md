@@ -99,7 +99,13 @@ voz — así que se limpia eso antes de subirlo.
     defecto seguía **alrededor del texto**. Los números aprobaron algo roto.
     Lo cazó mirar la imagen. También se eligió una semilla a ojo que, al
     medirla donde tocaba, era peor que otra.
-25. **Se reconstruyó el instalador con el icono y el botón dentro.**
+25. **Se reconstruyó el instalador con el icono y el botón dentro**, el usuario
+    lo instaló y confirmó que corre.
+26. **Y se publicó la primera release en GitHub**: `v0.1.0`, con el instalador
+    adjunto. Las notas dicen en voz alta lo que hay que decir — que **no es un
+    instalador de un clic** (ComfyUI se instala guiado, a mano), que **el
+    ejecutable no está firmado** y por qué, y el hash para comprobar la
+    descarga. **Sin pedirle a nadie que desactive ninguna protección.**
 23. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
     Decía que el proyecto no tiene licencia — sí la tiene, puesta horas antes.
     Las otras dos eran ciertas: que el historial se borraría solo si el `.exe`
@@ -152,22 +158,18 @@ voz — así que se limpia eso antes de subirlo.
   no necesita el almacén de trabajos en el servidor que aquel ADR había
   rechazado, así que su rechazo vuelve a valer entero.
 
-**Estado al cerrar:** **PUBLICADO** en `github.com/techCRTIC/TTSStudio`,
-público, rama `main`, árbol limpio, licencia MIT. Verde: tipos · lint · build ·
-**210 pruebas de la app, CERO saltadas** (con ComfyUI encendido) · 32 de Python
-· los cuatro verificadores de costura · el detector de diseño sin hallazgos
-propios.
+**Estado al cerrar:** **PUBLICADO Y CON RELEASE.**
+`github.com/techCRTIC/TTSStudio`, público, licencia MIT, árbol limpio, etiqueta
+`v0.1.0` con el instalador adjunto. Verde: tipos · lint · build · **210 pruebas
+de la app, cero saltadas** · 32 de Python · los cuatro verificadores de costura
+· el detector de diseño sin hallazgos propios. El usuario **instaló el `.exe` y
+confirmó que corre**, y confirmó también el panel de configuración.
 
-⚠️ **Lo que sigue sin verse funcionar:** la pantalla del portal **no se ha
-abierto en un navegador**, y **ninguna descarga se ha ejercitado**. Del `.exe`
-no hay ni una línea: está decidido, no empezado. Y sigue sin escucharse la pieza
-larga unida, pendiente desde la sesión 5.
-
-**Siguiente paso concreto:** abrir la app y **pulsar el engranaje** — nadie ha
-visto el panel todavía, y es lo único que separa «construido» de «funciona».
-Después, para empezar el `.exe`, hay un hueco marcado como bloqueante en el
-`ADR-009` D6: la app exige hoy un entorno de Python que un usuario recién
-instalado no tendrá.
+**Siguiente paso concreto:** ya no queda nada a medias de esta sesión. Lo que
+sigue abierto, por orden de valor: **escuchar una pieza larga unida** y juzgar
+el volumen nivelado (pendiente desde la sesión 5, y es lo único que cierra la
+Fase 3), **ejercitar una descarga real** desde el portal, y **ejercitar el
+latido** matando ComfyUI a mano. Las tres son mirar, no programar.
 
 <!-- /cierre -->
 
