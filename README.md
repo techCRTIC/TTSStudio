@@ -195,8 +195,18 @@ determinista es Python de biblioteca estándar, con su propio arnés de `pytest`
 
 ---
 
-## Licencia y modelos
+## Licencia
 
-El código de este repositorio es de quien lo escribió; los modelos que usa no.
-**Qwen3-TTS** tiene su propia licencia, y conviene leerla antes de darle un uso
-comercial. Los modelos no viajan en el repositorio: se descargan aparte.
+El código de este repositorio es **MIT** — ver [`LICENSE`](LICENSE).
+
+**Eso cubre el código, y nada más.** Tres cosas quedan fuera y conviene saberlo:
+
+- **Los modelos.** No viajan en el repositorio, se descargan aparte, y traen sus
+  propios términos. **Qwen3-TTS** tiene los suyos; conviene leerlos antes de
+  darle un uso comercial.
+- **ComfyUI y comfy-cli son GPL-3.0**, pero su copyleft no alcanza a este
+  código: la app no los incorpora, los **invoca como programas separados** —
+  uno por HTTP, el otro como subproceso— y no los redistribuye.
+- **Eso cambiaría** el día que alguien empaquete un instalador que lleve ComfyUI
+  dentro. Ahí sí se estaría distribuyendo software GPL, con las obligaciones que
+  eso trae.

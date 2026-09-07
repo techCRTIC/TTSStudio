@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This licence covers the code in this repository. It does NOT cover the models
-the app runs on, which are downloaded separately and carry their own terms —
-Qwen3-TTS among them. Nor does it cover ComfyUI or comfy-cli, which are
-GPL-3.0 and are neither bundled nor redistributed here: the app invokes them as
-separate programs, one over HTTP and one as a subprocess.
