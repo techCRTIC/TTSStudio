@@ -25,6 +25,7 @@
     },
     "files": [
       "desktop/main.mjs",
+      "desktop/recursos/icon.ico",
       "scripts/engine.mjs",
       "package.json"
     ],
@@ -46,13 +47,17 @@
           ]
         }
       ],
-      "signAndEditExecutable": true
+      "signAndEditExecutable": true,
+      "icon": "desktop/recursos/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "desktop/recursos/icon.ico",
+      "uninstallerIcon": "desktop/recursos/icon.ico",
+      "installerHeaderIcon": "desktop/recursos/icon.ico"
     }
   },
   "devDependencies": {

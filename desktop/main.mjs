@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import electron from "electron";
 
@@ -35,9 +36,22 @@ const EMPAQUETADO = app.isPackaged;
  */
 const RAIZ = EMPAQUETADO
   ? path.join(process.resourcesPath, "app")
-  : path.resolve(path.dirname(new URL(import.meta.url).pathname.slice(1)), "..");
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const SERVIDOR = path.join(RAIZ, "server", "server.js");
+
+/**
+ * El icono de la ventana.
+ *
+ * No vive con el resto de recursos: `RAIZ` apunta a lo que se instala aparte
+ * (el servidor, execution/), mientras que el icono viaja EMPAQUETADO con el
+ * proceso principal, porque la ventana lo necesita antes de que nada de lo
+ * otro importe.
+ */
+const RAIZ_ICONO = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "recursos",
+);
 
 let ventana = null;
 let hijo = null;
@@ -157,6 +171,10 @@ function crearVentana(url) {
     // El mismo gris de la app: sin esto, el arranque enseña un rectángulo
     // blanco antes de pintar, que en una interfaz oscura se ve como un fogonazo.
     backgroundColor: "#151517",
+    // El icono de la VENTANA y de la barra de tareas mientras corre. El que
+    // pone electron-builder es el del ejecutable; este es el de la ventana, y
+    // sin él Windows enseña el de Electron por defecto.
+    icon: path.join(RAIZ_ICONO, "icon.ico"),
     show: false,
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, nodeIntegration: false },

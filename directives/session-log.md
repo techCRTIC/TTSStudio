@@ -86,10 +86,20 @@ voz — así que se limpia eso antes de subirlo.
     nombre y lo resuelve el único módulo que calcula rutas legales — importa
     más aquí que en otras rutas, porque lo que sale de ahí va a un proceso del
     sistema operativo.
-22. **Se empezó la identidad, iterando con Ideogram sobre el ComfyUI local.**
-    Diez propuestas, ocho descartadas con su motivo. Quedan dos candidatas: un
-    logotipo con TTS, la onda de regla y STUDIO calzado debajo, y un icono de
-    un trazo que entra plano y sale en onda. **Sin cerrar.**
+22. **Se hizo la identidad, iterando con Ideogram sobre el ComfyUI local.**
+    Once propuestas, nueve descartadas con su motivo anotado. La marca es un
+    trazo naranja que **entra plano y sale en onda** — lo que hace el producto,
+    dicho en una forma. El logotipo lleva TTS, ese trazo de regla, y STUDIO
+    calzado al ancho exacto.
+23. **La corrección del usuario fue la que valió:** que las dos piezas
+    compartieran **el gesto** y no solo el color. Dos piezas del mismo color son
+    parientes; dos del mismo gesto son la misma marca.
+24. **Y hubo un error de método que conviene recordar.** Al comprobar que el
+    fondo había quedado limpio se midió una franja del borde, salió bien, y el
+    defecto seguía **alrededor del texto**. Los números aprobaron algo roto.
+    Lo cazó mirar la imagen. También se eligió una semilla a ojo que, al
+    medirla donde tocaba, era peor que otra.
+25. **Se reconstruyó el instalador con el icono y el botón dentro.**
 23. **El ADR encontró tres cosas y se verificaron una por una. Una era falsa.**
     Decía que el proyecto no tiene licencia — sí la tiene, puesta horas antes.
     Las otras dos eran ciertas: que el historial se borraría solo si el `.exe`

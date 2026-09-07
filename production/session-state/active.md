@@ -257,40 +257,47 @@ aquí hay más superficie nueva de la habitual: el puerto pegajoso, el servidor
 como hijo, y el apagado por tres vías. **Instalarlo y abrirlo es la prueba que
 falta**, y conviene hacerla con `npm start` cerrado para no confundir puertos.
 
-## 🎨 Identidad — iterando, sin cerrar
+## 🎨 Identidad — ELEGIDA y cableada
 
-**Dónde está el trabajo:** `.tmp/logo/`. Cada carpeta trae `imagen.png`,
-`caption.json`, `grafo.json` y `medicion.json` — una imagen sin su prompt no
-sirve para comparar nada.
+**Los assets viven en `desktop/recursos/`** y están versionados:
+`icon.ico` (siete tamaños: 16, 24, 32, 48, 64, 128, 256) · `icon.png` (512) ·
+`logotipo.png`. El banco de iteración, con sus prompts, en `.tmp/logo/`.
 
-**Motor: Ideogram 4** vía la skill `imagen-ideogram`, sobre el ComfyUI local.
-⚠️ **Licencia NO COMERCIAL.** Se avisó al usuario y eligió Ideogram igual, más
-`limpiar_salida.py` (borra el grafo incrustado, donde viaja escrito el nombre
-del modelo). **Ojo: limpiar los metadatos quita el rastro, no la licencia.**
+**La marca:** un trazo naranja que **entra plano y sale en onda** — literalmente
+lo que hace el producto. El logotipo lleva TTS en bold, ese mismo trazo haciendo
+de **regla entre las dos palabras**, y STUDIO espaciado al ancho exacto de TTS.
 
-**Candidatas en pie:**
-- **Logotipo: `j2-semilla-7`.** TTS en bold, la onda naranja **haciendo de regla
-  entre las dos palabras** (estructura, no adorno), STUDIO espaciado al ancho
-  exacto de TTS. Es la que convence.
-- **Icono: `a2-trazo-grueso`.** Un trazo grueso que entra plano y sale en onda.
-  Se lee a 32, 48 y 64 px; a 16 conserva la asimetría.
+📌 **Las dos piezas comparten GESTO, no solo color.** Fue una corrección del
+usuario y es la que valía: dos piezas del mismo color son parientes; dos piezas
+del mismo gesto son la misma marca.
 
-**Descartadas y por qué** (para no repetirlas): trazo fino flotando (A, B —
-desaparece al reducir) · masa sólida (C — parece nivel de líquido) · naranja
-inundado (D — 60% de acento, contra la marca) · marco redondeado (E —
-redundante, el sistema ya redondea).
+**Descartadas, con su motivo, para no repetirlas:** trazo fino flotando
+(desaparece al reducir) · masa sólida (parece nivel de líquido) · naranja
+inundado (60% de acento, contra la marca) · marco redondeado (redundante, el
+sistema ya redondea) · burbuja y monograma (generados, no llegaron a gustar).
 
-⚠️ **Dos defectos sin arreglar en las candidatas:**
-1. Al logotipo le queda **una textura tenue de tablero** en el fondo. Ideogram
-   interpreta «fondo» como transparencia y pinta el damero; con la semilla 21
-   salió descarado. Se aplana con PIL, no hace falta regenerar.
-2. **Las dos ondas NO son la misma onda.** El icono hace *plano→onda*; el
-   logotipo, un rizado de cuatro crestas. Familia por color, no por gesto.
+### ⚠️ Lo que hay que saber si se vuelve a tocar
 
-**Herramientas disponibles, comprobadas:** PIL 12.3 y numpy 2.5 en el venv de
-ComfyUI (`C:/Users/tech/comfy/.venv/Scripts/python.exe`). **NO hay ImageMagick**
-— `convert` en el PATH es la utilidad de Windows que **convierte FAT a NTFS**.
-No tocarla.
+- **Ideogram pinta un TABLERO de falsa transparencia** cuando el fondo se
+  describe de forma ambigua: cree que dibuja un PNG transparente. Hay que
+  decirle explícitamente «sin transparencia, sin tablero de ajedrez, un color
+  plano de borde a borde» — y aun así **depende de la semilla** (la 108 lo pintó
+  igual). Se aplana después con PIL, midiendo.
+- **Al verificar el aplanado, MEDIR DONDE ESTÁ EL PROBLEMA.** Se midió una
+  franja del borde, salió limpia, y el damero seguía **alrededor del texto**.
+  Los números dieron el visto bueno a algo roto. Lo cazó **mirar la imagen**.
+- **Se eligió una semilla «a ojo» y estaba peor.** Medida la textura donde
+  tocaba, la 7 ganaba a la 42. Elegir mirando está bien; elegir sin medir, no.
+- **Motor: Ideogram 4, licencia NO COMERCIAL.** Avisado al usuario, que eligió
+  seguir. Se pasó `limpiar_salida.py` y se verificó que los PNG no llevan el
+  grafo incrustado (donde viajaría escrito el nombre del modelo). **Limpiar los
+  metadatos quita el rastro, no la licencia.**
+- **Es un logotipo RASTERIZADO, no vectorial.** Para una identidad lo suyo sería
+  SVG: escala sin pérdida y se edita. Ofrecido al usuario, no pedido todavía.
+- **Herramientas:** PIL 12.3 y numpy 2.5 en el venv de ComfyUI
+  (`C:/Users/tech/comfy/.venv/Scripts/python.exe`). **NO hay ImageMagick** —
+  `convert` en el PATH es la utilidad de Windows que **convierte FAT a NTFS**.
+  No tocarla.
 
 ## Siguiente paso
 
