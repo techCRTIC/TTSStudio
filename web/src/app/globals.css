@@ -548,3 +548,64 @@ body {
   transition: clip-path var(--dur-glide) var(--ease-wave);
   will-change: clip-path;
 }
+
+/* ── El diálogo modal ────────────────────────────────────────────────────────
+   Entra en 280 ms y SALE EN 180. La asimetría es deliberada: al abrir, el
+   usuario está esperando algo y el movimiento le dice de dónde viene; al
+   cerrar ya decidió, y todo lo que tarde es tiempo que le hacemos perder.
+
+   Entra desde `scale(.97)`, nunca desde `scale(0)`: nada en el mundo real
+   aparece de la nada, y una caja que crece desde un punto se lee como un truco.
+   El origen se queda en el centro porque un modal no cuelga de ningún
+   disparador — no es un popover.
+
+   `@starting-style` en vez del clásico `useEffect` que pone `montado: true`:
+   es CSS, corre fuera del hilo principal, y no mete un `setState` en un efecto.
+   Donde no esté soportado, el panel simplemente aparece. Degradación honesta.
+
+   La regla global de `prefers-reduced-motion` ya recorta esto a color y
+   opacidad, así que no hace falta repetirla aquí. */
+
+.dialog-scrim {
+  opacity: 1;
+  transition: opacity var(--dur-lift) var(--ease-reveal);
+}
+
+.dialog-panel {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity var(--dur-lift) var(--ease-reveal),
+    transform var(--dur-lift) var(--ease-reveal);
+}
+
+@starting-style {
+  .dialog-scrim {
+    opacity: 0;
+  }
+  .dialog-panel {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+}
+
+.dialog-scrim[data-state="closed"] {
+  opacity: 0;
+  transition-duration: 180ms;
+}
+
+.dialog-panel[data-state="closed"] {
+  opacity: 0;
+  transform: scale(0.97) translateY(8px);
+  transition-duration: 180ms;
+}
+
+/* El botón responde al dedo antes que a la red. 160 ms es lo que tarda un
+   pulsado en sentirse escuchado; más y parece que la interfaz duda. */
+.pressable {
+  transition: transform 160ms var(--ease-ui);
+}
+
+.pressable:active {
+  transform: scale(0.97);
+}

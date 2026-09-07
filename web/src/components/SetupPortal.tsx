@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { EstadoRequisito, InformeSetup, Requisito } from "@/lib/setup";
 
@@ -256,22 +257,103 @@ export default function SetupPortal({
   const [progresos, setProgresos] = useState<Record<string, Progreso>>({});
   const [resultados, setResultados] = useState<Record<string, Resultado>>({});
   const [comprobando, setComprobando] = useState(false);
+  /** Se queda montado mientras sale, o la salida no se vería. */
+  const [cerrando, setCerrando] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
+  const cerrar = useRef<HTMLButtonElement>(null);
 
   const ocupado = Object.keys(progresos).length > 0 || comprobando;
 
+  /**
+   * Cerrar de verdad: primero se pinta la salida, después se desmonta.
+   *
+   * SE ESPERA A QUE LA TRANSICIÓN TERMINE, NO A UN NÚMERO. La primera versión
+   * ponía aquí los mismos 180 ms que el CSS, y eso es una costura de manual:
+   * dos sitios con el mismo valor y nada que obligue a cambiarlos juntos. Al
+   * escuchar `transitionend` el JS deja de necesitar saber cuánto dura.
+   *
+   * El plazo de seguridad NO es el duplicado disfrazado: es generoso a
+   * propósito y solo existe para el caso en que ninguna transición llegue a
+   * correr —el panel desmontado antes de tiempo, una pestaña en segundo plano—
+   * porque entonces `transitionend` no dispara nunca y el diálogo se quedaría
+   * abierto para siempre.
+   */
+  const pedirCierre = useCallback(() => {
+    if (ocupado) return;
+    setCerrando(true);
+
+    const caja = panel.current;
+    let hecho = false;
+    const terminar = () => {
+      if (hecho) return;
+      hecho = true;
+      onCerrar();
+    };
+
+    if (caja !== null) {
+      caja.addEventListener(
+        "transitionend",
+        (e) => {
+          // Se transicionan dos propiedades; basta con la primera que acabe.
+          if (e.target === caja) terminar();
+        },
+        { once: false },
+      );
+    }
+    window.setTimeout(terminar, 600);
+  }, [ocupado, onCerrar]);
+
+  /* El foco entra al diálogo al abrirse, y vuelve al engranaje al cerrarse.
+     Sin lo segundo, el foco cae al principio del documento y quien navega con
+     teclado tiene que recorrer la página entera para volver donde estaba. */
   useEffect(() => {
-    panel.current?.focus();
+    const devolver = document.activeElement;
+    cerrar.current?.focus();
+    return () => {
+      if (devolver instanceof HTMLElement) devolver.focus();
+    };
   }, []);
 
+  /* El fondo no se mueve mientras esto está abierto. Sin bloquearlo, la rueda
+     del ratón sobre el velo desplaza la página de detrás, que es el detalle que
+     delata a un modal pegado con cinta. */
   useEffect(() => {
-    if (bloqueante) return;
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = antes;
+    };
+  }, []);
+
+  /* Escape cierra, y el tabulador da vueltas dentro en lugar de escaparse a la
+     app de detrás — que sigue ahí, pero para esto no existe. */
+  useEffect(() => {
     const alPulsar = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !ocupado) onCerrar();
+      if (e.key === "Escape" && !bloqueante) {
+        e.preventDefault();
+        pedirCierre();
+        return;
+      }
+      if (e.key !== "Tab" || panel.current === null) return;
+
+      const enfocables = panel.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (enfocables.length === 0) return;
+      const primero = enfocables[0];
+      const ultimo = enfocables[enfocables.length - 1];
+
+      if (e.shiftKey && document.activeElement === primero) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primero.focus();
+      }
     };
     window.addEventListener("keydown", alPulsar);
     return () => window.removeEventListener("keydown", alPulsar);
-  }, [bloqueante, ocupado, onCerrar]);
+  }, [bloqueante, pedirCierre]);
 
   const reauditar = useCallback(async () => {
     setComprobando(true);
@@ -377,6 +459,7 @@ export default function SetupPortal({
   const bloquean = informe.requisitos.filter((r) => r.bloquea);
   const opcionales = informe.requisitos.filter((r) => !r.bloquea);
   const faltanBloqueantes = bloquean.filter((r) => r.estado === "falta").length;
+  const estadoVisual = cerrando ? "closed" : "open";
 
   const titular = !disponible
     ? "No se pudo comprobar qué hay instalado"
@@ -386,93 +469,142 @@ export default function SetupPortal({
         ? "Falta una cosa para poder generar voz"
         : `Faltan ${faltanBloqueantes} cosas para poder generar voz`;
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-scrim/80 px-4 py-10"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={TITULO_ID}
-    >
+  /**
+   * Se pinta en `document.body`, no donde vive el componente.
+   *
+   * NO ES PREFERENCIA, ES LA ÚNICA FORMA. El control vive en la cabecera, que
+   * es `relative z-10` y por tanto **crea su propio contexto de apilamiento**:
+   * dentro de ella, un `z-50` solo compite contra sus hermanos, y el contenido
+   * principal —otro `z-10`, pero posterior en el DOM— seguía pintándose encima.
+   * Subir el número no habría arreglado nada. `Select.tsx` ya resolvía lo mismo
+   * así.
+   */
+  return createPortal(
+    <div className="fixed inset-0 z-[100]">
+      {/* El velo. Oscurece Y desenfoca: el desenfoque es lo que separa «hay
+          algo delante» de «hay algo encima». Se cierra al pulsarlo, salvo
+          cuando no hay nada detrás que valga la pena volver a ver. */}
       <div
-        ref={panel}
-        tabIndex={-1}
-        className="w-full max-w-[38rem] rounded-xl border border-hairline/70 bg-surface p-7 shadow-[0_24px_64px_-24px_rgb(0_0_0/0.7)] outline-none"
-      >
-        <h1 id={TITULO_ID} className="text-[19px] leading-snug text-ink">
-          {titular}
-        </h1>
+        aria-hidden="true"
+        data-state={estadoVisual}
+        onClick={bloqueante ? undefined : pedirCierre}
+        className="dialog-scrim absolute inset-0 bg-scrim/70 backdrop-blur-[6px]"
+      />
 
-        {!disponible ? (
-          <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-ink-muted">
-            La comprobación necesita Python, y no se pudo ejecutar
-            {motivo ? `: ${motivo}` : ""}. La app sigue funcionando; lo que no se
-            puede es decirte qué falta.
+      <div className="absolute inset-0 flex items-start justify-center overflow-y-auto px-4 py-10">
+        <div
+          ref={panel}
+          data-state={estadoVisual}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={TITULO_ID}
+          className="dialog-panel relative w-full max-w-[38rem] rounded-xl border border-hairline/70 bg-surface p-7 shadow-[0_24px_64px_-24px_rgb(0_0_0/0.7)]"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <h1 id={TITULO_ID} className="text-[19px] leading-snug text-ink">
+              {titular}
+            </h1>
+
+            {/* Siempre presente, incluso cuando no puede cerrar: un diálogo sin
+                salida visible se lee como una app colgada. Cuando no se puede,
+                lo dice al pulsarlo en vez de no estar. */}
+            <button
+              ref={cerrar}
+              type="button"
+              onClick={pedirCierre}
+              disabled={bloqueante || ocupado}
+              aria-label="Cerrar"
+              className="pressable -mr-1 -mt-1 shrink-0 rounded-md p-2 text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            </button>
+          </div>
+
+          {!disponible ? (
+            <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-ink-muted">
+              La comprobación necesita Python, y no se pudo ejecutar
+              {motivo ? `: ${motivo}` : ""}. La app sigue funcionando; lo que no
+              se puede es decirte qué falta.
+            </p>
+          ) : (
+            <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-ink-muted">
+              Esto corre entero en tu máquina, así que hace falta tener el motor
+              y sus modelos aquí. Lo que se pueda instalar desde aquí, se
+              instala.
+            </p>
+          )}
+
+          {/* Lo que pasa mientras se instala también se dice a quien no ve la
+              barra: es un producto de audio, pero la regla vale en las dos
+              direcciones. */}
+          <p className="sr-only" aria-live="polite">
+            {Object.entries(progresos)
+              .map(([id, p]) => `${id}: ${p.pct}%`)
+              .join(", ")}
           </p>
-        ) : (
-          <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-ink-muted">
-            Esto corre entero en tu máquina, así que hace falta tener el motor y
-            sus modelos aquí. Lo que se pueda instalar desde aquí, se instala.
-          </p>
-        )}
 
-        {/* Lo que pasa mientras se instala también se dice a quien no ve la
-            barra: es un producto de audio, pero la regla vale en las dos
-            direcciones. */}
-        <p className="sr-only" aria-live="polite">
-          {Object.entries(progresos)
-            .map(([id, p]) => `${id}: ${p.pct}%`)
-            .join(", ")}
-        </p>
+          <Grupo
+            titulo="Imprescindible"
+            nota="Sin esto la app no puede generar voz."
+            requisitos={bloquean}
+            progresos={progresos}
+            resultados={resultados}
+            ocupado={ocupado}
+            onInstalar={instalar}
+          />
 
-        <Grupo
-          titulo="Imprescindible"
-          nota="Sin esto la app no puede generar voz."
-          requisitos={bloquean}
-          progresos={progresos}
-          resultados={resultados}
-          ocupado={ocupado}
-          onInstalar={instalar}
-        />
+          <Grupo
+            titulo="Opcional"
+            nota="La app funciona sin esto; cada cosa añade una capacidad."
+            requisitos={opcionales}
+            progresos={progresos}
+            resultados={resultados}
+            ocupado={ocupado}
+            onInstalar={instalar}
+          />
 
-        <Grupo
-          titulo="Opcional"
-          nota="La app funciona sin esto; cada cosa añade una capacidad."
-          requisitos={opcionales}
-          progresos={progresos}
-          resultados={resultados}
-          ocupado={ocupado}
-          onInstalar={instalar}
-        />
-
-        <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-hairline/60 pt-5">
-          <button
-            type="button"
-            onClick={reauditar}
-            disabled={ocupado}
-            className="text-[13px] text-ink-muted transition-colors duration-200 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {comprobando ? "Comprobando…" : "Volver a comprobar"}
-          </button>
-
-          {!bloqueante && (
+          <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-hairline/60 pt-5">
             <button
               type="button"
-              onClick={onCerrar}
+              onClick={reauditar}
               disabled={ocupado}
-              className="ml-auto rounded-md border border-hairline bg-surface-raised px-4 py-2 text-[13px] text-ink transition-colors duration-200 hover:border-hairline/80 disabled:cursor-not-allowed disabled:opacity-40"
+              className="text-[13px] text-ink-muted transition-colors duration-200 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Continuar a la app
+              {comprobando ? "Comprobando…" : "Volver a comprobar"}
             </button>
+
+            {!bloqueante && (
+              <button
+                type="button"
+                onClick={pedirCierre}
+                disabled={ocupado}
+                className="pressable ml-auto rounded-md border border-hairline bg-surface-raised px-4 py-2 text-[13px] text-ink hover:border-hairline/80 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Continuar a la app
+              </button>
+            )}
+          </div>
+
+          {bloqueante && (
+            <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
+              Esta pantalla no se puede cerrar todavía: sin lo de arriba, detrás
+              no hay nada que funcione.
+            </p>
           )}
         </div>
-
-        {bloqueante && (
-          <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
-            Esta pantalla no se puede cerrar todavía: sin lo de arriba, detrás no
-            hay nada que funcione.
-          </p>
-        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
