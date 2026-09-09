@@ -38,8 +38,17 @@ app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores
    `outputPrefix`. Si mañana cambia el sitio donde se guarda, hay que tocar los
    dos lados o la pieza se separa otra vez de sus tramos.
 
-⚠️ **Sin ver todavía:** ninguna generación real ha creado esas carpetas. La
-prueba es generar algo y mirar el disco.
+⚠️ **Sin ver todavía:** ninguna generación real ha creado esas carpetas. Las
+pruebas cubren la ruta que se construye y el saneado, **no** que ComfyUI cree el
+árbol y devuelva el `subfolder` que la app espera leer de vuelta.
+
+> **La prueba, y son dos minutos:** generar cualquier cosa y mirar si aparece
+> `ttsstudio/<voz>/<fecha>/` en la carpeta de salida de ComfyUI.
+
+**`package.json` va por 0.1.3** y el instalador se estaba compilando al cerrar.
+**No se publicó en GitHub**: la `v0.1.2` sigue siendo la última publicada, y
+publicar algo sin ver funcionar el cambio que lo justifica sería repetir lo que
+ya salió mal con la `0.1.0`.
 
 ## ✅ DÓNDE ESTÁ EL PROYECTO
 
