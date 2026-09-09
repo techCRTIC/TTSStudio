@@ -446,6 +446,16 @@
         "tipo": "modelo",
         "modelo": "faster-whisper-large-v3",
         "sin_esto": "Hay que escribir la transcripcion a mano."
+      },
+      {
+        "id": "entorno-python",
+        "titulo": "Componentes para audio",
+        "para_que": "Unir los tramos de un guion largo en una sola pieza, y transcribir solo el audio al dar de alta una voz.",
+        "bloquea": false,
+        "instalable": true,
+        "tipo": "entorno",
+        "sin_esto": "Todo lo demas funciona igual: generar, la biblioteca de voces, trocear el guion y la revision del texto. Lo unico que pide esto es unir tramos largos y transcribir; la transcripcion se puede escribir a mano.",
+        "nota": "ADR-009 D6.3 lo decidio y quedo sin implementar. Lo que se veia en su lugar era «Ejecuta `uv sync` en la raiz» dentro de la app, a un usuario cualquiera."
       }
     ]
   }

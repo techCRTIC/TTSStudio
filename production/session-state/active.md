@@ -17,6 +17,48 @@ app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores
 
 ## 🔴 LO PRIMERO — dos cosas, y la segunda no es de esta app
 
+### ✅ EL `.exe` ABRE SIN COMFYUI — verificado en el binario
+El usuario instaló la 0.1.1 y la ventana abrió con el motor apagado, con el
+aviso «ComfyUI no responde» en su sitio. **El fallo que abrió la sesión 8 está
+cerrado de punta a punta.**
+
+### 🗣️ El fallo de después: la app hablaba en idioma de programador
+Al subir un audio salía, EN PANTALLA, a un usuario cualquiera:
+
+> «El entorno de Python del proyecto no existe. Ejecuta `uv sync` en la raíz.»
+
+No es que algo no funcionara: es que el mensaje estaba escrito para quien
+programa el proyecto. ¿Qué raíz? ¿Qué es `uv`?
+
+**Arreglado en tres capas, y la del medio es la que más valía:**
+
+1. **El mensaje** ahora dice qué hacer y dónde («el engranaje de arriba a la
+   derecha, en Componentes para audio»).
+2. **Había rutas que exigían el entorno SIN NECESITARLO.** Medido:
+
+   | ruta | script | ¿lo necesita? |
+   |---|---|---|
+   | `segments/split` | `tts_trocear_guion.py` | **NO** — stdlib pura |
+   | `text-quality` | `tts_revisar_texto.py` | **NO** — stdlib pura |
+   | `segments/join` y `verify` | `tts_unir_tramos.py` | sí (numpy, soundfile) |
+   | `voices/transcribe` | `transcribe_audio.py` | sí (faster-whisper, import tardío) |
+
+   Las dos primeras **ya no lo exigen**: trocear un guión largo y la revisión de
+   texto funcionan sin instalar nada.
+3. **`execution/crear_entorno.py`** — el portal lo crea y lo instala, con su
+   entrada «Componentes para audio». No asume `uv`: `python -m venv` + `pip`,
+   que existen en cualquier Python. Estaba decidido en `ADR-009` D6.3 y sin
+   implementar.
+
+⚠️ **Sin ver funcionar:** el botón «Componentes para audio» de punta a punta. Sí
+verificado: que `python -m venv` funciona en esta máquina con el Python del
+sistema (3.11.9, con su pip dentro).
+
+📌 **Al añadir `stdlibOnly` con una expresión regular se rompió
+`text-quality.ts`** (quedó una opción fuera del objeto). Lo cazaron los tipos.
+**Si vuelves a insertar opciones así, comprueba tipos antes de dar nada por
+hecho.**
+
 ### ✅ ComfyUI volvió a la vida
 Estaba roto (`ModuleNotFoundError: No module named 'sqlalchemy'` en su propio
 entorno) y **responde 200 otra vez**. Si vuelve a pasar, la orden es:

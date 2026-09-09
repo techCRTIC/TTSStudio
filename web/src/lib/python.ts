@@ -56,7 +56,12 @@ export function pythonPath(root: string): string {
   const found = candidates.find((candidate) => existsSync(candidate));
   if (!found) {
     throw new Error(
-      "El entorno de Python del proyecto no existe. Ejecuta `uv sync` en la raíz.",
+      // ESTE MENSAJE LO LEE UN USUARIO, NO UN PROGRAMADOR. Decía «ejecuta
+      // `uv sync` en la raíz», que no significa nada para quien solo quiere
+      // clonar una voz — ¿qué raíz? ¿qué es uv? Y aparecía dentro de la app,
+      // en la pantalla, como respuesta a subir un audio.
+      "Falta un componente que esta función necesita. Se instala desde el " +
+        "engranaje de arriba a la derecha, en «Componentes para audio».",
     );
   }
   return found;

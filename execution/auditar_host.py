@@ -713,6 +713,17 @@ def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict,
                 else:
                     estado, detalle = "falta", f"ollama corre, pero no tiene {pedido}"
 
+        elif req.get("tipo") == "entorno":
+            # El entorno del proyecto: dos funciones lo necesitan y el resto no.
+            # Se mira el interprete, no la carpeta: un `.venv` a medio crear
+            # tiene carpeta y no tiene python.
+            sub = "Scripts/python.exe" if os.name == "nt" else "bin/python"
+            destino = AQUI.parent / ".venv" / sub
+            estado = "instalada" if destino.exists() else "falta"
+            if estado == "falta":
+                detalle = "Sin esto no se puede transcribir ni unir guiones largos."
+                mb = 1024
+
         elif rid == "una-voz":
             voces = comfyui.get("voces_registradas")
             if voces is None:

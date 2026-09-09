@@ -132,6 +132,10 @@ export async function POST(request: Request) {
     // No arguments: the script reads the whole body from stdin. See the header.
     const { data } = await runScriptJson<unknown>("tts_trocear_guion.py", [], {
       timeoutMs: SPLIT_TIMEOUT_MS,
+      // Este script es stdlib pura, así que NO exige el entorno del proyecto
+      // (ADR-009 D6.2). Exigirlo hacía fallar el troceo de un guión largo en una
+      // instalación recién hecha, por una dependencia que este script no usa.
+      stdlibOnly: true,
       input: text,
     });
 

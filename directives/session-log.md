@@ -51,6 +51,20 @@ apareció que ComfyUI, en este computador, estaba roto por su cuenta.
   **Lo que NO cambia es la línea que importa:** ComfyUI se sigue sin empaquetar
   — se instala desde su origen y por orden explícita del usuario.
 
+8. **El `.exe` 0.1.1 se instaló y ABRIÓ SIN COMFYUI.** El fallo que abrió esta
+   sesión queda verificado en el binario final, no solo en el mecanismo.
+9. **Pero al usarlo salió otro, y de la peor clase:** al subir un audio, la app
+   respondía *«Ejecuta `uv sync` en la raíz»*. No que algo no funcione — que la
+   app le habla al usuario en el idioma de quien la programa. Ni una de esas
+   palabras significa nada para quien solo quiere clonar una voz.
+10. **Arreglado, y con un hallazgo mayor de por medio: había rutas que exigían
+    ese entorno sin necesitarlo.** Trocear un guión largo y la revisión del
+    texto son biblioteca estándar pura, y estaban bloqueadas por una dependencia
+    que no usan. **Ahora funcionan sin instalar nada.**
+11. **El entorno pasa a ser una cosa más del portal**, con su botón
+    («Componentes para audio»). Estaba decidido en `ADR-009` D6.3 y sin
+    implementar; lo que se veía en su lugar era el `uv sync`.
+
 **Estado al cerrar:** **PUBLICADO Y CORREGIDO.** `v0.1.1` es la release más
 reciente; la `v0.1.0` queda publicada pero marcada con un aviso grande de que no
 se descargue, porque quien ya la tenga merece encontrar aquí qué le pasó. Rama
@@ -65,10 +79,11 @@ arreglo, lado a lado.
 ⚠️ **Lo que sigue sin verse:** la ventana del `.exe` 0.1.1 abriéndose sin motor.
 El mecanismo está probado; el binario final no se ha instalado.
 
-**Siguiente paso concreto:** instalar la 0.1.1 con ComfyUI apagado y comprobar
-que abre y ofrece «Arrancar». Después, lo que lleva pendiente desde la sesión 5:
-**escuchar una pieza larga unida** y juzgar el volumen nivelado — lo único que
-cierra la Fase 3.
+**Siguiente paso concreto:** probar en la 0.1.2 el botón **«Componentes para
+audio»** del portal — es lo único de esta tanda que no se ha visto funcionar de
+punta a punta (sí se verificó que crear un entorno con el Python del sistema
+funciona en esta máquina). Después, publicar la 0.1.2 y volver a lo que lleva
+pendiente desde la sesión 5: **escuchar una pieza larga unida**.
 
 <!-- /cierre -->
 

@@ -113,7 +113,10 @@ export async function reviewText(text: string): Promise<Review> {
   const { data } = await runScriptJson<RawReview>(
     "tts_revisar_texto.py",
     [text, "--json"],
-    { timeoutMs: 20_000 },
+    // `tts_revisar_texto.py` es stdlib pura, así que no exige el entorno del
+    // proyecto (ADR-009 D6.2). Y esto corre mientras el usuario escribe: pedirle
+    // un entorno que no tiene apagaba la revisión entera en silencio.
+    { timeoutMs: 20_000, stdlibOnly: true },
   );
 
   return {

@@ -46,6 +46,7 @@ const ACCIONES: Record<string, { script: string; args: string[] }> = {
   },
   reescritura: { script: "instalar_dependencia.py", args: ["--requisito", "reescritura"] },
   transcripcion: { script: "instalar_dependencia.py", args: ["--requisito", "transcripcion"] },
+  "entorno-python": { script: "crear_entorno.py", args: [] },
   arrancar: { script: "arrancar_comfy.py", args: ["--arrancar"] },
   "instalar-comfyui": { script: "arrancar_comfy.py", args: ["--instalar"] },
 };
