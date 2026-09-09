@@ -15,6 +15,32 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores.
 **Last update:** 2026-09-09
 
+## 📁 Sesión 9 — las generaciones se ordenan en carpetas
+
+**Hecho y subido, SIN publicar todavía.** Las tomas van a
+`ttsstudio/<voz>/<fecha>/`; la `v0.1.2` publicada sigue guardando en la raíz.
+
+| Pieza | Qué cambió |
+|---|---|
+| `web/src/lib/tts.ts` | `outputPrefix()` nuevo, usado como `filename_prefix` del `SaveAudio` |
+| `web/src/lib/history.ts` | `TakeSegment.subfolder?` + `audioRefOf()`; `filesForTake` lo usa |
+| `web/src/lib/comfy-files.ts` | `pieceOutputPath(id, subfolder)` — valida la carpeta tramo a tramo |
+| `web/src/app/api/segments/join/route.ts` | la pieza unida va con sus tramos |
+| `web/tests/output-prefix.test.ts` | **nuevo**, 8 pruebas; +3 en `comfy-files.test.ts` |
+
+⚠️ **Tres cosas que hay que saber antes de tocar esto:**
+1. **`voiceId` viene del navegador y se convierte en una RUTA de disco.** El
+   saneado usa lista de PERMITIDOS, no de prohibidos. No lo cambies a una lista
+   de prohibidos: siempre se queda un carácter corta.
+2. **`TakeSegment.subfolder` es opcional a propósito.** Ausente = la raíz, que
+   es donde están las tomas anteriores a este cambio. No es pereza.
+3. **La pieza unida la escribe Python, no el motor**, así que NO pasa por
+   `outputPrefix`. Si mañana cambia el sitio donde se guarda, hay que tocar los
+   dos lados o la pieza se separa otra vez de sus tramos.
+
+⚠️ **Sin ver todavía:** ninguna generación real ha creado esas carpetas. La
+prueba es generar algo y mirar el disco.
+
 ## ✅ DÓNDE ESTÁ EL PROYECTO
 
 *(Nada urgente pendiente: la sesión 8 cerró todo lo que abrió, y el usuario lo

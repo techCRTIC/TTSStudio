@@ -6,6 +6,76 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-09-09 — Las generaciones dejan de caer sueltas, y eso destapa dos roturas silenciosas
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 9 · 2026-09-09
+
+**En una frase:** el usuario pidió «una tontera» —que las generaciones se
+ordenen en carpetas por voz y fecha— y esa tontera destapó dos cosas que se
+habrían roto sin avisar.
+
+**Lo esencial, en simple**
+1. **Las generaciones ya se ordenan.** Antes todo caía suelto en la raíz de
+   salida de ComfyUI, mezclado con lo que produzca cualquier otro flujo. Ahora
+   van a `ttsstudio/<voz>/<fecha>/`.
+2. **Se habrían quedado tramos huérfanos en el disco.** El código decía, por
+   escrito, que no guardaba la carpeta de cada tramo de un guión largo «porque
+   toda generación escribe en el mismo sitio». Era verdad mientras el destino
+   era fijo; al ordenar en carpetas dejó de serlo, y el borrado los habría
+   buscado en la raíz sin encontrarlos nunca.
+3. **Y la pieza unida se quedaba fuera.** La escribe Python y no el motor, así
+   que no pasaba por el sitio que se cambió: habríamos ordenado los trozos y
+   dejado tirado el resultado, que es justo el archivo que el usuario guarda.
+4. **El nombre de la voz llega del navegador y aquí se vuelve una ruta de
+   disco.** Por eso se construye con una lista de lo PERMITIDO y no de lo
+   prohibido: una lista de prohibidos siempre se queda un carácter corta.
+
+**Qué se decidió y por qué**
+- **Las tildes se quitan, no se destruyen.** El primer intento convertía
+  «Andrés Núñez» en una carpeta `andr_s_n_ez`, que es peor que no ordenar nada.
+- **La fecha es la LOCAL, no la universal.** Con la universal, una toma de las
+  once de la noche habría ido a parar a la carpeta del día siguiente, que no es
+  el día al que pertenece para quien la hizo.
+- **El campo nuevo de los tramos es opcional a propósito.** Las tomas guardadas
+  antes de esto no lo tienen, y en ellas «sin carpeta» significa «la raíz», que
+  es exactamente donde están. No es un valor por defecto perezoso: es la
+  respuesta correcta.
+
+**Estado al cerrar:** rama `main`, árbol limpio, subido. Verde: tipos · lint ·
+build · **221 pruebas** de la app (11 nuevas, 0 fallos) · 32 de Python · los
+cuatro verificadores de costura.
+
+⚠️ **Esto NO está en el `.exe` publicado.** La `v0.1.2` sigue guardando en la
+raíz. Falta compilar y publicar una versión con esto dentro.
+
+**Siguiente paso concreto:** probarlo generando algo real —la carpeta solo
+existe cuando el motor escribe en ella— y después decidir si se publica la
+`v0.1.3`. Y sigue pendiente desde la sesión 5 lo único que cierra la Fase 3:
+**escuchar una pieza larga unida** y juzgar el volumen nivelado.
+<!-- /cierre -->
+
+**Hora:** tarde
+**Pedido del usuario:** que las generaciones se ordenen en una carpeta propia,
+dentro por voces, y dentro de cada voz por fecha.
+
+### Acciones
+- `outputPrefix()` nuevo en `web/src/lib/tts.ts`, con su saneado por lista de
+  permitidos, y usado como `filename_prefix` del nodo `SaveAudio`.
+- `TakeSegment` gana `subfolder?`, y `filesForTake` lo usa.
+- `pieceOutputPath()` acepta carpeta, validada tramo a tramo; la ruta de unir se
+  la pasa, tomándola de dentro del bucle que ya valida las entradas.
+- `audioRefOf()` nuevo, para que el botón de «ver el archivo» sepa dónde mirar.
+- 11 pruebas nuevas: `web/tests/output-prefix.test.ts` y tres más sobre la
+  carpeta en `comfy-files.test.ts`.
+
+### Resultados
+221 pruebas en verde. Comprobado con salidas reales: `martin_vega.safetensors`
+→ `ttsstudio/martin_vega/2026-09-09/toma`, y `../../escape` → `escape`.
+
+### Pendiente
+Generar algo de verdad para ver las carpetas creadas, y publicar la versión.
+
 ## 2026-09-09 — La app se cerraba sola sin ComfyUI, y el motor de esta máquina estaba roto
 
 <!-- cierre -->
