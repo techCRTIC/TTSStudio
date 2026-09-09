@@ -15,7 +15,11 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores.
 **Last update:** 2026-09-09
 
-## 🔴 LO PRIMERO — dos cosas, y la segunda no es de esta app
+## ✅ DÓNDE ESTÁ EL PROYECTO
+
+*(Nada urgente pendiente: la sesión 8 cerró todo lo que abrió, y el usuario lo
+confirmó en el binario instalado. Lo siguiente que aporta valor está al final,
+en «Siguiente paso».)*
 
 ### ✅ v0.1.2 PUBLICADA — y todo confirmado por el usuario
 **https://github.com/techCRTIC/TTSStudio/releases/tag/v0.1.2** — es la última.
@@ -29,11 +33,6 @@ tanda sin ver funcionar.
 —la app cerrándose sola, y el mensaje en jerga— **eran invisibles desde el
 desarrollo**. Aparecieron al instalar y usar. Las pruebas estaban verdes en los
 dos casos. **Un `.exe` no está probado hasta que alguien lo instala.**
-
-### ✅ EL `.exe` ABRE SIN COMFYUI — verificado en el binario
-El usuario instaló la 0.1.1 y la ventana abrió con el motor apagado, con el
-aviso «ComfyUI no responde» en su sitio. **El fallo que abrió la sesión 8 está
-cerrado de punta a punta.**
 
 ### 🗣️ El fallo de después: la app hablaba en idioma de programador
 Al subir un audio salía, EN PANTALLA, a un usuario cualquiera:
@@ -104,23 +103,6 @@ mecanismo está probado; el binario no se ha instalado.
 comando de verificación en las notas tiene que citar ESE nombre — en la 0.1.0 se
 citó el de espacios y le fallaba a quien lo copiara.
 
-## 🐛 El fallo del arranque, y su regla
-
-El lanzador esperaba a **`/api/voices`** antes de mostrar la ventana, y esa ruta
-**pregunta por ComfyUI** (502 con el motor caído). Sin motor nunca respondía OK,
-así que la app agotaba un minuto y **se cerraba sola** diciendo que no había
-arrancado.
-
-**La regla que sale de esto, y que vale más que el arreglo:** *una comprobación
-de vida no puede preguntar por una dependencia.* Preguntaba por otra cosa y
-mataba al paciente por el resultado.
-
-Ahora se pregunta por **`/api/health`**, que no sabe nada del motor. Está escrito
-en la propia ruta que **no debe aprenderlo**: si alguien le añade una
-comprobación de ComfyUI «para que sea más completa», el fallo vuelve entero.
-
-**El mismo defecto estaba en `scripts/start.mjs`.** Ahí no mataba, solo mentía.
-
 ## 🔌 El portal ahora enciende e instala el motor
 
 | Situación | Botón |
@@ -136,28 +118,6 @@ el portal solo guiaba. Lo que NO cambia: ComfyUI se sigue **sin empaquetar**.
 en el campo `ok` de su sobre JSON. Por eso el portal ahora extrae el motivo real
 en vez de agotar el tiempo y decir «no respondió» — verificado contra el ComfyUI
 roto de arriba.
-
-## 🎨 El icono es el logotipo, por decisión del usuario
-
-El `.ico` lleva **dibujos distintos por tamaño**: sin «STUDIO» a 16 y 24 px,
-donde era ruido; el logotipo entero de 32 para arriba. Fuentes en `.tmp/logo/`,
-assets en `desktop/recursos/`.
-
-⚠️ Sigue siendo **rasterizado, no vectorial**. La oferta de redibujarlo en SVG
-está en pie y sin aceptar.
-
----
-
-**Status:** ✅ **PUBLICADO** — https://github.com/techCRTIC/TTSStudio
-Público · rama `main` · **75 commits** · árbol limpio · licencia **MIT**.
-**Last update:** 2026-09-07 (sesión 7)
-
-**Verificado ejecutándolo esta sesión:** tipos · lint · build · **210 pruebas de
-la app, CERO saltadas** (con ComfyUI encendido corren también las dos de
-integración; apagado se saltan solas y salen 208) · **32 de Python** · los
-**cuatro verificadores de costura** · el detector de diseño sin hallazgos.
-
----
 
 ## Cómo levantarlo
 
@@ -291,84 +251,9 @@ incremental. Por eso la ruta de instalación hace `spawn` por su cuenta.
 
 ---
 
-## 💿 El `.exe` — CONSTRUIDO (sin probar el instalador)
-
-**Electron**, `.exe` con **solo la app** (~19 MB de contenido propio). ComfyUI,
-Python y modelos los instala el portal. Decidido en `ADR-009`.
-
-| Archivo | Qué es |
-|---|---|
-| `scripts/engine.mjs` | **Nuevo.** La mitad compartida del lanzador: `ensureComfy`, `clearPort`, `watchComfy`, `matarArbol`. Parametrizada, **sin `process.exit` dentro** — lanza, y quien llama decide (una ventana no puede morirse como un CLI). |
-| `scripts/start.mjs` | **Adelgazado.** Ahora solo hace lo que solo un terminal hace: compilar con el CLI de Next, abrir el navegador, y morir con un mensaje. |
-| `desktop/main.mjs` | **Nuevo.** Proceso principal de Electron. |
-| `scripts/prepare-desktop.mjs` | **Nuevo.** Ensambla `desktop/build/app/` y **comprueba** que lo ensamblado puede arrancar. |
-| `web/next.config.ts` | `output: "standalone"` + **`outputFileTracingRoot` fijada**. |
-| `package.json` | `main`, config de `electron-builder`, y los guiones `desktop:*`. |
-
-**Guiones:** `npm run desktop` (abre la app empaquetada sin instalar) ·
-`npm run desktop:dist` (produce el instalador en `dist/`).
-
-### Lo que hay que entender antes de tocarlo
-
-1. **El puerto se elige UNA VEZ y se guarda** (`userData/puerto.json`), y no es
-   manía: el historial y los favoritos viven en `localStorage`, que Chromium
-   particiona **por origen — puerto incluido**. Un puerto distinto en cada
-   arranque le vacía el historial al usuario sin decir nada. Se prefiere 3000
-   para que quien venga de `npm start` conserve el suyo.
-2. **El servidor de Next es un HIJO de Electron**, arrancado con
-   `ELECTRON_RUN_AS_NODE` (así no viaja otro Node). Se mata por **tres vías**
-   independientes, porque en Windows un hijo **no** muere con su padre, y un
-   huérfano se queda con el puerto.
-3. **La app ya no adivina dónde está**: Electron le pasa `TTS_PROJECT_ROOT`, y
-   `projectRoot()` lo respeta si contiene `execution/`.
-4. **El portal ya corre SIN el entorno del proyecto** (`ADR-009` D6, cerrado).
-   `stdlibPython()` usa el `.venv` si existe y, si no, **descubre** un Python
-   del sistema. Solo `tts_unir_tramos.py` y `transcribe_audio.py` necesitan
-   paquetes de terceros y siguen exigiendo `pythonPath()`.
-
-### 🐛 Dos trampas descubiertas construyendo esto
-
-- **`python3` en esta máquina es un SEÑUELO de la Microsoft Store**: está en el
-  PATH, arranca, y no hace nada. Por eso `stdlibPython()` **ejecuta**
-  `-c "print(1)"` en cada candidato en vez de fiarse de que exista. Encontrarlo
-  y creerle daba un fallo mucho más tarde y peor de entender.
-- **Instalar Electron rompió el empaquetado sin que nadie lo tocara.** Apareció
-  un `package-lock.json` en la raíz, Next infirió otra raíz de proyecto y movió
-  el servidor de `standalone/server.js` a `standalone/web/server.js`. Ahora la
-  raíz está **fijada** en `next.config.ts`, y además el ensamblador **busca**
-  `server.js` en vez de suponer. Lo cazó su propia comprobación de integridad.
-
-### ✅ PUBLICADO COMO RELEASE — y el usuario confirmó que corre
-
-**https://github.com/techCRTIC/TTSStudio/releases/tag/v0.1.0**
-Etiqueta `v0.1.0`, instalador adjunto. GitHub renombra el archivo a
-`TTS.Studio.Setup.0.1.0.exe` (puntos en vez de espacios) — **las notas citaban
-el nombre con espacios y el comando de comprobación fallaba**; corregido.
-
-**Publicar otra versión:** subir `version` en `package.json` ·
-`npm run desktop:dist` · calcular el SHA-256 · `git tag -a vX.Y.Z` ·
-`gh release create`. **A mano y sin actualización automática** (ADR-009 D9).
-
-### ✅ El instalador
-
-`dist/TTS Studio Setup 0.1.0.exe` — **115,5 MB** (23 MB son la app; el resto es
-Chromium). SHA-256:
-`989a3c9ec54ad618c340881a2132ac03a8b16c9fd34be613e032cc44f0bfdcd0`
-
-**Comprobado abriendo el paquete**, no deducido: lleva `server.js`,
-`.next/static` (sin eso saldría sin estilos), los 14 scripts de `execution/`,
-el manifiesto y `pyproject.toml`. **No lleva** `src` ni `tests`. **No lleva
-ComfyUI ni modelos** — se buscó: los únicos aciertos de «comfy» son la ruta de
-la propia app, así que la línea de licencias sigue sin cruzarse.
-
-⚠️ **PERO NADIE LO HA EJECUTADO.** Compilar y empaquetar no es funcionar, y
-aquí hay más superficie nueva de la habitual: el puerto pegajoso, el servidor
-como hijo, y el apagado por tres vías. **Instalarlo y abrirlo es la prueba que
-falta**, y conviene hacerla con `npm start` cerrado para no confundir puertos.
-
-> **Lo que estaba aquí de la sesión 7** —el portal sin ver, el `.exe` recién
-> construido, la iteración del logo— **se movió a `session-log.md`**, que es
-> donde vive la cronología. Este archivo es lo que hace falta AHORA.
+> **Lo que estaba aquí y ya está hecho** —el fallo del arranque y su arreglo, la
+> iteración del logo, las tres releases— **vive entero en `session-log.md`**.
+> Este archivo es solo lo que hace falta para actuar AHORA.
 
 ## Siguiente paso
 
