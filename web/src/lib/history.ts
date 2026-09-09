@@ -84,6 +84,14 @@ export type Take = {
    * read it that way, falling back to the single-file take they always were.
    */
   segments?: TakeSegment[];
+  /**
+   * Vino del disco, no de una generación de esta app.
+   *
+   * Importa porque una toma importada NO tiene texto, ni semilla, ni voz
+   * fiable: la interfaz tiene que poder decir «esto se encontró en el disco» en
+   * vez de enseñar campos vacíos como si se hubieran perdido.
+   */
+  importada?: boolean;
 };
 
 const KEY = "ttsstudio.history.v1";
@@ -134,6 +142,88 @@ function commit(next: Take[]): void {
 
 export function useHistory(): Take[] {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+/**
+ * `martin_vega` -> `Martin Vega`, para enseñar una carpeta como nombre.
+ *
+ * Se escribe aquí en vez de importar `labelFor` de `./tts`: ese módulo trae
+ * consigo el puente al motor, que es código de servidor, y este archivo lo
+ * importa el navegador. Traerlo rompería la compilación — es exactamente el
+ * fallo que ya costó una tarde con `lib/setup.ts`.
+ */
+function nombreDesdeCarpeta(carpeta: string): string {
+  return carpeta
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
+/**
+ * Un archivo que ya está en el disco, tal como lo devuelve `/api/takes/scan`.
+ */
+export type ArchivoEnDisco = {
+  filename: string;
+  subfolder: string;
+  modifiedAt: number;
+};
+
+/**
+ * Traer al historial audio que ya existe en el disco.
+ *
+ * POR QUÉ NO SE INVENTA LO QUE NO SE SABE: de un archivo suelto se conoce su
+ * nombre, su carpeta y su fecha. NO se conoce el texto que lo originó, ni la
+ * voz, ni la semilla — y esos tres campos son la razón de ser del historial.
+ * Rellenarlos con algo plausible sería peor que dejarlos vacíos, porque después
+ * nadie podría distinguir un dato real de uno inventado.
+ *
+ * Así que se deja dicho: el texto queda vacío y la etiqueta de voz sale de la
+ * carpeta cuando la hay, porque ahí SÍ está escrita — `ttsstudio/<voz>/<fecha>/`
+ * es un dato, no una suposición.
+ *
+ * NO DUPLICA. Un archivo que ya está en el historial se salta: importar dos
+ * veces la misma carpeta tiene que ser inofensivo, porque nadie recuerda si ya
+ * lo hizo.
+ */
+export function importarArchivos(archivos: ArchivoEnDisco[]): number {
+  const actuales = getSnapshot();
+  const yaEstan = new Set(
+    actuales.flatMap((t) => filesForTake(t).map((f) => `${f.subfolder}/${f.filename}`)),
+  );
+
+  const nuevas: Take[] = [];
+  for (const a of archivos) {
+    const clave = `${a.subfolder}/${a.filename}`;
+    if (yaEstan.has(clave)) continue;
+    yaEstan.add(clave);
+
+    // `ttsstudio/<voz>/<fecha>` — la voz es el segundo tramo cuando la carpeta
+    // tiene la forma que esta app escribe. Si no la tiene, no se adivina.
+    const tramos = a.subfolder.split("/").filter(Boolean);
+    const voz = tramos[0] === "ttsstudio" && tramos[1] ? tramos[1] : "";
+
+    nuevas.push({
+      id: `importada-${a.subfolder}/${a.filename}`,
+      text: "",
+      voiceId: voz,
+      voiceLabel: voz ? nombreDesdeCarpeta(voz) : "Voz desconocida",
+      seed: 0,
+      audioUrl:
+        `/api/comfy/view?filename=${encodeURIComponent(a.filename)}` +
+        `&subfolder=${encodeURIComponent(a.subfolder)}&type=output`,
+      filename: a.filename,
+      createdAt: a.modifiedAt,
+      importada: true,
+    });
+  }
+
+  if (nuevas.length > 0) {
+    // Se mezclan por fecha en vez de encabezar la lista: una importación de
+    // ciento veinte archivos viejos no debe empujar hacia abajo lo de hoy.
+    commit([...nuevas, ...actuales].sort((a, b) => b.createdAt - a.createdAt));
+  }
+  return nuevas.length;
 }
 
 export function addTake(take: Take): void {

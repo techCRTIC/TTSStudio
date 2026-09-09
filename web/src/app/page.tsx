@@ -31,7 +31,15 @@ import { randomSeed } from "@/lib/tts";
 import { VoiceLibrary, type Voice } from "@/components/VoiceLibrary";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
-import { addTake, audioRefOf, deleteTake, toggleGood, useHistory, type Take } from "@/lib/history";
+import {
+  addTake,
+  audioRefOf,
+  deleteTake,
+  importarArchivos,
+  toggleGood,
+  useHistory,
+  type Take,
+} from "@/lib/history";
 import { useImprove } from "@/lib/improve";
 import { clipFor, revealAt, REVEAL_CENTRE } from "@/lib/reveal";
 import { useTextReview } from "@/lib/review";
@@ -119,9 +127,50 @@ export default function Studio() {
    * what makes it appear. An empty list is not an error: it is a fresh install
    * with no voices yet, which the library drawer says in its own words.
    */
+  const [buscando, setBuscando] = useState(false);
+
+  /**
+   * Traer al historial audio que ya está en el disco.
+   *
+   * SOLO MIRA LA CARPETA DE SALIDA DEL MOTOR, y no es una limitación que se
+   * pueda levantar: la app sirve el audio por `/api/comfy/view`, que solo lee de
+   * ahí. Un archivo de fuera saldría en la lista y no sonaría, que es peor que
+   * no salir.
+   */
+  const buscarEnDisco = useCallback(async () => {
+    setBuscando(true);
+    setTakeError(null);
+    try {
+      const res = await fetch("/api/takes/scan", { cache: "no-store" });
+      const datos = (await res.json().catch(() => null)) as {
+        files?: { filename: string; subfolder: string; modifiedAt: number }[];
+        mensaje?: string;
+      } | null;
+
+      if (!res.ok || !Array.isArray(datos?.files)) {
+        setTakeError(datos?.mensaje ?? "No se pudo leer la carpeta de salida.");
+        return;
+      }
+
+      const cuantas = importarArchivos(datos.files);
+      setTakeError(
+        cuantas === 0
+          ? "No había nada nuevo: todo lo que hay en el disco ya está aquí."
+          : `Se añadieron ${cuantas} ${cuantas === 1 ? "toma encontrada" : "tomas encontradas"} en el disco.`,
+      );
+    } catch {
+      setTakeError("No se pudo leer la carpeta de salida.");
+    } finally {
+      setBuscando(false);
+    }
+  }, []);
+
   const loadVoices = useCallback(
     () =>
-      fetch("/api/voices")
+      // `no-store` y no por costumbre: la lista de voces cambia cuando aparece
+      // un archivo en una carpeta, no cuando cambia esta app. Una respuesta
+      // servida de la caché del navegador enseña una carpeta de hace un rato.
+      fetch("/api/voices", { cache: "no-store" })
         .then((r) => r.json())
         .then((d) => {
           if (!Array.isArray(d.voices)) {
@@ -828,7 +877,35 @@ export default function Studio() {
         >
           <div className="flex shrink-0 items-center justify-between border-b border-hairline px-5 py-5">
             <span className="eyebrow">Tomas</span>
-            <button
+            <div className="flex items-center gap-1">
+              {/* Buscar en el disco audio que la app no conoce. El historial
+                  vive en el navegador y los audios en la carpeta del motor: dos
+                  mitades que pueden separarse, y regenerar lo que ya existe es
+                  pagar dos veces por lo mismo. */}
+              <button
+                type="button"
+                onClick={() => void buscarEnDisco()}
+                disabled={buscando}
+                aria-label="Buscar generaciones en el disco"
+                title="Buscar generaciones en el disco"
+                className="pressable grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink disabled:opacity-30"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M1.8 12.4V4.2a.8.8 0 0 1 .8-.8h2.9l1.2 1.5h5.7a.8.8 0 0 1 .8.8v6.7a.8.8 0 0 1-.8.8H2.6a.8.8 0 0 1-.8-.8Z" />
+                  <path d="M8 7.2v3.4M6.3 8.9h3.4" />
+                </svg>
+              </button>
+              <button
               type="button"
               onClick={() => setTrayOpen(false)}
               aria-label="Cerrar historial"
@@ -844,6 +921,7 @@ export default function Studio() {
                 />
               </svg>
             </button>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">

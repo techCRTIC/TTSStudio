@@ -468,6 +468,62 @@ export function VoiceLibrary({
 }) {
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
   const [dragging, setDragging] = useState(false);
+  const entradaVoces = useRef<HTMLInputElement>(null);
+  const [trayendo, setTrayendo] = useState(false);
+  const [avisoTraer, setAvisoTraer] = useState<string | null>(null);
+
+  /**
+   * Copiar archivos de voz a la carpeta donde el motor los busca.
+   *
+   * Y DESPUÉS PEDIR LA LISTA OTRA VEZ, que es la mitad que faltaba. La lista de
+   * voces la da ComfyUI leyendo su propia carpeta, y su caché se invalida sola
+   * cuando esa carpeta cambia de fecha — o sea que el motor ve el archivo nuevo
+   * en cuanto alguien le vuelve a preguntar. Nadie le preguntaba: la app pedía
+   * la lista al abrirse y nunca más, así que un archivo copiado después seguía
+   * sin aparecer por mucho que estuviera ahí.
+   */
+  const traerVoces = useCallback(
+    async (lista: FileList | null) => {
+      if (!lista || lista.length === 0) return;
+      setTrayendo(true);
+      setAvisoTraer(null);
+      try {
+        const cuerpo = new FormData();
+        for (const archivo of Array.from(lista)) cuerpo.append("voces", archivo);
+
+        const res = await fetch("/api/voices/import", { method: "POST", body: cuerpo });
+        const datos = (await res.json().catch(() => null)) as {
+          traidas?: string[];
+          rechazadas?: { nombre: string; motivo: string }[];
+        } | null;
+
+        const traidas = datos?.traidas?.length ?? 0;
+        const rechazadas = datos?.rechazadas ?? [];
+
+        setAvisoTraer(
+          traidas === 0 && rechazadas.length === 0
+            ? "No se trajo ninguna voz."
+            : [
+                traidas > 0 ? `${traidas} ${traidas === 1 ? "voz traída" : "voces traídas"}.` : "",
+                // Se dice CUÁL falló y por qué. Un «algunas fallaron» deja a
+                // quien lo lee sin nada que hacer al respecto.
+                ...rechazadas.map((r) => `«${r.nombre}»: ${r.motivo}.`),
+              ]
+                .filter(Boolean)
+                .join(" "),
+        );
+
+        if (traidas > 0) onVoicesChanged();
+      } catch {
+        setAvisoTraer("No se pudieron traer las voces.");
+      } finally {
+        setTrayendo(false);
+        // Sin esto, elegir el mismo archivo dos veces no dispara el evento.
+        if (entradaVoces.current) entradaVoces.current.value = "";
+      }
+    },
+    [onVoicesChanged],
+  );
   // What each row is doing. Confirmation and editing happen in place rather
   // than through window.confirm/prompt: this surface replaced the native select
   // to keep the OS's chrome out, and a browser modal is the same borrowed
@@ -822,7 +878,43 @@ export function VoiceLibrary({
         >
           <div className="flex shrink-0 items-center justify-between border-b border-hairline px-5 py-5">
             <span className="eyebrow">Voces</span>
-            <button
+            <div className="flex items-center gap-1">
+              {/* Traer voces que ya existen en otra carpeta.
+                  POR QUÉ HACE FALTA, si las voces en disco ya aparecen: la
+                  lista NO la mantiene esta app, la da ComfyUI leyendo SU
+                  carpeta. Un archivo que vive en otro sitio no llega ahí solo. */}
+              <input
+                ref={entradaVoces}
+                type="file"
+                accept=".safetensors"
+                multiple
+                hidden
+                onChange={(e) => void traerVoces(e.target.files)}
+              />
+              <button
+                type="button"
+                onClick={() => entradaVoces.current?.click()}
+                disabled={busy || trayendo}
+                aria-label="Traer voces desde otra carpeta"
+                title="Traer voces desde otra carpeta"
+                className="pressable grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink disabled:opacity-30"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M1.8 12.4V4.2a.8.8 0 0 1 .8-.8h2.9l1.2 1.5h5.7a.8.8 0 0 1 .8.8v6.7a.8.8 0 0 1-.8.8H2.6a.8.8 0 0 1-.8-.8Z" />
+                  <path d="M8 7.2v3.4M6.3 8.9h3.4" />
+                </svg>
+              </button>
+              <button
               type="button"
               onClick={() => setOpen(false)}
               disabled={busy}
@@ -830,8 +922,20 @@ export function VoiceLibrary({
               className="grid h-11 w-11 place-items-center rounded-full text-ink-muted transition-colors duration-200 hover:bg-surface-raised hover:text-ink disabled:opacity-30"
             >
               <CloseIcon />
-            </button>
+              </button>
+            </div>
           </div>
+
+          {trayendo && (
+            <p className="border-b border-hairline px-5 py-3 text-[13px] text-ink-muted">
+              Trayendo voces…
+            </p>
+          )}
+          {avisoTraer && (
+            <p className="border-b border-hairline px-5 py-3 text-[13px] leading-relaxed text-ink">
+              {avisoTraer}
+            </p>
+          )}
 
           {/* The list takes what is left and scrolls on its own. `min-h-0` is
               load-bearing: without it a flex child refuses to shrink below its
