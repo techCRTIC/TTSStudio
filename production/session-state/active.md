@@ -15,6 +15,24 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores.
 **Last update:** 2026-09-09
 
+## 🔚 Cómo quedó la sesión 9
+
+**`dist/TTS Studio Setup 0.1.4.exe` está compilado y NO publicado.** Lleva todo
+lo de esta sesión: las carpetas por voz y fecha, y los dos botones de importar.
+Verificado que las rutas nuevas viajan dentro, no solo que el archivo exista.
+
+```
+SHA-256  9BD6CEDC0208340D35B2467FA156079F9A429D639CFE4C591ADA68C650D10982
+```
+
+**La release más reciente en GitHub sigue siendo la `v0.1.2`**, que no tiene
+nada de esto. Publicarla es un `gh release create` cuando se decida — la receta
+completa está más abajo, en el bloque de publicar.
+
+⚠️ **El usuario dio la sesión por buena, pero NO consta que instalara la 0.1.4
+ni que probara los botones.** Se construyó y se cerró en el mismo rato. Si la
+próxima sesión necesita apoyarse en que esto funciona, **preguntar primero**.
+
 ## 📥 Traer lo que ya existe en disco — hecho, sin probar
 
 Un botón en **cada** panel lateral, y hacen cosas distintas:

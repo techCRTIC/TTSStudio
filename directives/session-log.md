@@ -59,8 +59,9 @@ habrían roto sin avisar.
   respuesta correcta.
 
 **Estado al cerrar:** rama `main`, árbol limpio, subido. Verde: tipos · lint ·
-build · **221 pruebas** · 32 de Python · los cuatro verificadores. `package.json`
-va por **0.1.4** y el instalador se estaba compilando al cerrar.
+build · **221 pruebas** · 32 de Python · los cuatro verificadores. **El instalador
+0.1.4 está compilado** en `dist/`, con las dos rutas nuevas verificadas dentro
+(`SHA-256 9BD6CEDC0208340D35B2467FA156079F9A429D639CFE4C591ADA68C650D10982`).
 
 ⚠️ **NADA de esta sesión está publicado.** La release más reciente sigue siendo
 la `v0.1.2`, que no ordena en carpetas ni tiene los botones de importar.
