@@ -15,6 +15,28 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores.
 **Last update:** 2026-09-09
 
+## 📥 Traer lo que ya existe en disco — hecho, sin probar
+
+Un botón en **cada** panel lateral, y hacen cosas distintas:
+
+| Panel | Botón | Qué hace |
+|---|---|---|
+| Tomas | «Buscar generaciones en el disco» | `GET /api/takes/scan` recorre la carpeta de salida (4 niveles, tope 2000) y el navegador añade lo que no conoce |
+| Voces | «Traer voces desde otra carpeta» | `POST /api/voices/import` copia `.safetensors` a la carpeta del motor, **y refresca la lista** |
+
+⚠️ **El fallo que reportó el usuario, y su causa real:** las voces copiadas no
+aparecían. **NO era caché de ComfyUI** — la suya se invalida sola con la fecha
+de la carpeta (`folder_paths.py:498`), y el caché fuerte solo dura una petición.
+**Nadie le volvía a preguntar:** la app pedía la lista al abrirse y nunca más.
+Ahora el botón refresca al terminar, y la petición lleva `cache: "no-store"`.
+
+📌 **Solo se mira DENTRO de la carpeta de salida del motor, y no se puede
+levantar:** la app sirve el audio por `/api/comfy/view`, que no lee de otro
+sitio. Un archivo de fuera saldría en la lista y no sonaría.
+
+📌 **En esta máquina hay 73 archivos de audio** en la carpeta de salida — eso es
+lo que el botón debe encontrar la primera vez.
+
 ## 📁 Sesión 9 — las generaciones se ordenan en carpetas
 
 **Hecho y subido, SIN publicar todavía.** Las tomas van a

@@ -1,6 +1,6 @@
 {
   "name": "tts-studio",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Genera voz clonada desde texto, en tu propia máquina.",
   "type": "module",

@@ -31,7 +31,23 @@ habrían roto sin avisar.
    disco.** Por eso se construye con una lista de lo PERMITIDO y no de lo
    prohibido: una lista de prohibidos siempre se queda un carácter corta.
 
+5. **Y los dos paneles ganaron un botón para traer lo que ya existe en disco**,
+   porque el usuario tenía voces y audios que no quería regenerar. Son dos
+   cosas distintas: el historial recorre la carpeta de salida y añade lo que no
+   conoce; las voces se copian a la carpeta donde el motor mira.
+6. **Ahí salió el fallo que el usuario notó: las voces nuevas no aparecían.** Y
+   **ComfyUI no era el culpable** — su caché se invalida sola cuando cambia la
+   fecha de la carpeta. El problema es que **nadie le volvía a preguntar**: la
+   app pedía la lista al abrirse y nunca más.
+
 **Qué se decidió y por qué**
+- **Una toma importada NO se inventa lo que no sabe.** De un archivo suelto se
+  conoce su nombre, su carpeta y su fecha; no el texto, ni la voz, ni la
+  semilla. Rellenar eso con algo plausible haría imposible distinguir después un
+  dato real de una suposición.
+- **Las voces traídas llegan sin procedencia**, a propósito. Inventarla para un
+  archivo de fuera convertiría el campo que existe para el consentimiento en
+  decorado.
 - **Las tildes se quitan, no se destruyen.** El primer intento convertía
   «Andrés Núñez» en una carpeta `andr_s_n_ez`, que es peor que no ordenar nada.
 - **La fecha es la LOCAL, no la universal.** Con la universal, una toma de las
@@ -43,16 +59,21 @@ habrían roto sin avisar.
   respuesta correcta.
 
 **Estado al cerrar:** rama `main`, árbol limpio, subido. Verde: tipos · lint ·
-build · **221 pruebas** de la app (11 nuevas, 0 fallos) · 32 de Python · los
-cuatro verificadores de costura.
+build · **221 pruebas** · 32 de Python · los cuatro verificadores. `package.json`
+va por **0.1.4** y el instalador se estaba compilando al cerrar.
 
-⚠️ **Esto NO está en el `.exe` publicado.** La `v0.1.2` sigue guardando en la
-raíz. Falta compilar y publicar una versión con esto dentro.
+⚠️ **NADA de esta sesión está publicado.** La release más reciente sigue siendo
+la `v0.1.2`, que no ordena en carpetas ni tiene los botones de importar.
 
-**Siguiente paso concreto:** probarlo generando algo real —la carpeta solo
-existe cuando el motor escribe en ella— y después decidir si se publica la
-`v0.1.3`. Y sigue pendiente desde la sesión 5 lo único que cierra la Fase 3:
-**escuchar una pieza larga unida** y juzgar el volumen nivelado.
+⚠️ **Sin ver funcionar:** las carpetas creadas por una generación real, y los
+dos botones nuevos. Todo está probado en su lógica; nada se ha usado.
+
+**Siguiente paso concreto:** instalar la 0.1.4, generar algo, y mirar dos cosas
+— que aparezca `ttsstudio/<voz>/<fecha>/` en la carpeta de salida, y que el
+botón del panel de tomas encuentre los **73 archivos** de audio que ya hay ahí.
+Si sale, publicar. Y sigue pendiente desde la sesión 5 lo único que cierra la
+Fase 3: **escuchar una pieza larga unida**.
+
 <!-- /cierre -->
 
 **Hora:** tarde
