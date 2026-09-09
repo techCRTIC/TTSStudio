@@ -6,6 +6,89 @@
 > acciones, decisiones (con alternativas descartadas), resultados y próximos
 > pasos.
 
+## 2026-09-09 — La app se cerraba sola sin ComfyUI, y el motor de esta máquina estaba roto
+
+<!-- cierre -->
+## 🧾 Cierre — Sesión 8 · 2026-09-09
+
+**En una frase:** el `.exe` publicado no abría la ventana en una máquina sin
+ComfyUI —se cerraba solo diciendo que no había arrancado— y al perseguirlo
+apareció que ComfyUI, en este computador, estaba roto por su cuenta.
+
+**Lo esencial, en simple**
+1. **Encontrado por qué no abría la interfaz.** El lanzador esperaba a una
+   ruta que *pregunta por ComfyUI* antes de mostrar la ventana. Sin motor esa
+   ruta nunca dice que sí, así que la app esperaba un minuto y **se cerraba**
+   anunciando que no había arrancado. Estaba arrancada; faltaba el motor. Y la
+   app existe justamente para ayudarte a instalarlo.
+2. **Arreglado con una ruta que no sabe nada del motor** (`/api/health`), y
+   dicho por escrito ahí mismo que **no debe aprenderlo**: el día que alguien
+   le añada una comprobación de ComfyUI «para que sea más completa», vuelve el
+   mismo fallo.
+3. **El mismo defecto estaba en el lanzador de consola.** Ahí no mataba nada,
+   solo mentía. Corregido también: era el mismo error en otro archivo.
+4. **El portal ahora arranca ComfyUI, y lo instala si no está.** Distingue
+   tres situaciones —corriendo, instalado pero apagado, no instalado— y el
+   botón dice lo que va a hacer. Ofrecer «Instalar» a quien ya lo tiene en
+   disco sería proponerle descargar varios GB para nada.
+5. **Y se descubrió que ComfyUI no arranca en esta máquina**, por su cuenta:
+   a su entorno de Python le falta `sqlalchemy`. No arranca por ningún camino,
+   ni desde la app ni a mano. **La orden para arreglarlo quedó anotada; la
+   tiene que correr el usuario** porque el guardián de entornos la bloquea.
+6. **El portal aprendió a decir el motivo real** en vez de «no respondió».
+   Salió de ahí: `comfy-cli` **sale con código 0 aunque el lanzamiento falle**,
+   así que el código de salida no prueba nada — la verdad está en su JSON.
+7. **El icono pasa a ser el logotipo con texto**, por decisión del usuario. Con
+   un detalle: el `.ico` lleva **dibujos distintos por tamaño**, sin «STUDIO» a
+   16 y 24 px, donde era ruido.
+
+**Qué se decidió y por qué**
+- **La comprobación de vida no puede preguntar por una dependencia.** Es la
+  regla que sale de este fallo: preguntaba por otra cosa y mataba al paciente
+  por el resultado.
+- **Se enmendó `ADR-009` D1**, que decía que el portal solo *guiaba* para
+  ComfyUI. Lo forzó la evidencia de que el `.exe` llegara a una máquina real.
+  **Lo que NO cambia es la línea que importa:** ComfyUI se sigue sin empaquetar
+  — se instala desde su origen y por orden explícita del usuario.
+
+**Estado al cerrar:** rama `main`. Verde: tipos · lint · **210 pruebas de la
+app** (2 saltadas porque el motor está caído) · 32 de Python · los cuatro
+verificadores de costura. El instalador se estaba reconstruyendo al cerrar.
+⚠️ **Sin verificar: que el `.exe` nuevo abra la ventana sin ComfyUI**, que es
+justo el fallo que esta sesión vino a arreglar.
+
+**Siguiente paso concreto:** correr
+`C:/Users/tech/comfy/.venv/Scripts/python.exe -m pip install sqlalchemy` para
+devolverle la vida a ComfyUI, instalar el `.exe` nuevo **con el motor apagado**
+y comprobar que la ventana abre y el portal ofrece «Arrancar».
+<!-- /cierre -->
+
+**Hora:** tarde.
+**Pidió el usuario:** usar el logotipo con texto como icono oficial, y que la
+app arranque sin ComfyUI, detecte que no está, y permita instalarlo y
+arrancarlo desde el propio portal.
+
+### Acciones
+- `web/src/app/api/health/route.ts` — **nueva**. La comprobación de vida que no
+  sabe nada del motor.
+- `desktop/main.mjs` y `scripts/start.mjs` — las dos sondas, corregidas.
+- `execution/arrancar_comfy.py` — **nuevo**. Arranca o instala ComfyUI, y
+  extrae el motivo real del sobre JSON de `comfy-cli`.
+- `execution/auditar_host.py` — el motor pasa de dos situaciones a tres.
+- `execution/manifiesto.json` — el motor pasa a instalable.
+- La ruta de instalación pasa de lista blanca de ids a **tabla cerrada de
+  acciones**, porque el motor tiene dos.
+- `desktop/recursos/` — icono nuevo, con dibujos por tamaño.
+- `ADR-009` — enmienda de D1, con la evidencia que la forzó.
+
+### Resultados
+- El motivo real del fallo de ComfyUI **verificado contra el motor roto de
+  verdad**: el mensaje nombra `sqlalchemy` y aclara que no es culpa de la app.
+- **No verificado:** que el `.exe` nuevo abra sin motor. Es lo primero que hay
+  que mirar.
+
+---
+
 ## 2026-09-07 — Rumbo a GitHub: se commiteó todo, y la revisión encontró por qué no se puede publicar todavía
 
 <!-- cierre -->

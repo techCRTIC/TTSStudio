@@ -383,9 +383,10 @@
         "titulo": "El motor de voz (ComfyUI)",
         "para_que": "Es quien genera el audio. Sin el, la app no puede producir nada.",
         "bloquea": true,
-        "instalable": false,
+        "instalable": true,
         "tipo": "servicio",
-        "guia": "El lanzador (npm start) lo levanta solo si encuentra el ejecutable. Si no, hay que instalarlo: comfy-cli con `pip install comfy-cli`, y luego `comfy install`."
+        "guia": "El portal puede arrancarlo si ya esta instalado, e instalarlo si no. El auditor decide cual de las dos cosas ofrecer.",
+        "nota": "ADR-009 D1 decia que el portal solo GUIABA para ComfyUI. Se enmendo el 2026-09-09: una pantalla que sabe exactamente que falta y no ofrece el boton esta escogiendo ser menos util de lo que puede. Se sigue sin EMPAQUETAR ComfyUI, que es la linea que importa (ADR-009 D7)."
       },
       {
         "id": "pack-qwen3-tts",

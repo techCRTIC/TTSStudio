@@ -26,24 +26,45 @@ import { projectRoot, stdlibPython } from "@/lib/python";
 
 export const dynamic = "force-dynamic";
 
-/** Los ids que el manifiesto declara instalables. Nada más se ejecuta. */
-const PERMITIDOS = new Set([
-  "pack-qwen3-tts",
-  "modelo-base",
-  "voces-preestablecidas",
-  "reescritura",
-  "transcripcion",
-]);
+/**
+ * Qué se ejecuta para cada cosa, y NADA MÁS que esto.
+ *
+ * Es una tabla cerrada a propósito (ADR-008 D10): del navegador llega una
+ * clave, nunca una ruta ni un argumento. El id no se concatena en ningún
+ * comando — se busca aquí, y si no está, no pasa nada.
+ *
+ * `comfyui-corriendo` tiene DOS entradas porque son dos cosas distintas:
+ * arrancar un motor que ya está instalado, o instalarlo primero. Ofrecer una
+ * descarga de varios GB a quien ya lo tiene en disco sería un error caro.
+ */
+const ACCIONES: Record<string, { script: string; args: string[] }> = {
+  "pack-qwen3-tts": { script: "instalar_dependencia.py", args: ["--requisito", "pack-qwen3-tts"] },
+  "modelo-base": { script: "instalar_dependencia.py", args: ["--requisito", "modelo-base"] },
+  "voces-preestablecidas": {
+    script: "instalar_dependencia.py",
+    args: ["--requisito", "voces-preestablecidas"],
+  },
+  reescritura: { script: "instalar_dependencia.py", args: ["--requisito", "reescritura"] },
+  transcripcion: { script: "instalar_dependencia.py", args: ["--requisito", "transcripcion"] },
+  arrancar: { script: "arrancar_comfy.py", args: ["--arrancar"] },
+  "instalar-comfyui": { script: "arrancar_comfy.py", args: ["--instalar"] },
+};
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as { id?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as {
+    id?: unknown;
+    accion?: unknown;
+  } | null;
   const id = typeof body?.id === "string" ? body.id : "";
 
   // D10, la puerta de seguridad: el id se compara contra una lista cerrada
   // ANTES de tocar un proceso. Nada que venga del navegador llega a formar
   // parte de un comando — el script recibe un id, no una ruta ni una URL, y
   // resuelve el resto contra el manifiesto versionado.
-  if (!PERMITIDOS.has(id)) {
+  // La acción manda cuando viene (el motor tiene dos); si no, el id es la clave.
+  const accion = typeof body?.accion === "string" ? body.accion : "";
+  const tarea = ACCIONES[accion] ?? ACCIONES[id];
+  if (!tarea) {
     return Response.json({ error: "id_no_instalable" }, { status: 400 });
   }
 
@@ -71,7 +92,7 @@ export async function POST(request: Request) {
 
   const hijo = spawn(
     interprete,
-    ["execution/instalar_dependencia.py", "--requisito", id],
+    [`execution/${tarea.script}`, ...tarea.args],
     { cwd: root, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
   );
 

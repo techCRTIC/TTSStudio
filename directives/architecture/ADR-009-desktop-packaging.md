@@ -103,6 +103,31 @@ The wording matters because the old line fused "publish an installer of our own
 app" with "ship someone else's software to third parties". They are different
 acts with different consequences, and only the first is being authorised.
 
+> ## ⚠️ Amendment — 2026-09-09, after the first user ran the `.exe`
+
+> **D1's "the portal only guides for ComfyUI" is amended: the portal now starts
+> it, and installs it.** Two pieces of evidence forced this, both from the
+> release actually reaching a machine:
+>
+> 1. **The window never opened.** The launcher waited for `/api/voices` before
+>    showing anything, and that route returns 502 when the engine is down — so
+>    with ComfyUI absent the app waited a minute and **quit itself**, announcing
+>    that it had not started. It had. Fixed by probing `/api/health`, which
+>    knows nothing about the engine and must never learn.
+> 2. **Once that was fixed, the portal said "install ComfyUI" and offered no
+>    way to do it.** A screen that knows exactly what is missing and withholds
+>    the button is choosing to be less useful than it is.
+>
+> **What did NOT change, and is the line that matters:** ComfyUI is still not
+> bundled. It is installed from its own origin, on the user's machine, on their
+> explicit press. D7 stands untouched.
+>
+> **A third thing was found on the way**, and it is why the portal now reports
+> the real reason instead of a timeout: on the test machine ComfyUI would not
+> start at all — `ModuleNotFoundError: No module named 'sqlalchemy'` in its own
+> environment. `comfy-cli` **exits 0 while reporting failure in its JSON
+> envelope**, so the exit code proves nothing; the truth is in `ok`.
+
 ### D1 — Electron, not Tauri
 
 **Decided: option B.**

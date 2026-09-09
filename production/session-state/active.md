@@ -11,6 +11,81 @@ reescribe. Se hizo el 2026-09-07, cuando llegó a 604.
 
 ---
 
+**Status:** sesión 8. Rama `main`. Verde: tipos · lint · **210 pruebas de la
+app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores.
+**Last update:** 2026-09-09
+
+## 🔴 LO PRIMERO — dos cosas, y la segunda no es de esta app
+
+### 1. ComfyUI está ROTO en esta máquina, y no por culpa nuestra
+```
+ModuleNotFoundError: No module named 'sqlalchemy'
+```
+Le falta esa dependencia a **su propio entorno**, así que **no arranca por
+ningún camino**: ni desde la app, ni desde el lanzador, ni a mano. La orden:
+
+```
+C:/Users/tech/comfy/.venv/Scripts/python.exe -m pip install sqlalchemy
+```
+
+⚠️ **La tiene que correr el usuario.** El hook `enforce-venv.sh` la bloquea por
+falso positivo: es un venv, pero no el del proyecto, y el patrón no distingue.
+
+### 2. El `.exe` recién construido NO se ha visto abrir
+`dist/TTS Studio Setup 0.1.0.exe`, 111 MB, construido el 2026-09-09.
+**La prueba que falta es exactamente el fallo que esta sesión vino a arreglar:**
+instalarlo **con ComfyUI apagado** y ver que la ventana abre y que el portal
+ofrece «Arrancar».
+
+📌 **La release pública v0.1.0 lleva el binario ROTO** (el que se cierra solo sin
+ComfyUI). El `dist/` local tiene el mismo número de versión y contenido
+distinto. **Antes de publicar hay que subir a 0.1.1**: dos binarios distintos
+bajo un mismo número es una trampa para el que descargue.
+
+## 🐛 El fallo del arranque, y su regla
+
+El lanzador esperaba a **`/api/voices`** antes de mostrar la ventana, y esa ruta
+**pregunta por ComfyUI** (502 con el motor caído). Sin motor nunca respondía OK,
+así que la app agotaba un minuto y **se cerraba sola** diciendo que no había
+arrancado.
+
+**La regla que sale de esto, y que vale más que el arreglo:** *una comprobación
+de vida no puede preguntar por una dependencia.* Preguntaba por otra cosa y
+mataba al paciente por el resultado.
+
+Ahora se pregunta por **`/api/health`**, que no sabe nada del motor. Está escrito
+en la propia ruta que **no debe aprenderlo**: si alguien le añade una
+comprobación de ComfyUI «para que sea más completa», el fallo vuelve entero.
+
+**El mismo defecto estaba en `scripts/start.mjs`.** Ahí no mataba, solo mentía.
+
+## 🔌 El portal ahora enciende e instala el motor
+
+| Situación | Botón |
+|---|---|
+| Corriendo | — |
+| Instalado pero apagado | **Arrancar** |
+| No instalado | **Instalar ComfyUI** |
+
+Lo hace `execution/arrancar_comfy.py`. **Enmienda `ADR-009` D1**, que decía que
+el portal solo guiaba. Lo que NO cambia: ComfyUI se sigue **sin empaquetar**.
+
+📌 **`comfy-cli` SALE CON CÓDIGO 0 AUNQUE EL LANZAMIENTO FALLE.** La verdad está
+en el campo `ok` de su sobre JSON. Por eso el portal ahora extrae el motivo real
+en vez de agotar el tiempo y decir «no respondió» — verificado contra el ComfyUI
+roto de arriba.
+
+## 🎨 El icono es el logotipo, por decisión del usuario
+
+El `.ico` lleva **dibujos distintos por tamaño**: sin «STUDIO» a 16 y 24 px,
+donde era ruido; el logotipo entero de 32 para arriba. Fuentes en `.tmp/logo/`,
+assets en `desktop/recursos/`.
+
+⚠️ Sigue siendo **rasterizado, no vectorial**. La oferta de redibujarlo en SVG
+está en pie y sin aceptar.
+
+---
+
 **Status:** ✅ **PUBLICADO** — https://github.com/techCRTIC/TTSStudio
 Público · rama `main` · **75 commits** · árbol limpio · licencia **MIT**.
 **Last update:** 2026-09-07 (sesión 7)
@@ -19,45 +94,6 @@ Público · rama `main` · **75 commits** · árbol limpio · licencia **MIT**.
 la app, CERO saltadas** (con ComfyUI encendido corren también las dos de
 integración; apagado se saltan solas y salen 208) · **32 de Python** · los
 **cuatro verificadores de costura** · el detector de diseño sin hallazgos.
-
----
-
-## ⚠️ LO PRIMERO: lo que todavía NADIE HA VISTO FUNCIONAR
-
-Ninguna se arregla con más pruebas. Hay que mirar.
-
-**1. El portal de instalación (sesión 7) — la MITAD está verificada.**
-
-✅ **Verificado contra ComfyUI encendido:** el auditor consulta al motor de
-verdad (`/object_info`) y el pack pasó de `no_verificable` a `instalada`. En
-esta máquina el informe sale así: **las cuatro cosas que bloquean, puestas**, y
-falta solo lo opcional — las nueve voces preestablecidas, 4 GB.
-
-✅ **La pantalla SE VIO Y FUNCIONA.** Confirmado por el usuario el 2026-09-07:
-*«lo del engranaje funciona perfecto»*. Eso cubre abrir el panel desde la
-cabecera y verlo pintado como es debido.
-
-⚠️ **SIGUE sin ejercitarse UNA descarga real.** Es lo único del portal que
-queda por ver funcionar.
-
-> **Prueba concreta:** pulsar **Instalar** en «las nueve voces preestablecidas»
-> (4 GB, tarda) y comprobar tres cosas: que la barra se mueve, que al terminar
-> la **re-auditoría** lo confirma, y que cerrar la pestaña a media descarga no
-> deja nada que parezca instalado (debe quedar una carpeta con sufijo
-> `.descargando`).
-
-**2. El latido de ComfyUI (sesión 6).** `watchComfy()` en `scripts/start.mjs`
-relanza el motor si se cae, hasta tres veces. **Nunca se ha ejercitado contra
-una caída real.**
-
-> **Prueba concreta:** levantar la app, matar ComfyUI a mano, mirar la consola
-> del lanzador.
-
-**3. Pendiente desde la sesión 5:** **escuchar una pieza larga unida** y juzgar
-el volumen nivelado. Es el criterio de salida de la Fase 3 y ningún test puede
-sustituirlo. Hay un guión listo en `.tmp/guion-prueba-costuras.txt` (5.815
-caracteres, 4 tramos, **las tres costuras caen a mitad de párrafo**, que es el
-caso difícil).
 
 ---
 
@@ -268,47 +304,9 @@ aquí hay más superficie nueva de la habitual: el puerto pegajoso, el servidor
 como hijo, y el apagado por tres vías. **Instalarlo y abrirlo es la prueba que
 falta**, y conviene hacerla con `npm start` cerrado para no confundir puertos.
 
-## 🎨 Identidad — ELEGIDA y cableada
-
-**Los assets viven en `desktop/recursos/`** y están versionados:
-`icon.ico` (siete tamaños: 16, 24, 32, 48, 64, 128, 256) · `icon.png` (512) ·
-`logotipo.png`. El banco de iteración, con sus prompts, en `.tmp/logo/`.
-
-**La marca:** un trazo naranja que **entra plano y sale en onda** — literalmente
-lo que hace el producto. El logotipo lleva TTS en bold, ese mismo trazo haciendo
-de **regla entre las dos palabras**, y STUDIO espaciado al ancho exacto de TTS.
-
-📌 **Las dos piezas comparten GESTO, no solo color.** Fue una corrección del
-usuario y es la que valía: dos piezas del mismo color son parientes; dos piezas
-del mismo gesto son la misma marca.
-
-**Descartadas, con su motivo, para no repetirlas:** trazo fino flotando
-(desaparece al reducir) · masa sólida (parece nivel de líquido) · naranja
-inundado (60% de acento, contra la marca) · marco redondeado (redundante, el
-sistema ya redondea) · burbuja y monograma (generados, no llegaron a gustar).
-
-### ⚠️ Lo que hay que saber si se vuelve a tocar
-
-- **Ideogram pinta un TABLERO de falsa transparencia** cuando el fondo se
-  describe de forma ambigua: cree que dibuja un PNG transparente. Hay que
-  decirle explícitamente «sin transparencia, sin tablero de ajedrez, un color
-  plano de borde a borde» — y aun así **depende de la semilla** (la 108 lo pintó
-  igual). Se aplana después con PIL, midiendo.
-- **Al verificar el aplanado, MEDIR DONDE ESTÁ EL PROBLEMA.** Se midió una
-  franja del borde, salió limpia, y el damero seguía **alrededor del texto**.
-  Los números dieron el visto bueno a algo roto. Lo cazó **mirar la imagen**.
-- **Se eligió una semilla «a ojo» y estaba peor.** Medida la textura donde
-  tocaba, la 7 ganaba a la 42. Elegir mirando está bien; elegir sin medir, no.
-- **Motor: Ideogram 4, licencia NO COMERCIAL.** Avisado al usuario, que eligió
-  seguir. Se pasó `limpiar_salida.py` y se verificó que los PNG no llevan el
-  grafo incrustado (donde viajaría escrito el nombre del modelo). **Limpiar los
-  metadatos quita el rastro, no la licencia.**
-- **Es un logotipo RASTERIZADO, no vectorial.** Para una identidad lo suyo sería
-  SVG: escala sin pérdida y se edita. Ofrecido al usuario, no pedido todavía.
-- **Herramientas:** PIL 12.3 y numpy 2.5 en el venv de ComfyUI
-  (`C:/Users/tech/comfy/.venv/Scripts/python.exe`). **NO hay ImageMagick** —
-  `convert` en el PATH es la utilidad de Windows que **convierte FAT a NTFS**.
-  No tocarla.
+> **Lo que estaba aquí de la sesión 7** —el portal sin ver, el `.exe` recién
+> construido, la iteración del logo— **se movió a `session-log.md`**, que es
+> donde vive la cronología. Este archivo es lo que hace falta AHORA.
 
 ## Siguiente paso
 

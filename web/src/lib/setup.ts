@@ -36,6 +36,14 @@ export type Requisito = {
   bloquea: boolean;
   /** ¿Puede el portal resolverlo, o solo explicarlo? */
   instalable: boolean;
+  /**
+   * Qué hará el botón, cuando no sea sencillamente instalar.
+   *
+   * Existe por el motor: «no está corriendo» y «no está instalado» piden cosas
+   * distintas, y un botón que dijera «Instalar» a quien ya tiene ComfyUI en
+   * disco le ofrecería descargar varios GB para nada.
+   */
+  accion: string | null;
   tipo: string | null;
   estado: EstadoRequisito;
   /** Por qué se dice lo que se dice. `null` cuando no hace falta explicar. */
@@ -94,6 +102,7 @@ function aRequisito(v: unknown): Requisito | null {
     para_que: texto(v.para_que),
     bloquea: v.bloquea === true,
     instalable: v.instalable === true,
+    accion: textoOpcional(v.accion),
     tipo: textoOpcional(v.tipo),
     estado: estado(v.estado),
     detalle: textoOpcional(v.detalle),

@@ -213,7 +213,13 @@ app.whenReady().then(async () => {
 
   arrancarServidor(puerto);
 
-  const listo = await waitFor(() => responds(`${appUrl}/api/voices`, 1500), {
+  // `/api/health` y NO `/api/voices`, y esto es el arreglo de un fallo real:
+  // esa segunda ruta pregunta por ComfyUI y devuelve 502 con el motor
+  // apagado. En el `.exe` la consecuencia era que la aplicacion esperaba un
+  // minuto y SE CERRABA SOLA diciendo que no habia arrancado, cuando lo unico
+  // ausente era el motor. La app existe justamente para ayudarte a instalar
+  // ese motor: cerrarse por su ausencia es lo contrario de lo que debe hacer.
+  const listo = await waitFor(() => responds(`${appUrl}/api/health`, 1500), {
     budgetMs: 60_000,
     everyMs: 400,
   });

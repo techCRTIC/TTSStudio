@@ -618,7 +618,8 @@ def _whisper_en_cache() -> bool:
     return False
 
 
-def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict) -> list[dict]:
+def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict,
+                herramientas: dict | None = None) -> list[dict]:
     """Evalua los requisitos de la app declarados en el manifiesto.
 
     Tres estados, y el tercero NO es decorativo (ADR-008 D5):
@@ -634,11 +635,30 @@ def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict) -> list
     for req in manifiesto.get("app", {}).get("requisitos", []):
         estado, detalle, mb = "no_verificable", None, 0
         rid = req["id"]
+        # Por defecto se hereda lo que declara el manifiesto; solo el motor
+        # las cambia sobre la marcha, porque solo el tiene tres situaciones.
+        accion = req.get("accion")
+        instalable = req.get("instalable", False)
 
         if rid == "comfyui-corriendo":
-            estado = "instalada" if comfyui.get("corriendo") else "falta"
-            if estado == "falta":
+            # TRES situaciones, no dos, y la diferencia decide que boton se
+            # ofrece: corriendo / instalado pero apagado / ni siquiera esta.
+            # Confundir las dos ultimas ofreceria descargar varios GB a alguien
+            # que ya los tiene en disco.
+            if comfyui.get("corriendo"):
+                estado = "instalada"
+            else:
+                estado = "falta"
                 detalle = f"No responde en {comfyui.get('url')}"
+                instalado = bool((herramientas or {}).get("comfy_en_path")) or bool(
+                    comfyui.get("workspace"))
+                if instalado:
+                    accion, instalable = "arrancar", True
+                    detalle = ("Esta instalado pero no esta corriendo. "
+                               "Se puede arrancar desde aqui.")
+                else:
+                    accion, instalable = "instalar-comfyui", True
+                    detalle = "No esta instalado en esta maquina."
 
         elif req.get("tipo") == "pack":
             pack = req["pack"]
@@ -707,7 +727,8 @@ def auditar_app(manifiesto: dict, workspace: Path | None, comfyui: dict) -> list
             "titulo": req["titulo"],
             "para_que": req["para_que"],
             "bloquea": req.get("bloquea", False),
-            "instalable": req.get("instalable", False),
+            "instalable": instalable,
+            "accion": accion,
             "tipo": req.get("tipo"),
             "estado": estado,
             "detalle": detalle,
@@ -748,7 +769,8 @@ def main() -> int:
             "comfyui_corriendo": informe["comfyui"].get("corriendo", False),
             "python_venv": informe["comfyui"].get("python_venv"),
             "disco_libre_mb": informe["maquina"].get("disco_libre_mb"),
-            "requisitos": auditar_app(manifiesto, workspace, informe["comfyui"]),
+            "requisitos": auditar_app(manifiesto, workspace, informe["comfyui"],
+                                      informe["herramientas"]),
         }, indent=2, ensure_ascii=False))
         return 0
 

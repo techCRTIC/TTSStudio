@@ -126,7 +126,7 @@ function Fila({
   progreso: Progreso | null;
   resultado: Resultado | null;
   ocupado: boolean;
-  onInstalar: (id: string) => void;
+  onInstalar: (id: string, accion: string | null) => void;
 }) {
   const falta = req.estado === "falta";
   // El color de aviso se reserva para lo que impide usar la app. Todo lo demás
@@ -188,11 +188,18 @@ function Fila({
         {falta && req.instalable && !progreso && (
           <button
             type="button"
-            onClick={() => onInstalar(req.id)}
+            onClick={() => onInstalar(req.id, req.accion)}
             disabled={ocupado}
             className="shrink-0 rounded-md border border-accent/45 bg-accent-soft px-3 py-1.5 text-[13px] text-accent-text transition-colors duration-200 ease-[cubic-bezier(0.25,1,0.5,1)] hover:border-accent/70 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Instalar
+            {/* El botón dice lo que va a hacer, no una palabra genérica.
+                «Instalar» a quien ya tiene ComfyUI en disco sería ofrecerle
+                descargar varios GB que no necesita. */}
+            {req.accion === "arrancar"
+              ? "Arrancar"
+              : req.accion === "instalar-comfyui"
+                ? "Instalar ComfyUI"
+                : "Instalar"}
           </button>
         )}
       </div>
@@ -215,7 +222,7 @@ function Grupo({
   progresos: Record<string, Progreso>;
   resultados: Record<string, Resultado>;
   ocupado: boolean;
-  onInstalar: (id: string) => void;
+  onInstalar: (id: string, accion: string | null) => void;
 }) {
   if (requisitos.length === 0) return null;
   return (
@@ -365,7 +372,7 @@ export default function SetupPortal({
   }, [onReauditar]);
 
   const instalar = useCallback(
-    async (id: string) => {
+    async (id: string, accion: string | null) => {
       setResultados((r) => sinLaClave(r, id));
       setProgresos((p) => ({ ...p, [id]: { pct: 0, mbHechos: 0, mbTotal: 0, mensaje: null } }));
 
@@ -373,7 +380,7 @@ export default function SetupPortal({
         const respuesta = await fetch("/api/setup/install", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, accion }),
         });
 
         if (!respuesta.ok || !respuesta.body) {
