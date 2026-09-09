@@ -267,6 +267,44 @@ export type GenerationOptions = {
   instruct?: string;
 };
 
+/**
+ * Dónde deja el motor cada generación: `ttsstudio/<voz>/<fecha>/`.
+ *
+ * Antes todo caía suelto en la raíz de salida de ComfyUI, mezclado con lo que
+ * produzca cualquier otro flujo. Con doscientas tomas eso deja de ser una
+ * carpeta y pasa a ser un vertedero.
+ *
+ * EL SANEADO NO ES COSMÉTICO. `voiceId` llega del navegador y aquí se convierte
+ * en una RUTA que el motor va a crear en disco. Un identificador con `..` o con
+ * barras escribiría fuera de la carpeta de salida, así que en vez de buscar
+ * caracteres prohibidos —una lista que siempre se queda corta— solo se dejan
+ * pasar los permitidos.
+ */
+export function outputPrefix(voiceId: string, when: Date = new Date()): string {
+  const voz =
+    voiceId
+      .replace(/\.[a-z0-9]+$/i, "")      // fuera la extensión: es un archivo, no un nombre
+      // Las tildes se QUITAN, no se destruyen. Sin esto «Andrés Núñez» daba una
+      // carpeta llamada `andr_s_n_ez`, que es peor que no ordenar nada. Es el
+      // mismo tratamiento que `voiceSlug` en ./voices.
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "_")     // lista de permitidos, no de prohibidos
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 64) || "voz";
+
+  // Fecha LOCAL, no UTC: quien mira la carpeta espera el día que era para él.
+  // `toISOString()` habría metido las tomas de la noche en el día siguiente.
+  const fecha = [
+    when.getFullYear(),
+    String(when.getMonth() + 1).padStart(2, "0"),
+    String(when.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  return `ttsstudio/${voz}/${fecha}/toma`;
+}
+
 export function buildWorkflow(
   text: string,
   voiceId: string,
@@ -310,7 +348,10 @@ export function buildWorkflow(
   const language = options.language ?? "Spanish";
   const maxNewTokens = normalizeTokens(options.maxNewTokens ?? TOKENS_DEFAULT);
   const save = (from: string) => ({
-    "4": { class_type: "SaveAudio", inputs: { audio: [from, 0], filename_prefix: "ttsstudio" } },
+    "4": {
+      class_type: "SaveAudio",
+      inputs: { audio: [from, 0], filename_prefix: outputPrefix(voiceId) },
+    },
   });
 
   if (kind === "preset") {

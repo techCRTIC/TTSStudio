@@ -189,11 +189,24 @@ export function voiceSidecarPath(voiceId: string): string {
  * produces a piece, and every one of those paths is validated by
  * `outputFilePath` before this function is ever reached.
  */
-export function pieceOutputPath(id: string): string {
+export function pieceOutputPath(id: string, subfolder = ""): string {
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
     throw new UnsafePathError("Identificador de pieza inválido.");
   }
-  return resolveInside(OUTPUT_DIR, `ttsstudio_pieza_${id}.flac`);
+  // La pieza unida vive JUNTO A SUS TRAMOS. Dejarla en la raíz mientras los
+  // tramos van a su carpeta sería ordenar los trozos y perder el resultado,
+  // que es justo lo que el usuario guarda.
+  //
+  // La carpeta se valida con la misma severidad que el identificador: cada
+  // tramo tiene que ser inofensivo por separado, porque `resolveInside` de
+  // abajo detecta una fuga pero no un `..` que se cancele a sí mismo por el
+  // camino. Vacía significa la raíz, que es donde escribían las piezas
+  // anteriores a las carpetas.
+  const tramos = subfolder.split("/").filter(Boolean);
+  if (tramos.some((t) => !/^[a-zA-Z0-9_.-]+$/.test(t) || t === "." || t === "..")) {
+    throw new UnsafePathError("Carpeta de destino inválida.");
+  }
+  return resolveInside(OUTPUT_DIR, ...tramos, `ttsstudio_pieza_${id}.flac`);
 }
 
 /**

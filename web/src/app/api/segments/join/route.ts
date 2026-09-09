@@ -140,6 +140,9 @@ export async function POST(request: Request) {
     // whatever was left, which would splice in the wrong audio without the
     // caller ever finding out.
     const resolved: { path: string; boundary: Boundary }[] = [];
+    // La carpeta del primer tramo, tomada DENTRO del bucle que ya los valida:
+    // fuera de él sería un dato sin comprobar, y este acaba siendo una ruta.
+    let carpeta = "";
     for (let i = 0; i < rawSegments.length; i += 1) {
       const input = asSegmentInput(rawSegments[i]);
       if (!input) {
@@ -152,6 +155,7 @@ export async function POST(request: Request) {
         );
       }
       try {
+        if (resolved.length === 0) carpeta = input.subfolder;
         resolved.push({ path: outputFilePath(input), boundary: input.boundary });
       } catch (cause) {
         // outputFilePath only ever throws UnsafePathError — see comfy-files.ts.
@@ -169,7 +173,7 @@ export async function POST(request: Request) {
     const id = randomUUID();
     let outputPath: string;
     try {
-      outputPath = pieceOutputPath(id);
+      outputPath = pieceOutputPath(id, carpeta);
     } catch (cause) {
       const status = cause instanceof UnsafePathError ? 400 : 502;
       return Response.json(
@@ -216,7 +220,7 @@ export async function POST(request: Request) {
     // Same shape `statusOf()` already produces for a plain take's `audioUrl`,
     // so playback and download keep working through the routes that already
     // exist — nothing new to build on that side.
-    const audioUrl = `/api/comfy/view?filename=${encodeURIComponent(filename)}&subfolder=${encodeURIComponent("")}&type=${encodeURIComponent("output")}`;
+    const audioUrl = `/api/comfy/view?filename=${encodeURIComponent(filename)}&subfolder=${encodeURIComponent(carpeta)}&type=${encodeURIComponent("output")}`;
 
     return Response.json({
       ok: true,

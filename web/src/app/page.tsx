@@ -31,7 +31,7 @@ import { randomSeed } from "@/lib/tts";
 import { VoiceLibrary, type Voice } from "@/components/VoiceLibrary";
 import { VoiceSelect } from "@/components/VoiceSelect";
 import { Waveform } from "@/components/Waveform";
-import { addTake, deleteTake, toggleGood, useHistory, type Take } from "@/lib/history";
+import { addTake, audioRefOf, deleteTake, toggleGood, useHistory, type Take } from "@/lib/history";
 import { useImprove } from "@/lib/improve";
 import { clipFor, revealAt, REVEAL_CENTRE } from "@/lib/reveal";
 import { useTextReview } from "@/lib/review";
@@ -326,6 +326,7 @@ export default function Studio() {
       segments: hechos.map((track) => ({
         index: track.index,
         filename: track.filename as string,
+        subfolder: track.subfolder,
         boundary: track.boundary,
         seed: track.seed as number,
       })),
@@ -466,7 +467,9 @@ export default function Studio() {
       const res = await fetch("/api/takes/reveal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: take.filename }),
+        // La carpeta viaja dentro de la URL de la toma; sin ella, el explorador
+        // se abriría en la raíz de salida y no en donde está el archivo.
+        body: JSON.stringify(audioRefOf(take)),
       });
       if (!res.ok) {
         const cuerpo = (await res.json().catch(() => null)) as { mensaje?: unknown } | null;

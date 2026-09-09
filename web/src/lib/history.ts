@@ -21,10 +21,12 @@ import { useSyncExternalStore } from "react";
  * One segment of a long-script take, as little as it takes to redo it or
  * delete it. Fase 3 (guiones largos).
  *
- * `subfolder` and `type` are NOT stored: every generation in this app writes
- * to the same defaults ("" and "output" — see `SaveAudio`'s node config in
- * `buildWorkflow`), so storing a constant that already holds everywhere would
- * be repeating it 200 takes over for nothing. The segment's TEXT isn't stored
+ * `subfolder` SÍ se guarda ahora, y antes no. Este comentario decía que no
+ * hacía falta «porque toda generación escribe en el mismo sitio», y era verdad
+ * mientras el prefijo de salida era una constante. Al pasar a ordenar en
+ * `ttsstudio/<voz>/<fecha>/`, esa suposición dejó de valer: sin guardarlo, el
+ * borrado buscaría los tramos en la raíz y los dejaría huérfanos en disco.
+ * `type` sigue sin guardarse: eso sí sigue siendo constante ("output"). The segment's TEXT isn't stored
  * either — it is derivable by re-running `/api/segments/split` on the take's
  * own `text` and reading position `index`, and a long take's `text` is the
  * one thing that already has to be kept in full (it is what recall() puts
@@ -34,6 +36,14 @@ export type TakeSegment = {
   index: number;
   filename: string;
   boundary: "sentence" | "paragraph";
+  /**
+   * La carpeta donde vive este tramo, dentro de la salida del motor.
+   *
+   * OPCIONAL, y eso importa: las tomas guardadas antes de que la app ordenara
+   * en carpetas no lo tienen, y en ellas la respuesta correcta es la raíz.
+   * `filesForTake` lo lee así — su ausencia significa «la raíz», no «no sé».
+   */
+  subfolder?: string;
   /**
    * The seed actually used for THIS segment — possibly a retry seed, and not
    * necessarily equal to the take's own `seed` (the base seed the whole
@@ -168,12 +178,25 @@ function parseAudioRef(audioUrl: string): { filename: string; subfolder: string;
  * default to `subfolder: ""`/`type: "output"`, same defaults every generation
  * in this app writes to (see `TakeSegment`'s own docstring).
  */
+/**
+ * Dónde vive el archivo de una toma: su nombre y su carpeta.
+ *
+ * Existe para quien necesita señalar el archivo —abrir el explorador en él, por
+ * ejemplo— sin tener que saber que esa información viaja dentro de la URL.
+ */
+export function audioRefOf(take: Take): { filename: string; subfolder: string; type: string } {
+  return parseAudioRef(take.audioUrl);
+}
+
 export function filesForTake(take: Take): { filename: string; subfolder: string; type: string }[] {
   const piece = parseAudioRef(take.audioUrl);
   if (!take.segments || take.segments.length === 0) return [piece];
   const segmentFiles = take.segments.map((s) => ({
     filename: s.filename,
-    subfolder: "",
+    // Ausente = la raíz, que es donde escribían las tomas anteriores a las
+    // carpetas. No es un valor por defecto perezoso: es la respuesta correcta
+    // para una toma vieja.
+    subfolder: s.subfolder ?? "",
     type: "output",
   }));
   return [...segmentFiles, piece];
