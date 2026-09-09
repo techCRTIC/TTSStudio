@@ -17,6 +17,19 @@ app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores
 
 ## 🔴 LO PRIMERO — dos cosas, y la segunda no es de esta app
 
+### ✅ v0.1.2 PUBLICADA — y todo confirmado por el usuario
+**https://github.com/techCRTIC/TTSStudio/releases/tag/v0.1.2** — es la última.
+La `0.1.0` sigue publicada con su aviso de no descargarla.
+
+Verificado **por el usuario, en el binario instalado**: la ventana abre sin
+ComfyUI, y «Componentes para audio» instala lo que debe. No queda nada de esta
+tanda sin ver funcionar.
+
+📌 **Lo que esta sesión enseña, y conviene no olvidar:** los dos fallos
+—la app cerrándose sola, y el mensaje en jerga— **eran invisibles desde el
+desarrollo**. Aparecieron al instalar y usar. Las pruebas estaban verdes en los
+dos casos. **Un `.exe` no está probado hasta que alguien lo instala.**
+
 ### ✅ EL `.exe` ABRE SIN COMFYUI — verificado en el binario
 El usuario instaló la 0.1.1 y la ventana abrió con el motor apagado, con el
 aviso «ComfyUI no responde» en su sitio. **El fallo que abrió la sesión 8 está

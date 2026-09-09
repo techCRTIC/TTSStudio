@@ -65,25 +65,24 @@ apareció que ComfyUI, en este computador, estaba roto por su cuenta.
     («Componentes para audio»). Estaba decidido en `ADR-009` D6.3 y sin
     implementar; lo que se veía en su lugar era el `uv sync`.
 
-**Estado al cerrar:** **PUBLICADO Y CORREGIDO.** `v0.1.1` es la release más
-reciente; la `v0.1.0` queda publicada pero marcada con un aviso grande de que no
-se descargue, porque quien ya la tenga merece encontrar aquí qué le pasó. Rama
-`main`, árbol limpio. Verde: tipos · lint · 210 pruebas · 32 de Python · los 4
-verificadores.
+**Estado al cerrar:** **CERRADO Y PUBLICADO.** `v0.1.2` es la release más
+reciente; la `0.1.0` sigue arriba marcada con un aviso de no descargarla. Rama
+`main`, árbol limpio. Verde: tipos · lint · 210 pruebas · 32 de Python · los
+cuatro verificadores.
 
-✅ **El arreglo está VERIFICADO**, no deducido: con ComfyUI genuinamente caído,
-contra el servidor ya empaquetado, `/api/health` devolvió **200** y
-`/api/voices` —la sonda que mataba la app— devolvió **502**. El fallo y su
-arreglo, lado a lado.
+✅ **Todo lo de esta sesión está verificado por el usuario en el binario final**,
+no solo en pruebas: la ventana abre sin ComfyUI, y el botón «Componentes para
+audio» instala lo que le toca.
 
-⚠️ **Lo que sigue sin verse:** la ventana del `.exe` 0.1.1 abriéndose sin motor.
-El mecanismo está probado; el binario final no se ha instalado.
+**La lección que deja la sesión, y vale más que los arreglos:** ninguno de los
+dos fallos se podía ver desde el desarrollo. **Aparecieron al instalar la app en
+una máquina y usarla** — primero no abría, después hablaba en un idioma que
+nadie entiende. Las pruebas estaban verdes en los dos casos.
 
-**Siguiente paso concreto:** probar en la 0.1.2 el botón **«Componentes para
-audio»** del portal — es lo único de esta tanda que no se ha visto funcionar de
-punta a punta (sí se verificó que crear un entorno con el Python del sistema
-funciona en esta máquina). Después, publicar la 0.1.2 y volver a lo que lleva
-pendiente desde la sesión 5: **escuchar una pieza larga unida**.
+**Siguiente paso concreto:** lo que lleva pendiente desde la sesión 5 y es lo
+único que cierra la Fase 3: **escuchar una pieza larga unida** y juzgar el
+volumen nivelado. Hay un guión preparado en `.tmp/guion-prueba-costuras.txt`,
+con las tres costuras cayendo a mitad de párrafo, que es el caso difícil.
 
 <!-- /cierre -->
 
