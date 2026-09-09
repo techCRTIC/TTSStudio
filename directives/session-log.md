@@ -63,8 +63,8 @@ build · **221 pruebas** · 32 de Python · los cuatro verificadores. **El insta
 0.1.4 está compilado** en `dist/`, con las dos rutas nuevas verificadas dentro
 (`SHA-256 9BD6CEDC0208340D35B2467FA156079F9A429D639CFE4C591ADA68C650D10982`).
 
-⚠️ **NADA de esta sesión está publicado.** La release más reciente sigue siendo
-la `v0.1.2`, que no ordena en carpetas ni tiene los botones de importar.
+✅ **PUBLICADO como `v0.1.4`**, que es la release más reciente. Lleva todo lo de
+esta sesión: las carpetas por voz y fecha, y los dos botones de importar.
 
 ⚠️ **Sin ver funcionar:** las carpetas creadas por una generación real, y los
 dos botones nuevos. Todo está probado en su lógica; nada se ha usado.
