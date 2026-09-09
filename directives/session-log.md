@@ -51,16 +51,25 @@ apareció que ComfyUI, en este computador, estaba roto por su cuenta.
   **Lo que NO cambia es la línea que importa:** ComfyUI se sigue sin empaquetar
   — se instala desde su origen y por orden explícita del usuario.
 
-**Estado al cerrar:** rama `main`. Verde: tipos · lint · **210 pruebas de la
-app** (2 saltadas porque el motor está caído) · 32 de Python · los cuatro
-verificadores de costura. El instalador se estaba reconstruyendo al cerrar.
-⚠️ **Sin verificar: que el `.exe` nuevo abra la ventana sin ComfyUI**, que es
-justo el fallo que esta sesión vino a arreglar.
+**Estado al cerrar:** **PUBLICADO Y CORREGIDO.** `v0.1.1` es la release más
+reciente; la `v0.1.0` queda publicada pero marcada con un aviso grande de que no
+se descargue, porque quien ya la tenga merece encontrar aquí qué le pasó. Rama
+`main`, árbol limpio. Verde: tipos · lint · 210 pruebas · 32 de Python · los 4
+verificadores.
 
-**Siguiente paso concreto:** correr
-`C:/Users/tech/comfy/.venv/Scripts/python.exe -m pip install sqlalchemy` para
-devolverle la vida a ComfyUI, instalar el `.exe` nuevo **con el motor apagado**
-y comprobar que la ventana abre y el portal ofrece «Arrancar».
+✅ **El arreglo está VERIFICADO**, no deducido: con ComfyUI genuinamente caído,
+contra el servidor ya empaquetado, `/api/health` devolvió **200** y
+`/api/voices` —la sonda que mataba la app— devolvió **502**. El fallo y su
+arreglo, lado a lado.
+
+⚠️ **Lo que sigue sin verse:** la ventana del `.exe` 0.1.1 abriéndose sin motor.
+El mecanismo está probado; el binario final no se ha instalado.
+
+**Siguiente paso concreto:** instalar la 0.1.1 con ComfyUI apagado y comprobar
+que abre y ofrece «Arrancar». Después, lo que lleva pendiente desde la sesión 5:
+**escuchar una pieza larga unida** y juzgar el volumen nivelado — lo único que
+cierra la Fase 3.
+
 <!-- /cierre -->
 
 **Hora:** tarde.

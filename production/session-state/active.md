@@ -17,30 +17,37 @@ app** (2 saltadas: el motor está caído) · 32 de Python · los 4 verificadores
 
 ## 🔴 LO PRIMERO — dos cosas, y la segunda no es de esta app
 
-### 1. ComfyUI está ROTO en esta máquina, y no por culpa nuestra
-```
-ModuleNotFoundError: No module named 'sqlalchemy'
-```
-Le falta esa dependencia a **su propio entorno**, así que **no arranca por
-ningún camino**: ni desde la app, ni desde el lanzador, ni a mano. La orden:
-
+### ✅ ComfyUI volvió a la vida
+Estaba roto (`ModuleNotFoundError: No module named 'sqlalchemy'` en su propio
+entorno) y **responde 200 otra vez**. Si vuelve a pasar, la orden es:
 ```
 C:/Users/tech/comfy/.venv/Scripts/python.exe -m pip install sqlalchemy
 ```
+⚠️ **La corre el usuario**: el hook `enforce-venv.sh` la bloquea por falso
+positivo — es un venv, pero no el del proyecto, y el patrón no distingue.
 
-⚠️ **La tiene que correr el usuario.** El hook `enforce-venv.sh` la bloquea por
-falso positivo: es un venv, pero no el del proyecto, y el patrón no distingue.
+### ✅ v0.1.1 PUBLICADA, y el arreglo verificado
+**https://github.com/techCRTIC/TTSStudio/releases/tag/v0.1.1** — es la última.
+La `v0.1.0` sigue publicada **con un aviso de no descargarla**: quien ya la tenga
+merece encontrar ahí qué le pasó.
 
-### 2. El `.exe` recién construido NO se ha visto abrir
-`dist/TTS Studio Setup 0.1.0.exe`, 111 MB, construido el 2026-09-09.
-**La prueba que falta es exactamente el fallo que esta sesión vino a arreglar:**
-instalarlo **con ComfyUI apagado** y ver que la ventana abre y que el portal
-ofrece «Arrancar».
+**La prueba, hecha contra el servidor empaquetado y con el motor caído:**
 
-📌 **La release pública v0.1.0 lleva el binario ROTO** (el que se cierra solo sin
-ComfyUI). El `dist/` local tiene el mismo número de versión y contenido
-distinto. **Antes de publicar hay que subir a 0.1.1**: dos binarios distintos
-bajo un mismo número es una trampa para el que descargue.
+| ruta | código | |
+|---|---|---|
+| `/api/health` | **200** | la sonda nueva: la ventana abre |
+| `/api/voices` | **502** | la vieja: **esto mataba la app** |
+| `/` | **200** | la pantalla se pinta |
+
+⚠️ **Sin ver todavía:** la ventana del `.exe` 0.1.1 abriendo sin motor. El
+mecanismo está probado; el binario no se ha instalado.
+
+📌 **Publicar otra versión:** subir `version` en `package.json` ·
+`npm run desktop:dist` · SHA-256 · `git tag -a vX.Y.Z` · `gh release create`.
+**Nunca reutilizar un número** con un binario distinto.
+📌 **GitHub renombra el adjunto con puntos** (`TTS.Studio.Setup.X.Y.Z.exe`). El
+comando de verificación en las notas tiene que citar ESE nombre — en la 0.1.0 se
+citó el de espacios y le fallaba a quien lo copiara.
 
 ## 🐛 El fallo del arranque, y su regla
 
